@@ -8,7 +8,7 @@ import lighthouse from 'lighthouse';
 import * as chromeLauncher from 'chrome-launcher';
 import { program } from 'commander';
 import cheerio from 'cheerio';
-import url from 'url';
+import { URL } from 'url';
 
 let isShuttingDown = false;
 let results = [];
@@ -116,6 +116,48 @@ async function getInternalLinks(pageUrl, baseUrl) {
     }
 }
 
+async function analyzeContent(pageUrl) {
+    try {
+        const response = await axios.get(pageUrl);
+        const $ = cheerio.load(response.data);
+
+        const title = $('title').text();
+        const metaDescription = $('meta[name="description"]').attr('content');
+        const h1 = $('h1').first().text();
+        const wordCount = $('body').text().trim().split(/\s+/).length;
+
+        const headings = {};
+        ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(h => {
+            headings[h] = $(h).length;
+        });
+
+        // Simple keyword extraction (top 5 most frequent words)
+        const words = $('body').text().toLowerCase().match(/\b\w+\b/g);
+        const wordFrequency = {};
+        words.forEach(word => {
+            if (word.length > 3) {  // Ignore short words
+                wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+            }
+        });
+        const keywords = Object.entries(wordFrequency)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(entry => entry[0]);
+
+        return {
+            title,
+            metaDescription,
+            h1,
+            wordCount,
+            headings,
+            keywords
+        };
+    } catch (error) {
+        console.error(`Error analyzing content of ${pageUrl}:`, error.message);
+        return null;
+    }
+}
+
 async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
     try {
         console.log(`Starting process for sitemap: ${sitemapUrl}`);
@@ -143,6 +185,7 @@ async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
                 const pa11yResult = await pa11y(testUrl, pa11yOptions);
                 const lighthouseResult = await runLighthouse(testUrl, lighthouseOptions);
                 const internalLinks = await getInternalLinks(testUrl, baseUrl);
+                const contentAnalysis = await analyzeContent(testUrl);
 
                 internalLinks.forEach(link => {
                     if (!sitemapUrls.has(link)) {
@@ -155,6 +198,7 @@ async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
                     accessibility: pa11yResult.issues,
                     seo: lighthouseResult.categories.seo,
                     internalLinks,
+                    contentAnalysis
                 });
                 console.log(`Completed testing: ${testUrl} (${i + 1}/${totalTests})`);
             } catch (error) {
@@ -171,9 +215,10 @@ async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
         console.error('Error in runTestsOnSitemap:', error.message);
     }
 }
+
 function formatResults(results) {
-    let output = 'Pa11y Accessibility, SEO, and Internal Link Test Results\n';
-    output += '======================================================\n\n';
+    let output = 'Pa11y Accessibility, SEO, and Content Analysis Test Results\n';
+    output += '=========================================================\n\n';
 
     let totalAccessibilityIssues = 0;
     let accessibilityIssuesByType = {};
@@ -232,6 +277,22 @@ function formatResults(results) {
                 output += 'No SEO data available.\n';
             }
 
+            // Content Analysis results
+            if (result.contentAnalysis) {
+                output += '\nContent Analysis:\n';
+                output += `  Title: ${result.contentAnalysis.title}\n`;
+                output += `  Meta Description: ${result.contentAnalysis.metaDescription || 'Not found'}\n`;
+                output += `  H1: ${result.contentAnalysis.h1 || 'Not found'}\n`;
+                output += `  Word Count: ${result.contentAnalysis.wordCount}\n`;
+                output += '  Heading Structure:\n';
+                for (const [heading, count] of Object.entries(result.contentAnalysis.headings)) {
+                    output += `    ${heading}: ${count}\n`;
+                }
+                output += `  Top Keywords: ${result.contentAnalysis.keywords.join(', ')}\n`;
+            } else {
+                output += '\nNo content analysis data available.\n';
+            }
+
             // Internal links
             if (result.internalLinks) {
                 output += `\nInternal Links: ${result.internalLinks.length}\n`;
@@ -280,6 +341,7 @@ function formatResults(results) {
 
     return output;
 }
+
 async function saveResults(results, outputFile) {
     try {
         const formattedResults = formatResults(results);
@@ -289,7 +351,6 @@ async function saveResults(results, outputFile) {
         console.error(`Error writing to file ${outputFile}:`, error.message);
     }
 }
-
 function setupShutdownHandler(outputFile) {
     process.on('SIGINT', async () => {
         console.log('\nGraceful shutdown initiated...');
@@ -312,7 +373,7 @@ program
     .description('Run pa11y accessibility, Lighthouse SEO tests, and internal link checks on all URLs in a sitemap')
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .option('-o, --output <file>', 'Output file for results', 'pa11y-seo-results.txt')
-    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, 10)
+    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
 const options = program.opts();
