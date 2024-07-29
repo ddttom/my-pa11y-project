@@ -1,5 +1,5 @@
-my-results.json
-my-results.txt
+*.txt
+*.csv
 # Dependency directories
 node_modules/
 
