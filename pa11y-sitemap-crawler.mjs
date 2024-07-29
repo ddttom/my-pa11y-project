@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import fs from 'fs/promises';
 import axios from 'axios';
 import xml2js from 'xml2js';
@@ -9,6 +7,9 @@ import * as chromeLauncher from 'chrome-launcher';
 import { program } from 'commander';
 import cheerio from 'cheerio';
 import { URL } from 'url';
+import { createObjectCsvWriter } from 'csv-writer';
+import sharp from 'sharp';
+import { fileTypeFromBuffer } from 'file-type';
 
 let isShuttingDown = false;
 let results = [];
@@ -43,7 +44,7 @@ const pa11yOptions = {
 const lighthouseOptions = {
     logLevel: 'info',
     output: 'json',
-    onlyCategories: ['seo'],
+    onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
     chromeFlags: ['--headless']
 };
 
@@ -90,30 +91,20 @@ async function runLighthouse(testUrl, opts, config = null) {
     opts.port = chrome.port;
     const runnerResult = await lighthouse(testUrl, opts, config);
     await chrome.kill();
-    return JSON.parse(runnerResult.report);
-}
-
-async function getInternalLinks(pageUrl, baseUrl) {
-    try {
-        const response = await axios.get(pageUrl);
-        const $ = cheerio.load(response.data);
-        const links = new Set();
-
-        $('a').each((i, element) => {
-            const href = $(element).attr('href');
-            if (href) {
-                const absoluteUrl = new URL(href, baseUrl).href;
-                if (absoluteUrl.startsWith(baseUrl)) {
-                    links.add(absoluteUrl);
-                }
-            }
-        });
-
-        return Array.from(links);
-    } catch (error) {
-        console.error(`Error fetching internal links from ${pageUrl}:`, error.message);
-        return [];
-    }
+    const reportJson = JSON.parse(runnerResult.report);
+    return {
+        seo: reportJson.categories.seo,
+        performance: reportJson.categories.performance,
+        accessibility: reportJson.categories.accessibility,
+        bestPractices: reportJson.categories['best-practices'],
+        metrics: {
+            fcp: reportJson.audits['first-contentful-paint'].numericValue,
+            lcp: reportJson.audits['largest-contentful-paint'].numericValue,
+            tti: reportJson.audits['interactive'].numericValue,
+            tbt: reportJson.audits['total-blocking-time'].numericValue,
+            cls: reportJson.audits['cumulative-layout-shift'].numericValue
+        }
+    };
 }
 
 async function analyzeContent(pageUrl) {
@@ -144,13 +135,130 @@ async function analyzeContent(pageUrl) {
             .slice(0, 5)
             .map(entry => entry[0]);
 
+        // Check for broken links
+        const links = $('a').map((i, el) => $(el).attr('href')).get();
+        const brokenLinks = [];
+        for (const link of links) {
+            try {
+                if (!link) continue;
+                const absoluteLink = new URL(link, pageUrl).href;
+                const linkResponse = await axios.head(absoluteLink, { timeout: 5000 });
+                if (linkResponse.status >= 400) {
+                    brokenLinks.push({ url: absoluteLink, status: linkResponse.status });
+                }
+            } catch (error) {
+                brokenLinks.push({ url: link, status: 'error' });
+            }
+        }
+
+        // Mobile-friendliness checks
+        const hasViewport = $('meta[name="viewport"]').length > 0;
+        const smallFontSizes = $('*').filter((i, el) => {
+            const fontSize = $(el).css('font-size');
+            return fontSize && parseInt(fontSize) < 12;
+        }).length;
+        const smallTapTargets = $('a, button').filter((i, el) => {
+            const width = $(el).width();
+            const height = $(el).height();
+            return (width && width < 48) || (height && height < 48);
+        }).length;
+
+        // Security checks
+        const isHttps = pageUrl.startsWith('https');
+        const securityHeaders = response.headers;
+        const hasMixedContent = $('*').filter((i, el) => {
+            const src = $(el).attr('src');
+            return src && src.startsWith('http:');
+        }).length > 0;
+
+        // Internationalization
+        const hreflangTags = $('link[rel="alternate"][hreflang]').length;
+        const hasLanguageDeclaration = $('html[lang]').length > 0;
+
+        // URL structure
+        const urlParams = new URL(pageUrl).searchParams;
+        const excessiveParams = urlParams.toString().split('&').length > 3;
+        const longUrl = pageUrl.length > 100;
+
+        // Content quality
+        const thinContent = wordCount < 300;
+        
+        // Check for potential duplicate content
+        const canonicalUrl = $('link[rel="canonical"]').attr('href');
+        const potentialDuplicate = canonicalUrl && canonicalUrl !== pageUrl;
+
+        // Image Optimization
+        const images = $('img').map((i, el) => ({
+            src: $(el).attr('src'),
+            alt: $(el).attr('alt'),
+            width: $(el).attr('width'),
+            height: $(el).attr('height')
+        })).get();
+
+        const imagesWithoutAlt = images.filter(img => !img.alt).length;
+        const imagesWithoutDimensions = images.filter(img => !img.width || !img.height).length;
+
+        // JavaScript and CSS Analysis
+        const renderBlockingResources = {
+            css: $('link[rel="stylesheet"]').length,
+            js: $('script[src]').not('[async]').not('[defer]').length
+        };
+
+        const inlineStyles = $('style').length;
+        const inlineScripts = $('script:not([src])').length;
+
+        // Canonicalization Issues
+        const canonicalTag = $('link[rel="canonical"]').attr('href');
+        const isCanonical = canonicalTag === pageUrl;
+        const hasMultipleCanonicals = $('link[rel="canonical"]').length > 1;
+
         return {
             title,
             metaDescription,
             h1,
             wordCount,
             headings,
-            keywords
+            keywords,
+            brokenLinks,
+            mobileFriendliness: {
+                hasViewport,
+                smallFontSizes,
+                smallTapTargets
+            },
+            security: {
+                isHttps,
+                securityHeaders,
+                hasMixedContent
+            },
+            internationalization: {
+                hreflangTags,
+                hasLanguageDeclaration
+            },
+            urlStructure: {
+                excessiveParams,
+                longUrl
+            },
+            contentQuality: {
+                wordCount,
+                thinContent,
+                potentialDuplicate
+            },
+            imageOptimization: {
+                totalImages: images.length,
+                imagesWithoutAlt,
+                imagesWithoutDimensions,
+                images
+            },
+            resourceOptimization: {
+                renderBlockingResources,
+                inlineStyles,
+                inlineScripts
+            },
+            canonicalization: {
+                canonicalTag,
+                isCanonical,
+                hasMultipleCanonicals
+            }
         };
     } catch (error) {
         console.error(`Error analyzing content of ${pageUrl}:`, error.message);
@@ -158,10 +266,324 @@ async function analyzeContent(pageUrl) {
     }
 }
 
-async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
+async function analyzeImageOptimization(imageUrl) {
+    try {
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data, 'binary');
+
+        const fileType = await fileTypeFromBuffer(buffer);
+        const metadata = await sharp(buffer).metadata();
+
+        const isOptimizedFormat = fileType && ['webp', 'avif'].includes(fileType.ext);
+        const isLargeFile = buffer.length > 100 * 1024; // Over 100KB
+
+        return {
+            format: fileType ? fileType.ext : 'unknown',
+            width: metadata.width,
+            height: metadata.height,
+            fileSize: buffer.length,
+            isOptimizedFormat,
+            isLargeFile
+        };
+    } catch (error) {
+        console.error(`Error analyzing image: ${imageUrl}`, error.message);
+        return null;
+    }
+}
+async function generatePa11yReport(results, outputFile) {
+    const csvWriter = createObjectCsvWriter({
+        path: outputFile,
+        header: [
+            {id: 'url', title: 'URL'},
+            {id: 'type', title: 'Type'},
+            {id: 'code', title: 'Code'},
+            {id: 'message', title: 'Message'},
+            {id: 'context', title: 'Context'},
+            {id: 'selector', title: 'Selector'}
+        ]
+    });
+
+    const records = results.flatMap(result => 
+        result.accessibility.map(issue => ({
+            url: result.url,
+            type: issue.type,
+            code: issue.code,
+            message: issue.message,
+            context: issue.context,
+            selector: issue.selector
+        }))
+    );
+
+    await csvWriter.writeRecords(records);
+    console.log(`Pa11y report saved to ${outputFile}`);
+}
+
+async function generateLighthouseReport(results, outputFile) {
+    const csvWriter = createObjectCsvWriter({
+        path: outputFile,
+        header: [
+            {id: 'url', title: 'URL'},
+            {id: 'performance', title: 'Performance Score'},
+            {id: 'accessibility', title: 'Accessibility Score'},
+            {id: 'bestPractices', title: 'Best Practices Score'},
+            {id: 'seo', title: 'SEO Score'},
+            {id: 'fcp', title: 'First Contentful Paint'},
+            {id: 'lcp', title: 'Largest Contentful Paint'},
+            {id: 'tti', title: 'Time to Interactive'},
+            {id: 'tbt', title: 'Total Blocking Time'},
+            {id: 'cls', title: 'Cumulative Layout Shift'}
+        ]
+    });
+
+    const records = results.map(result => ({
+        url: result.url,
+        performance: Math.round(result.lighthouse.performance.score * 100),
+        accessibility: Math.round(result.lighthouse.accessibility.score * 100),
+        bestPractices: Math.round(result.lighthouse.bestPractices.score * 100),
+        seo: Math.round(result.lighthouse.seo.score * 100),
+        fcp: result.lighthouse.metrics.fcp,
+        lcp: result.lighthouse.metrics.lcp,
+        tti: result.lighthouse.metrics.tti,
+        tbt: result.lighthouse.metrics.tbt,
+        cls: result.lighthouse.metrics.cls
+    }));
+
+    await csvWriter.writeRecords(records);
+    console.log(`Lighthouse report saved to ${outputFile}`);
+}
+
+async function generateInternalLinksReport(results, outputFile) {
+    const csvWriter = createObjectCsvWriter({
+        path: outputFile,
+        header: [
+            {id: 'sourceUrl', title: 'Source URL'},
+            {id: 'targetUrl', title: 'Target URL'}
+        ]
+    });
+
+    const records = results.flatMap(result => 
+        result.contentAnalysis.brokenLinks.map(link => ({
+            sourceUrl: result.url,
+            targetUrl: link.url
+        }))
+    );
+
+    await csvWriter.writeRecords(records);
+    console.log(`Internal links report saved to ${outputFile}`);
+}
+
+async function generateContentAnalysisReport(results, outputFile) {
+    const csvWriter = createObjectCsvWriter({
+        path: outputFile,
+        header: [
+            {id: 'url', title: 'URL'},
+            {id: 'title', title: 'Title'},
+            {id: 'metaDescription', title: 'Meta Description'},
+            {id: 'h1', title: 'H1'},
+            {id: 'wordCount', title: 'Word Count'},
+            {id: 'keywords', title: 'Top Keywords'}
+        ]
+    });
+
+    const records = results.map(result => ({
+        url: result.url,
+        title: result.contentAnalysis.title,
+        metaDescription: result.contentAnalysis.metaDescription,
+        h1: result.contentAnalysis.h1,
+        wordCount: result.contentAnalysis.wordCount,
+        keywords: result.contentAnalysis.keywords.join(', ')
+    }));
+
+    await csvWriter.writeRecords(records);
+    console.log(`Content analysis report saved to ${outputFile}`);
+}
+
+async function generateScanSummary(results, outputFile) {
+    let summary = 'Scan Summary\n';
+    summary += '=============\n\n';
+
+    const totalPages = results.length;
+    const htmlPages = results.filter(r => r.contentAnalysis);
+    const htmlPagesCount = htmlPages.length;
+
+    // Site Information
+    summary += `Site Crawled\t${results[0].url.split('/').slice(0, 3).join('/')}\n`;
+    summary += `Date\t${new Date().toLocaleDateString()}\n`;
+    summary += `Time\t${new Date().toLocaleTimeString()}\n\n`;
+
+    // URL Summary
+    summary += 'Summary\tURLs\t% of Total\tTotal URLs\tTotal URLs Description\n';
+    summary += `Total URLs Encountered\t${totalPages}\t100.00%\t${totalPages}\tURLs Encountered\n`;
+    summary += `Total URLs Crawled\t${totalPages}\t100.00%\t${totalPages}\tURLs Encountered\n`;
+    summary += `Total Internal URLs\t${totalPages}\t100.00%\t${totalPages}\tURLs Displayed\n`;
+    summary += `Total Internal Indexable URLs\t${htmlPagesCount}\t${((htmlPagesCount / totalPages) * 100).toFixed(2)}%\t${totalPages}\tURLs Displayed\n`;
+
+    // Accessibility Summary
+    const accessibilityIssues = results.reduce((sum, r) => sum + r.accessibility.length, 0);
+    summary += '\nAccessibility: ';
+    summary += `A total of ${accessibilityIssues} accessibility issues were identified across ${totalPages} URLs. `;
+    summary += 'These issues are categorized as errors and pose significant barriers to users who rely on screen readers or keyboard navigation.\n';
+
+    // SEO Summary
+    const averageSeoScore = results.reduce((sum, r) => sum + r.lighthouse.seo.score, 0) / totalPages;
+    summary += `\nSEO: The website maintains an average SEO score of ${(averageSeoScore * 100).toFixed(2)}%.\n`;
+
+    // Performance Summary
+    const averagePerformanceScore = results.reduce((sum, r) => sum + r.lighthouse.performance.score, 0) / totalPages;
+    summary += `\nPerformance: The website has an average performance score of ${(averagePerformanceScore * 100).toFixed(2)}%.\n`;
+
+    // Image Optimization Summary
+    const totalImages = results.reduce((sum, r) => sum + r.contentAnalysis.imageOptimization.totalImages, 0);
+    const imagesWithoutAlt = results.reduce((sum, r) => sum + r.contentAnalysis.imageOptimization.imagesWithoutAlt, 0);
+    const imagesWithoutDimensions = results.reduce((sum, r) => sum + r.contentAnalysis.imageOptimization.imagesWithoutDimensions, 0);
+    summary += '\nImage Optimization:\n';
+    summary += `Total Images: ${totalImages}\n`;
+    summary += `Images Without Alt Text: ${imagesWithoutAlt} (${((imagesWithoutAlt / totalImages) * 100).toFixed(2)}%)\n`;
+    summary += `Images Without Dimensions: ${imagesWithoutDimensions} (${((imagesWithoutDimensions / totalImages) * 100).toFixed(2)}%)\n`;
+
+    // JavaScript and CSS Summary
+    const totalRenderBlockingResources = results.reduce((sum, r) => sum + r.contentAnalysis.resourceOptimization.renderBlockingResources.css + r.contentAnalysis.resourceOptimization.renderBlockingResources.js, 0);
+    summary += '\nJavaScript and CSS:\n';
+    summary += `Total Render-Blocking Resources: ${totalRenderBlockingResources}\n`;
+
+    // Canonicalization Summary
+    const pagesWithCanonical = results.filter(r => r.contentAnalysis.canonicalization.canonicalTag).length;
+    const pagesWithMultipleCanonicals = results.filter(r => r.contentAnalysis.canonicalization.hasMultipleCanonicals).length;
+    summary += '\nCanonicalization:\n';
+    summary += `Pages with Canonical Tags: ${pagesWithCanonical} (${((pagesWithCanonical / htmlPagesCount) * 100).toFixed(2)}%)\n`;
+    summary += `Pages with Multiple Canonical Tags: ${pagesWithMultipleCanonicals} (${((pagesWithMultipleCanonicals / htmlPagesCount) * 100).toFixed(2)}%)\n`;
+
+    // Broken Links Summary
+    const pagesWithBrokenLinks = results.filter(r => r.contentAnalysis.brokenLinks.length > 0).length;
+    const totalBrokenLinks = results.reduce((sum, r) => sum + r.contentAnalysis.brokenLinks.length, 0);
+    summary += '\nBroken Links:\n';
+    summary += `Pages with Broken Links: ${pagesWithBrokenLinks} (${((pagesWithBrokenLinks / totalPages) * 100).toFixed(2)}%)\n`;
+    summary += `Total Broken Links: ${totalBrokenLinks}\n`;
+
+    // Write the summary to a file
+    await fs.writeFile(outputFile, summary);
+    console.log(`Scan summary saved to ${outputFile}`);
+}
+
+async function generateIssuesToFixReport(results, outputFile) {
+    const csvWriter = createObjectCsvWriter({
+        path: outputFile,
+        header: [
+            {id: 'issue', title: 'Issue'},
+            {id: 'count', title: 'Count'},
+            {id: 'percentage', title: 'Percentage'},
+            {id: 'howToFix', title: 'How to Fix'}
+        ]
+    });
+
+    const totalPages = results.length;
+    const issues = [
+        {
+            issue: 'Missing Meta Descriptions',
+            count: results.filter(r => !r.contentAnalysis.metaDescription).length,
+            howToFix: 'Add unique, descriptive meta descriptions (150-160 characters) to each page.'
+        },
+        {
+            issue: 'Missing or Empty H1 Tags',
+            count: results.filter(r => !r.contentAnalysis.h1).length,
+            howToFix: 'Ensure each page has a single, descriptive H1 tag that accurately represents the page content.'
+        },
+        {
+            issue: 'Images Missing Alt Text',
+            count: results.reduce((sum, r) => sum + r.contentAnalysis.imageOptimization.imagesWithoutAlt, 0),
+            howToFix: 'Add descriptive alt text to all images, ensuring they accurately describe the image content.'
+        },
+        {
+            issue: 'Slow Page Load Times',
+            count: results.filter(r => r.lighthouse.performance.score < 0.5).length,
+            howToFix: 'Optimize images, minify CSS/JS, leverage browser caching, and use a CDN to improve load times.'
+        },
+        {
+            issue: 'Low Word Count Pages',
+            count: results.filter(r => r.contentAnalysis.wordCount < 300).length,
+            howToFix: 'Add more high-quality, relevant content to pages with less than 300 words.'
+        },
+        {
+            issue: 'Missing Canonical Tags',
+            count: results.filter(r => !r.contentAnalysis.canonicalization.canonicalTag).length,
+            howToFix: 'Add canonical tags to all pages to prevent duplicate content issues.'
+        },
+        {
+            issue: 'Non-HTTPS Pages',
+            count: results.filter(r => !r.contentAnalysis.security.isHttps).length,
+            howToFix: 'Migrate all HTTP pages to HTTPS to ensure secure connections.'
+        },
+        {
+            issue: 'Render-Blocking Resources',
+            count: results.filter(r => r.contentAnalysis.resourceOptimization.renderBlockingResources.css + r.contentAnalysis.resourceOptimization.renderBlockingResources.js > 0).length,
+            howToFix: 'Minimize render-blocking resources by inlining critical CSS/JS and deferring or asyncing non-critical resources.'
+        },
+        {
+            issue: 'Pages with Multiple Canonical Tags',
+            count: results.filter(r => r.contentAnalysis.canonicalization.hasMultipleCanonicals).length,
+            howToFix: 'Ensure each page has only one canonical tag pointing to the preferred version of the page.'
+        },
+        {
+            issue: 'Broken Links',
+            count: results.filter(r => r.contentAnalysis.brokenLinks.length > 0).length,
+            howToFix: 'Identify and fix or remove all broken links to improve user experience and crawlability.'
+        }
+    ];
+
+    const records = issues.map(issue => ({
+        ...issue,
+        percentage: ((issue.count / totalPages) * 100).toFixed(2) + '%'
+    }));
+
+    await csvWriter.writeRecords(records);
+    console.log(`Issues to Fix report saved to ${outputFile}`);
+}
+
+async function generateImageOptimizationReport(results, outputFile) {
+    const csvWriter = createObjectCsvWriter({
+        path: outputFile,
+        header: [
+            {id: 'pageUrl', title: 'Page URL'},
+            {id: 'imageUrl', title: 'Image URL'},
+            {id: 'altText', title: 'Alt Text'},
+            {id: 'format', title: 'Format'},
+            {id: 'width', title: 'Width'},
+            {id: 'height', title: 'Height'},
+            {id: 'fileSize', title: 'File Size (KB)'},
+            {id: 'isOptimizedFormat', title: 'Optimized Format'},
+            {id: 'isLargeFile', title: 'Large File'}
+        ]
+    });
+
+    const records = [];
+
+    for (const result of results) {
+        for (const image of result.contentAnalysis.imageOptimization.images) {
+            const imageAnalysis = await analyzeImageOptimization(image.src);
+            if (imageAnalysis) {
+                records.push({
+                    pageUrl: result.url,
+                    imageUrl: image.src,
+                    altText: image.alt || 'Missing',
+                    format: imageAnalysis.format,
+                    width: imageAnalysis.width,
+                    height: imageAnalysis.height,
+                    fileSize: (imageAnalysis.fileSize / 1024).toFixed(2),
+                    isOptimizedFormat: imageAnalysis.isOptimizedFormat ? 'Yes' : 'No',
+                    isLargeFile: imageAnalysis.isLargeFile ? 'Yes' : 'No'
+                });
+            }
+        }
+    }
+
+    await csvWriter.writeRecords(records);
+    console.log(`Image Optimization report saved to ${outputFile}`);
+}
+
+async function runTestsOnSitemap(sitemapUrl, outputPrefix, limit = -1) {
     try {
         console.log(`Starting process for sitemap: ${sitemapUrl}`);
-        console.log(`Results will be saved to: ${outputFile}`);
+        console.log(`Results will be saved to: ${outputPrefix}_*.csv`);
 
         const parsedXml = await fetchAndParseSitemap(sitemapUrl);
         console.log('Sitemap fetched and parsed successfully');
@@ -173,10 +595,6 @@ async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
         const totalTests = urlsToTest.length;
         console.log(`Testing ${totalTests} URLs${limit === -1 ? ' (all URLs)' : ''}`);
 
-        const baseUrl = new URL(urlsToTest[0]).origin;
-        const sitemapUrls = new Set(urls);
-        const orphanedUrls = new Set();
-
         for (let i = 0; i < urlsToTest.length; i++) {
             if (isShuttingDown) break;
             const testUrl = urlsToTest[i];
@@ -184,20 +602,12 @@ async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
             try {
                 const pa11yResult = await pa11y(testUrl, pa11yOptions);
                 const lighthouseResult = await runLighthouse(testUrl, lighthouseOptions);
-                const internalLinks = await getInternalLinks(testUrl, baseUrl);
                 const contentAnalysis = await analyzeContent(testUrl);
-
-                internalLinks.forEach(link => {
-                    if (!sitemapUrls.has(link)) {
-                        orphanedUrls.add(link);
-                    }
-                });
 
                 results.push({
                     url: testUrl,
                     accessibility: pa11yResult.issues,
-                    seo: lighthouseResult.categories.seo,
-                    internalLinks,
+                    lighthouse: lighthouseResult,
                     contentAnalysis
                 });
                 console.log(`Completed testing: ${testUrl} (${i + 1}/${totalTests})`);
@@ -208,150 +618,22 @@ async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
             await new Promise(resolve => setTimeout(resolve, 1000));  // Wait 1 second between requests
         }
 
-        results.push({ orphanedUrls: Array.from(orphanedUrls) });
-        await saveResults(results, outputFile);
+        // Generate reports
+        await generatePa11yReport(results, `${outputPrefix}_pa11y.csv`);
+        await generateLighthouseReport(results, `${outputPrefix}_lighthouse.csv`);
+        await generateInternalLinksReport(results, `${outputPrefix}_internal_links.csv`);
+        await generateContentAnalysisReport(results, `${outputPrefix}_content_analysis.csv`);
+        await generateScanSummary(results, `${outputPrefix}_scan_summary.txt`);
+        await generateIssuesToFixReport(results, `${outputPrefix}_issues_to_fix.csv`);
+        await generateImageOptimizationReport(results, `${outputPrefix}_image_optimization.csv`);
+
         return results;
     } catch (error) {
         console.error('Error in runTestsOnSitemap:', error.message);
     }
 }
 
-function formatResults(results) {
-    let output = 'Pa11y Accessibility, SEO, and Content Analysis Test Results\n';
-    output += '=========================================================\n\n';
-
-    let totalAccessibilityIssues = 0;
-    let accessibilityIssuesByType = {};
-    let accessibilityIssuesBySeverity = {};
-    let totalSEOScore = 0;
-    let orphanedUrls = [];
-
-    results.forEach((result, index) => {
-        if (result.orphanedUrls) {
-            orphanedUrls = result.orphanedUrls;
-            return;
-        }
-
-        output += `URL ${index + 1}: ${result.url}\n`;
-        output += '-'.repeat(result.url.length + 8) + '\n';
-
-        if (result.error) {
-            output += `Error: ${result.error}\n`;
-        } else {
-            // Accessibility results
-            if (result.accessibility && result.accessibility.length === 0) {
-                output += 'No accessibility issues found.\n';
-            } else if (result.accessibility) {
-                output += `Accessibility issues found: ${result.accessibility.length}\n\n`;
-                result.accessibility.forEach((issue, issueIndex) => {
-                    output += `Issue ${issueIndex + 1}:\n`;
-                    output += `  Type: ${issue.type}\n`;
-                    output += `  Code: ${issue.code}\n`;
-                    output += `  Message: ${issue.message}\n`;
-                    output += `  Context: ${issue.context}\n`;
-                    output += `  Selector: ${issue.selector}\n\n`;
-
-                    totalAccessibilityIssues++;
-                    accessibilityIssuesByType[issue.type] = (accessibilityIssuesByType[issue.type] || 0) + 1;
-                    accessibilityIssuesBySeverity[issue.typeCode] = (accessibilityIssuesBySeverity[issue.typeCode] || 0) + 1;
-                });
-            } else {
-                output += 'No accessibility data available.\n';
-            }
-
-            // SEO results
-            if (result.seo && result.seo.score !== undefined) {
-                output += 'SEO Results:\n';
-                output += `  Score: ${Math.round(result.seo.score * 100)}%\n`;
-                totalSEOScore += result.seo.score;
-
-                if (result.seo.auditRefs) {
-                    result.seo.auditRefs.forEach(audit => {
-                        const auditResult = result.seo.audits && result.seo.audits[audit.id];
-                        if (auditResult && auditResult.score !== undefined && auditResult.score !== 1) {
-                            output += `  ${auditResult.title}: ${auditResult.description}\n`;
-                        }
-                    });
-                }
-            } else {
-                output += 'No SEO data available.\n';
-            }
-
-            // Content Analysis results
-            if (result.contentAnalysis) {
-                output += '\nContent Analysis:\n';
-                output += `  Title: ${result.contentAnalysis.title}\n`;
-                output += `  Meta Description: ${result.contentAnalysis.metaDescription || 'Not found'}\n`;
-                output += `  H1: ${result.contentAnalysis.h1 || 'Not found'}\n`;
-                output += `  Word Count: ${result.contentAnalysis.wordCount}\n`;
-                output += '  Heading Structure:\n';
-                for (const [heading, count] of Object.entries(result.contentAnalysis.headings)) {
-                    output += `    ${heading}: ${count}\n`;
-                }
-                output += `  Top Keywords: ${result.contentAnalysis.keywords.join(', ')}\n`;
-            } else {
-                output += '\nNo content analysis data available.\n';
-            }
-
-            // Internal links
-            if (result.internalLinks) {
-                output += `\nInternal Links: ${result.internalLinks.length}\n`;
-            } else {
-                output += '\nNo internal links data available.\n';
-            }
-        }
-        output += '\n';
-    });
-
-    // Add summary section
-    output += 'Summary of Results\n';
-    output += '===================\n\n';
-
-    output += 'Accessibility Summary:\n';
-    output += `Total accessibility issues found: ${totalAccessibilityIssues}\n\n`;
-
-    output += 'Accessibility Issues by Type:\n';
-    for (let type in accessibilityIssuesByType) {
-        output += `  ${type}: ${accessibilityIssuesByType[type]}\n`;
-    }
-    output += '\n';
-
-    output += 'Accessibility Issues by Severity:\n';
-    for (let severity in accessibilityIssuesBySeverity) {
-        output += `  ${severity}: ${accessibilityIssuesBySeverity[severity]}\n`;
-    }
-    output += '\n';
-
-    const validSEOResults = results.filter(r => r.seo && r.seo.score !== undefined).length;
-    if (validSEOResults > 0) {
-        output += 'SEO Summary:\n';
-        output += `Average SEO score: ${Math.round((totalSEOScore / validSEOResults) * 100)}%\n\n`;
-    } else {
-        output += 'SEO Summary: No valid SEO data available.\n\n';
-    }
-
-    output += 'Orphaned URLs:\n';
-    orphanedUrls.forEach(url => {
-        output += `  ${url}\n`;
-    });
-    output += '\n';
-
-    output += `Total URLs in sitemap: ${results.length - 1}\n`;
-    output += `Total orphaned URLs: ${orphanedUrls.length}\n`;
-
-    return output;
-}
-
-async function saveResults(results, outputFile) {
-    try {
-        const formattedResults = formatResults(results);
-        await fs.writeFile(outputFile, formattedResults);
-        console.log(`Results saved to ${outputFile}`);
-    } catch (error) {
-        console.error(`Error writing to file ${outputFile}:`, error.message);
-    }
-}
-function setupShutdownHandler(outputFile) {
+function setupShutdownHandler(outputPrefix) {
     process.on('SIGINT', async () => {
         console.log('\nGraceful shutdown initiated...');
         isShuttingDown = true;
@@ -360,7 +642,8 @@ function setupShutdownHandler(outputFile) {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         console.log('Saving partial results...');
-        await saveResults(results, outputFile);
+        await generateScanSummary(results, `${outputPrefix}_partial_scan_summary.txt`);
+        await generateIssuesToFixReport(results, `${outputPrefix}_partial_issues_to_fix.csv`);
 
         console.log('Shutdown complete. Exiting...');
         process.exit(0);
@@ -370,9 +653,9 @@ function setupShutdownHandler(outputFile) {
 // Set up command-line interface
 program
     .version('1.0.0')
-    .description('Run pa11y accessibility, Lighthouse SEO tests, and internal link checks on all URLs in a sitemap')
+    .description('Run pa11y accessibility, Lighthouse SEO tests, and content analysis on all URLs in a sitemap')
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
-    .option('-o, --output <file>', 'Output file for results', 'pa11y-seo-results.txt')
+    .option('-o, --output <prefix>', 'Output prefix for result files', 'site_analysis')
     .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
