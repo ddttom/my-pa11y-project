@@ -5,17 +5,16 @@ import path from 'path';
 import axios from 'axios';
 import xml2js from 'xml2js';
 import pa11y from 'pa11y';
-import lighthouse from 'lighthouse';
-import * as chromeLauncher from 'chrome-launcher';
 import { program } from 'commander';
 import cheerio from 'cheerio';
 import { URL } from 'url';
 import { stringify } from 'csv-stringify/sync';
+import pkg from 'puppeteer';
+const { launch } = pkg;
 
 let isShuttingDown = false;
 let results = {
     pa11y: [],
-    lighthouse: [],
     internalLinks: [],
     contentAnalysis: [],
     orphanedUrls: new Set()
@@ -33,8 +32,7 @@ const pa11yOptions = {
     ignore: [
         'WCAG2AA.Principle3.Guideline3_1.3_1_1.H57.2',
         'css-parsing-error',
-        'WCAG2AA.Principle4.Guideline4_1.4_1_2.H91.A.EmptyNoId',
-        'WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail'
+        'WCAG2AA.Principle4.Guideline4_1.4_1_2.H91.A.EmptyNoId'
     ],
     viewport: {
         width: 1280,
@@ -54,75 +52,66 @@ const pa11yOptions = {
     }
 };
 
-const lighthouseOptions = {
-    logLevel: 'info',
-    output: 'json',
-    onlyCategories: ['seo'],
-    chromeFlags: ['--headless']
-};
-
 const axiosInstance = axios.create({
     headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
 });
 
 function fixUrl(url) {
+    if (!url) return '';
     return url.replace(/([^:]\/)\/+/g, "$1");
 }
-
 async function fetchAndParseSitemap(url) {
-    debug(`Fetching sitemap from: ${url}`);
+    debug(`Fetching content from: ${url}`);
     try {
         const response = await axiosInstance.get(url);
-        debug('Sitemap fetched successfully');
-        const parser = new xml2js.Parser();
-        debug('Parsing sitemap XML');
-        const result = await parser.parseStringPromise(response.data);
-        debug('Sitemap parsed successfully');
-        return result;
+        debug('Content fetched successfully');
+        
+        // Check if the content is XML or HTML
+        if (response.headers['content-type'].includes('text/html')) {
+            debug('Found HTML content instead of sitemap');
+            return { html: response.data, url };
+        } else {
+            debug('Parsing sitemap XML');
+            const parser = new xml2js.Parser();
+            const result = await parser.parseStringPromise(response.data);
+            debug('Sitemap parsed successfully');
+            return { xml: result };
+        }
     } catch (error) {
-        console.error(`Error fetching or parsing sitemap from ${url}:`, error.message);
+        console.error(`Error fetching or parsing content from ${url}:`, error.message);
         throw error;
     }
 }
-
-async function extractUrls(parsedXml) {
-    if (parsedXml.sitemapindex) {
-        debug('Found a sitemap index. Processing nested sitemaps...');
-        const sitemapUrls = parsedXml.sitemapindex.sitemap.map(sitemap => fixUrl(sitemap.loc[0]));
-        let allUrls = [];
-        for (const sitemapUrl of sitemapUrls) {
-            if (isShuttingDown) break;
-            debug(`Processing nested sitemap: ${sitemapUrl}`);
-            try {
-                const nestedParsedXml = await fetchAndParseSitemap(sitemapUrl);
-                const nestedUrls = await extractUrls(nestedParsedXml);
-                allUrls = allUrls.concat(nestedUrls);
-            } catch (error) {
-                console.error(`Error processing nested sitemap ${sitemapUrl}:`, error.message);
+async function extractUrls(parsedContent) {
+    if (parsedContent.html) {
+        debug('Extracting URL from HTML content');
+        return [fixUrl(parsedContent.url)];
+    } else if (parsedContent.xml) {
+        if (parsedContent.xml.sitemapindex) {
+            debug('Found a sitemap index. Processing nested sitemaps...');
+            const sitemapUrls = parsedContent.xml.sitemapindex.sitemap.map(sitemap => fixUrl(sitemap.loc?.[0] || ''));
+            let allUrls = [];
+            for (const sitemapUrl of sitemapUrls) {
+                if (isShuttingDown) break;
+                if (!sitemapUrl) continue;
+                debug(`Processing nested sitemap: ${sitemapUrl}`);
+                try {
+                    const nestedParsedContent = await fetchAndParseSitemap(sitemapUrl);
+                    const nestedUrls = await extractUrls(nestedParsedContent);
+                    allUrls = allUrls.concat(nestedUrls);
+                } catch (error) {
+                    console.error(`Error processing nested sitemap ${sitemapUrl}:`, error.message);
+                }
             }
+            return allUrls;
+        } else if (parsedContent.xml.urlset) {
+            debug('Extracting URLs from sitemap');
+            return parsedContent.xml.urlset.url.map(url => fixUrl(url.loc?.[0] || '')).filter(url => url);
+        } else {
+            throw new Error('Unknown sitemap format');
         }
-        return allUrls;
-    } else if (parsedXml.urlset) {
-        debug('Extracting URLs from sitemap');
-        return parsedXml.urlset.url.map(url => fixUrl(url.loc[0]));
     } else {
-        throw new Error('Unknown sitemap format');
-    }
-}
-
-async function runLighthouse(testUrl, opts, config = null) {
-    debug(`Running Lighthouse for: ${testUrl}`);
-    const chrome = await chromeLauncher.launch({chromeFlags: opts.chromeFlags});
-    opts.port = chrome.port;
-    try {
-        const runnerResult = await lighthouse(testUrl, opts, config);
-        debug(`Lighthouse completed for: ${testUrl}`);
-        return JSON.parse(runnerResult.report);
-    } catch (error) {
-        console.error(`Lighthouse error for ${testUrl}:`, error.message);
-        return null;
-    } finally {
-        await chrome.kill();
+        throw new Error('Invalid parsed content');
     }
 }
 
@@ -150,12 +139,30 @@ async function getInternalLinks(pageUrl, baseUrl) {
         return [];
     }
 }
-
+ 
 async function analyzeContent(pageUrl) {
     debug(`Analyzing content of: ${pageUrl}`);
+    let browser;
     try {
-        const response = await axiosInstance.get(pageUrl);
-        const $ = cheerio.load(response.data);
+        browser = await launch();
+        const page = await browser.newPage();
+        
+        // Collect JavaScript errors
+        const jsErrors = [];
+        page.on('pageerror', error => {
+            console.error(`JavaScript error on ${pageUrl}:`, error.message);
+            jsErrors.push(error.message);
+        });
+
+        // Collect and log console messages
+        page.on('console', msg => {
+            console.log(`Console ${msg.type()} on ${pageUrl}:`, msg.text());
+        });
+
+        await page.goto(pageUrl, { waitUntil: 'networkidle0' });
+        
+        const content = await page.content();
+        const $ = cheerio.load(content);
 
         const title = $('title').text();
         const metaDescription = $('meta[name="description"]').attr('content');
@@ -163,12 +170,40 @@ async function analyzeContent(pageUrl) {
         const wordCount = $('body').text().trim().split(/\s+/).length;
 
         const headings = {};
+        const headingErrors = [];
         ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(h => {
             headings[h] = $(h).length;
         });
 
+        // Check for zero h1 elements
+        if (headings.h1 === 0) {
+            headingErrors.push("No H1 element found on the page.");
+        }
+
+        // Check for correct heading cadence
+        let lastHeadingLevel = 0;
+        for (let i = 1; i <= 6; i++) {
+            const currentHeading = `h${i}`;
+            if (headings[currentHeading] > 0) {
+                if (i - lastHeadingLevel > 1) {
+                    headingErrors.push(`Incorrect heading structure: ${currentHeading} follows h${lastHeadingLevel}`);
+                }
+                lastHeadingLevel = i;
+            }
+        }
+
+        // Image analysis
+        const images = [];
+        $('img').each((i, elem) => {
+            const src = $(elem).attr('src');
+            const alt = $(elem).attr('alt');
+            const width = $(elem).attr('width');
+            const height = $(elem).attr('height');
+            images.push({ src, alt, width, height });
+        });
+
         // Simple keyword extraction (top 5 most frequent words)
-        const words = $('body').text().toLowerCase().match(/\b\w+\b/g);
+        const words = $('body').text().toLowerCase().match(/\b\w+\b/g) || [];
         const wordFrequency = {};
         words.forEach(word => {
             if (word.length > 3) {  // Ignore short words
@@ -187,39 +222,50 @@ async function analyzeContent(pageUrl) {
             h1,
             wordCount,
             headings,
-            keywords
+            keywords,
+            headingErrors: headingErrors.length > 0 ? headingErrors : undefined,
+            images,
+            jsErrors: jsErrors.length > 0 ? jsErrors : undefined
         };
     } catch (error) {
         console.error(`Error analyzing content of ${pageUrl}:`, error.message);
         return null;
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
     }
 }
 
 async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
-    debug(`Starting process for sitemap: ${sitemapUrl}`);
+    debug(`Starting process for sitemap or page: ${sitemapUrl}`);
     debug(`Results will be saved to: ${outputDir}`);
 
     try {
         await fs.mkdir(outputDir, { recursive: true });
         debug(`Output directory created: ${outputDir}`);
 
-        const parsedXml = await fetchAndParseSitemap(sitemapUrl);
-        debug('Sitemap fetched and parsed successfully');
+        const parsedContent = await fetchAndParseSitemap(sitemapUrl);
+        debug('Content fetched and parsed successfully');
 
-        const urls = await extractUrls(parsedXml);
-        debug(`Found ${urls.length} URLs in sitemap`);
+        const urls = await extractUrls(parsedContent);
+        debug(`Found ${urls.length} URL(s) to process`);
+
+        if (urls.length === 0) {
+            console.error('No valid URLs found to process');
+            return;
+        }
 
         const urlsToTest = limit === -1 ? urls : urls.slice(0, limit);
         const totalTests = urlsToTest.length;
-        debug(`Testing ${totalTests} URLs${limit === -1 ? ' (all URLs)' : ''}`);
+        debug(`Testing ${totalTests} URL(s)${limit === -1 ? ' (all URLs)' : ''}`);
 
         const baseUrl = new URL(urlsToTest[0]).origin;
-        const sitemapUrls = new Set(urls);
+        const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
 
         // Ensure results object is properly initialized
         results = {
             pa11y: [],
-            lighthouse: [],
             internalLinks: [],
             contentAnalysis: [],
             orphanedUrls: new Set()
@@ -232,17 +278,20 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
             try {
                 debug(`Running pa11y for: ${testUrl}`);
                 const pa11yResult = await pa11y(testUrl, pa11yOptions);
+                
+                // Log images without alt text
+                const imagesWithoutAlt = pa11yResult.issues.filter(issue => 
+                    issue.code === 'WCAG2AA.Principle1.Guideline1_1.1_1_1.H37'
+                );
+                if (imagesWithoutAlt.length > 0) {
+                    console.warn(`Found ${imagesWithoutAlt.length} image(s) without alt text on ${testUrl}`);
+                    imagesWithoutAlt.forEach(issue => {
+                        console.warn(`- ${issue.selector}: ${issue.context}`);
+                    });
+                }
+    
                 results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
                 debug(`pa11y completed for: ${testUrl}`);
-
-                debug(`Running Lighthouse for: ${testUrl}`);
-                const lighthouseResult = await runLighthouse(testUrl, lighthouseOptions);
-                if (lighthouseResult && lighthouseResult.categories && lighthouseResult.categories.seo) {
-                    results.lighthouse.push({ url: testUrl, seo: lighthouseResult.categories.seo });
-                } else {
-                    results.lighthouse.push({ url: testUrl, error: 'Lighthouse failed or returned unexpected results' });
-                }
-                debug(`Lighthouse completed for: ${testUrl}`);
 
                 debug(`Getting internal links for: ${testUrl}`);
                 const internalLinks = await getInternalLinks(testUrl, baseUrl);
@@ -252,26 +301,50 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
                 debug(`Analyzing content for: ${testUrl}`);
                 const contentAnalysis = await analyzeContent(testUrl);
                 if (contentAnalysis) {
-                    results.contentAnalysis.push({ url: testUrl, ...contentAnalysis });
+                    results.contentAnalysis.push({ 
+                        url: testUrl, 
+                        ...contentAnalysis
+                    });
+                    
+                    // Log heading errors if any (optional, for immediate feedback)
+                    if (contentAnalysis.headingErrors && contentAnalysis.headingErrors.length > 0) {
+                        console.warn(`Heading structure issues found for ${testUrl}`);
+                        contentAnalysis.headingErrors.forEach(error => console.warn(`- ${error}`));
+                    }
+                    if (contentAnalysis.jsErrors && contentAnalysis.jsErrors.length > 0) {
+                        console.warn(`JavaScript errors found for ${testUrl}`);
+                        contentAnalysis.jsErrors.forEach(error => console.warn(`- ${error}`));
+                    }
                 } else {
                     results.contentAnalysis.push({ url: testUrl, error: 'Content analysis failed' });
                 }
                 debug(`Content analysis completed for: ${testUrl}`);
 
-                internalLinks.forEach(link => {
-                    if (!sitemapUrls.has(link) && !link.endsWith('.pdf')) {
-                        results.orphanedUrls.add(link);
-                    }
-                });
+                // Only check for orphaned URLs if we're not processing a single HTML page
+                if (!parsedContent.html) {
+                    internalLinks.forEach(link => {
+                        // Strip fragment identifier before comparison
+                        const strippedLink = link.split('#')[0];
+                        if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
+                            results.orphanedUrls.add(strippedLink);
+                        }
+                    });
+                }
 
                 debug(`Completed testing: ${testUrl}`);
-            } catch (error) {
+            }  catch (error) {
                 console.error(`Error testing ${testUrl}:`, error.message);
-                ['pa11y', 'lighthouse', 'internalLinks', 'contentAnalysis'].forEach(report => {
+                console.error('Error details:', error.stack);
+                ['pa11y', 'internalLinks', 'contentAnalysis'].forEach(report => {
                     results[report].push({ url: testUrl, error: error.message });
                 });
             }
             await new Promise(resolve => setTimeout(resolve, 2000));  // Wait 2 seconds between requests
+        }
+
+        // If we're processing a single HTML page, we don't need to check for orphaned URLs
+        if (parsedContent.html) {
+            results.orphanedUrls = new Set();
         }
 
         await saveResults(results, outputDir);
@@ -309,15 +382,6 @@ async function saveResults(results, outputDir) {
         await fs.writeFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
         debug('Pa11y results saved');
 
-        // Lighthouse results
-        const lighthouseCsv = formatCsv(results.lighthouse.map(result => ({
-            url: result.url,
-            score: result.seo ? result.seo.score : '',
-            error: result.error || ''
-        })), ['url', 'score', 'error']);
-        await fs.writeFile(path.join(outputDir, 'lighthouse_results.csv'), lighthouseCsv);
-        debug('Lighthouse results saved');
-
         // Internal links results
         const internalLinksCsv = formatCsv(results.internalLinks.flatMap(result => 
             result.links ? result.links.map(link => ({ source: result.url, target: link })) 
@@ -340,8 +404,12 @@ async function saveResults(results, outputDir) {
             h5Count: result.headings?.h5 || '',
             h6Count: result.headings?.h6 || '',
             keywords: result.keywords ? result.keywords.join(', ') : '',
+            headingErrors: result.headingErrors ? result.headingErrors.join('; ') : '',
+            imageCount: result.images ? result.images.length : '',
+            imagesWithoutAlt: result.images ? result.images.filter(img => !img.alt).length : '',
+            jsErrors: result.jsErrors ? result.jsErrors.join('; ') : '',
             error: result.error || ''
-        })), ['url', 'title', 'metaDescription', 'h1', 'wordCount', 'h1Count', 'h2Count', 'h3Count', 'h4Count', 'h5Count', 'h6Count', 'keywords', 'error']);
+        })), ['url', 'title', 'metaDescription', 'h1', 'wordCount', 'h1Count', 'h2Count', 'h3Count', 'h4Count', 'h5Count', 'h6Count', 'keywords', 'headingErrors', 'imageCount', 'imagesWithoutAlt', 'jsErrors', 'error']);
         await fs.writeFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv);
         debug('Content analysis results saved');
 
