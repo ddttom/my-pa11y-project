@@ -10,6 +10,7 @@ results/
 
 # Output of 'npm pack'
 *.tgz
+*.html
 
 # dotenv environment variables file
 .env

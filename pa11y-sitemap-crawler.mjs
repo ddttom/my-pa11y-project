@@ -11,6 +11,10 @@ import { URL } from 'url';
 import { stringify } from 'csv-stringify/sync';
 import pkg from 'puppeteer';
 const { launch } = pkg;
+import puppeteer from 'puppeteer';
+
+import { ensureCacheDir, getCachedHtml, setCachedHtml } from './caching.js';
+
 
 let isShuttingDown = false;
 let results = {
@@ -115,54 +119,28 @@ async function extractUrls(parsedContent) {
     }
 }
 
-async function getInternalLinks(pageUrl, baseUrl) {
-    debug(`Fetching internal links from: ${pageUrl}`);
-    try {
-        const response = await axiosInstance.get(pageUrl);
-        const $ = cheerio.load(response.data);
-        const links = new Set();
+async function getInternalLinks(html, pageUrl, baseUrl) {
+    const $ = cheerio.load(html);
+    const links = new Set();
 
-        $('a').each((i, element) => {
-            const href = $(element).attr('href');
-            if (href) {
-                const absoluteUrl = new URL(href, baseUrl).href;
-                if (absoluteUrl.startsWith(baseUrl)) {
-                    links.add(fixUrl(absoluteUrl));
-                }
+    $('a').each((i, element) => {
+        const href = $(element).attr('href');
+        if (href) {
+            const absoluteUrl = new URL(href, pageUrl).href;
+            if (absoluteUrl.startsWith(baseUrl)) {
+                links.add(fixUrl(absoluteUrl));
             }
-        });
+        }
+    });
 
-        debug(`Found ${links.size} internal links on: ${pageUrl}`);
-        return Array.from(links);
-    } catch (error) {
-        console.error(`Error fetching internal links from ${pageUrl}:`, error.message);
-        return [];
-    }
+    return Array.from(links);
 }
- 
-async function analyzeContent(pageUrl) {
+
+
+async function analyzeContent(html, pageUrl, jsErrors = []) {
     debug(`Analyzing content of: ${pageUrl}`);
-    let browser;
     try {
-        browser = await launch();
-        const page = await browser.newPage();
-        
-        // Collect JavaScript errors
-        const jsErrors = [];
-        page.on('pageerror', error => {
-            console.error(`JavaScript error on ${pageUrl}:`, error.message);
-            jsErrors.push(error.message);
-        });
-
-        // Collect and log console messages
-        page.on('console', msg => {
-            console.log(`Console ${msg.type()} on ${pageUrl}:`, msg.text());
-        });
-
-        await page.goto(pageUrl, { waitUntil: 'networkidle0' });
-        
-        const content = await page.content();
-        const $ = cheerio.load(content);
+        const $ = cheerio.load(html);
 
         const title = $('title').text();
         const metaDescription = $('meta[name="description"]').attr('content');
@@ -194,12 +172,19 @@ async function analyzeContent(pageUrl) {
 
         // Image analysis
         const images = [];
+        let imagesWithoutAlt = [];
         $('img').each((i, elem) => {
             const src = $(elem).attr('src');
             const alt = $(elem).attr('alt');
             const width = $(elem).attr('width');
             const height = $(elem).attr('height');
             images.push({ src, alt, width, height });
+            if (!alt) {
+                let location = '';
+                const parents = $(elem).parents().map((_, parent) => $(parent).prop('tagName')).get();
+                location = parents.reverse().join(' > ') + ' > img';
+                imagesWithoutAlt.push({ url: pageUrl, src, location });
+            }
         });
 
         // Simple keyword extraction (top 5 most frequent words)
@@ -215,8 +200,83 @@ async function analyzeContent(pageUrl) {
             .slice(0, 5)
             .map(entry => entry[0]);
 
+        // Analyze scripts
+        const scripts = [];
+        $('script').each((i, elem) => {
+            const src = $(elem).attr('src');
+            if (src) {
+                scripts.push(src);
+            }
+        });
+
+        // Analyze stylesheets
+        const stylesheets = [];
+        $('link[rel="stylesheet"]').each((i, elem) => {
+            const href = $(elem).attr('href');
+            if (href) {
+                stylesheets.push(href);
+            }
+        });
+
+        // Check for responsive meta tag
+        const hasResponsiveMetaTag = $('meta[name="viewport"]').length > 0;
+
+        // Check for language declaration
+        const htmlLang = $('html').attr('lang');
+
+        // Check for canonical URL
+        const canonicalUrl = $('link[rel="canonical"]').attr('href');
+
+        // Check for social media meta tags
+        const openGraphTags = {};
+        $('meta[property^="og:"]').each((i, elem) => {
+            const property = $(elem).attr('property');
+            const content = $(elem).attr('content');
+            openGraphTags[property] = content;
+        });
+
+        const twitterTags = {};
+        $('meta[name^="twitter:"]').each((i, elem) => {
+            const name = $(elem).attr('name');
+            const content = $(elem).attr('content');
+            twitterTags[name] = content;
+        });
+
+        // Check for structured data
+        const structuredData = [];
+        $('script[type="application/ld+json"]').each((i, elem) => {
+            try {
+                const data = JSON.parse($(elem).html());
+                structuredData.push(data);
+            } catch (error) {
+                console.error(`Error parsing structured data on ${pageUrl}:`, error.message);
+            }
+        });
+
+        // Check for forms and their accessibility
+        const forms = [];
+        $('form').each((i, elem) => {
+            const formInputs = $(elem).find('input, select, textarea');
+            const formLabels = $(elem).find('label');
+            forms.push({
+                inputs: formInputs.length,
+                labels: formLabels.length,
+                hasSubmitButton: $(elem).find('input[type="submit"], button[type="submit"]').length > 0
+            });
+        });
+
+        // Check for table accessibility
+        const tables = [];
+        $('table').each((i, elem) => {
+            tables.push({
+                hasCaptions: $(elem).find('caption').length > 0,
+                hasHeaders: $(elem).find('th').length > 0
+            });
+        });
+
         debug(`Content analysis completed for: ${pageUrl}`);
         return {
+            url: pageUrl,
             title,
             metaDescription,
             h1,
@@ -225,16 +285,26 @@ async function analyzeContent(pageUrl) {
             keywords,
             headingErrors: headingErrors.length > 0 ? headingErrors : undefined,
             images,
+            imagesWithoutAlt,
+            scripts,
+            stylesheets,
+            hasResponsiveMetaTag,
+            htmlLang,
+            canonicalUrl,
+            openGraphTags,
+            twitterTags,
+            structuredData,
+            forms,
+            tables,
             jsErrors: jsErrors.length > 0 ? jsErrors : undefined
         };
     } catch (error) {
         console.error(`Error analyzing content of ${pageUrl}:`, error.message);
         return null;
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
     }
+}
+function formatCsv(data, headers) {
+    return stringify([headers, ...data.map(row => headers.map(header => row[header] || ''))]);
 }
 
 async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
@@ -243,7 +313,8 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
 
     try {
         await fs.mkdir(outputDir, { recursive: true });
-        debug(`Output directory created: ${outputDir}`);
+        await ensureCacheDir();
+        debug(`Output and cache directories created`);
 
         const parsedContent = await fetchAndParseSitemap(sitemapUrl);
         debug('Content fetched and parsed successfully');
@@ -263,8 +334,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         const baseUrl = new URL(urlsToTest[0]).origin;
         const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
 
-        // Ensure results object is properly initialized
-        results = {
+        let results = {
             pa11y: [],
             internalLinks: [],
             contentAnalysis: [],
@@ -274,56 +344,61 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         for (let i = 0; i < urlsToTest.length; i++) {
             if (isShuttingDown) break;
             const testUrl = fixUrl(urlsToTest[i]);
+            console.log(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
             debug(`Testing: ${testUrl} (${i + 1}/${totalTests})`);
+            
             try {
-                debug(`Running pa11y for: ${testUrl}`);
-                const pa11yResult = await pa11y(testUrl, pa11yOptions);
-                
-                // Log images without alt text
-                const imagesWithoutAlt = pa11yResult.issues.filter(issue => 
-                    issue.code === 'WCAG2AA.Principle1.Guideline1_1.1_1_1.H37'
-                );
-                if (imagesWithoutAlt.length > 0) {
-                    console.warn(`Found ${imagesWithoutAlt.length} image(s) without alt text on ${testUrl}`);
-                    imagesWithoutAlt.forEach(issue => {
-                        console.warn(`- ${issue.selector}: ${issue.context}`);
-                    });
+                let html = await getCachedHtml(testUrl);
+                if (!html) {
+                    debug(`Fetching fresh HTML for: ${testUrl}`);
+                    console.info(`Fetching fresh HTML for: ${testUrl}`);
+                    const response = await axios.get(testUrl);
+                    html = response.data;
+                    await setCachedHtml(testUrl, html);
+                } else {
+                    debug(`Using cached HTML for: ${testUrl}`);
+                    console.info(`Using cached HTML for: ${testUrl}`);
                 }
-    
+
+                // Collect JavaScript errors
+                const jsErrors = await collectJsErrors(testUrl);
+
+                // Run pa11y test
+                const pa11yResult = await pa11y(testUrl, { ...pa11yOptions, html });
                 results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
-                debug(`pa11y completed for: ${testUrl}`);
 
-                debug(`Getting internal links for: ${testUrl}`);
-                const internalLinks = await getInternalLinks(testUrl, baseUrl);
+                // Get internal links
+                const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
                 results.internalLinks.push({ url: testUrl, links: internalLinks });
-                debug(`Internal links retrieved for: ${testUrl}`);
 
-                debug(`Analyzing content for: ${testUrl}`);
-                const contentAnalysis = await analyzeContent(testUrl);
+                // Analyze content
+                const contentAnalysis = await analyzeContent(html, testUrl, jsErrors);
                 if (contentAnalysis) {
-                    results.contentAnalysis.push({ 
-                        url: testUrl, 
-                        ...contentAnalysis
-                    });
+                    results.contentAnalysis.push(contentAnalysis);
                     
-                    // Log heading errors if any (optional, for immediate feedback)
+                    // Log heading errors
                     if (contentAnalysis.headingErrors && contentAnalysis.headingErrors.length > 0) {
                         console.warn(`Heading structure issues found for ${testUrl}`);
                         contentAnalysis.headingErrors.forEach(error => console.warn(`- ${error}`));
                     }
+                    
+                    // Log JavaScript errors
                     if (contentAnalysis.jsErrors && contentAnalysis.jsErrors.length > 0) {
                         console.warn(`JavaScript errors found for ${testUrl}`);
                         contentAnalysis.jsErrors.forEach(error => console.warn(`- ${error}`));
                     }
+                    
+                    // Log images without alt text
+                    if (contentAnalysis.imagesWithoutAlt > 0) {
+                        console.warn(`Found ${contentAnalysis.imagesWithoutAlt} image(s) without alt text on ${testUrl}`);
+                    }
                 } else {
                     results.contentAnalysis.push({ url: testUrl, error: 'Content analysis failed' });
                 }
-                debug(`Content analysis completed for: ${testUrl}`);
 
-                // Only check for orphaned URLs if we're not processing a single HTML page
+                // Check for orphaned URLs
                 if (!parsedContent.html) {
                     internalLinks.forEach(link => {
-                        // Strip fragment identifier before comparison
                         const strippedLink = link.split('#')[0];
                         if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
                             results.orphanedUrls.add(strippedLink);
@@ -332,20 +407,26 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
                 }
 
                 debug(`Completed testing: ${testUrl}`);
-            }  catch (error) {
+            } catch (error) {
                 console.error(`Error testing ${testUrl}:`, error.message);
                 console.error('Error details:', error.stack);
                 ['pa11y', 'internalLinks', 'contentAnalysis'].forEach(report => {
                     results[report].push({ url: testUrl, error: error.message });
                 });
             }
-            await new Promise(resolve => setTimeout(resolve, 2000));  // Wait 2 seconds between requests
         }
 
         // If we're processing a single HTML page, we don't need to check for orphaned URLs
         if (parsedContent.html) {
             results.orphanedUrls = new Set();
         }
+
+        // Analyze common pa11y issues after processing all URLs
+        const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
+        await saveCommonPa11yIssues(commonPa11yIssues, outputDir);
+        
+        // Filter out repeated issues from main pa11y results
+        results.pa11y = filterRepeatedPa11yIssues(results.pa11y, commonPa11yIssues);
 
         await saveResults(results, outputDir);
         return results;
@@ -361,14 +442,12 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         }
     }
 }
-function formatCsv(data, headers) {
-    return stringify([headers, ...data.map(row => headers.map(header => row[header] || ''))]);
-}
-
 async function saveResults(results, outputDir) {
     debug(`Saving results to: ${outputDir}`);
     try {
         // Pa11y results
+        await saveRawPa11yResult(results, outputDir);
+
         const pa11yCsv = formatCsv(results.pa11y.flatMap(result => 
             result.issues ? result.issues.map(issue => ({
                 url: result.url,
@@ -389,6 +468,13 @@ async function saveResults(results, outputDir) {
         ), ['source', 'target', 'error']);
         await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
         debug('Internal links results saved');
+
+        // Images without alt text results
+        const imagesWithoutAltCsv = formatCsv(
+        results.contentAnalysis.flatMap(result => result.imagesWithoutAlt || []),
+        ['url', 'src', 'location']);
+        await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv);
+        debug('Images without alt analysis results saved');
 
         // Content analysis results
         const contentAnalysisCsv = formatCsv(results.contentAnalysis.map(result => ({
@@ -428,6 +514,37 @@ async function saveResults(results, outputDir) {
         console.error('Error details:', error.stack);
     }
 }
+async function collectJsErrors(url) {
+    let browser;
+    try {
+        browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        
+        const jsErrors = [];
+        page.on('pageerror', error => {
+            const formattedErrorMessage = error.message.replace(/\n/g, '\\n');
+            if (!formattedErrorMessage.includes('Refused to connect to') || 
+                !formattedErrorMessage.includes('https://rum.hlx.page/.rum/')) {
+                jsErrors.push(formattedErrorMessage);
+            }
+        });
+
+        await page.goto(url, { waitUntil: 'networkidle0' });
+        
+        return jsErrors;
+    } catch (error) {
+        console.error(`Error collecting JS errors for ${url}:`, error.message);
+        return [];
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
+
+
+
 function setupShutdownHandler(outputDir) {
     process.on('SIGINT', async () => {
         console.log('\nGraceful shutdown initiated...');
@@ -443,3 +560,81 @@ function setupShutdownHandler(outputDir) {
         process.exit(0);
     });
 }
+async function saveRawPa11yResult(results, outputDir) {
+    try {
+        const filename = 'pa11y_raw_results.json';
+        const filePath = path.join(outputDir, filename);
+        const pa11yResults = results.pa11y.map(result => ({
+            url: result.url,
+            issues: result.issues
+        }));
+        await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
+        debug(`Raw pa11y results saved to ${filePath}`);
+    } catch (error) {
+        console.error('Error saving raw pa11y results:', error.message);
+    }
+}
+
+
+  function analyzeCommonPa11yIssues(pa11yResults) {
+    const issueCounts = {};
+    for (const result of pa11yResults) {
+      if (result.issues) {
+        for (const issue of result.issues) {
+          const issueKey = `${issue.code}-${issue.message}`;
+          issueCounts[issueKey] = (issueCounts[issueKey] || 0) + 1;
+        }
+      }
+    }
+  
+    const commonIssues = Object.entries(issueCounts)
+      .filter(([key, count]) => count > 1) // Consider an issue common if it appears more than once
+      .map(([key, count]) => ({ code: key.split('-')[0], message: key.split('-')[1], count }));
+  
+    return commonIssues;
+  }
+  
+  async function saveCommonPa11yIssues(commonIssues, outputDir) {
+    if (commonIssues.length > 0) {
+      const csvData = formatCsv(commonIssues, ['code', 'message', 'count']);
+      await fs.writeFile(path.join(outputDir, 'common_pa11y_issues.csv'), csvData);
+      debug('Common Pa11y issues saved');
+    } else {
+      debug('No common Pa11y issues found');
+    }
+  }
+  
+  function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
+    const commonIssueKeys = new Set(commonIssues.map(issue => `${issue.code}-${issue.message}`));
+    return pa11yResults.map(result => {
+      if (result.issues) {
+        result.issues = result.issues.filter(issue => !commonIssueKeys.has(`${issue.code}-${issue.message}`));
+      }
+      return result;
+    });
+  }
+  
+
+// Set up command-line interface
+program
+    .version('1.0.0')
+    .description('Run pa11y accessibility, Lighthouse SEO tests, internal link checks, and content analysis on all URLs in a sitemap')
+    .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
+    .option('-o, --output <directory>', 'Output directory for results', 'results')
+    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
+    .parse(process.argv);
+
+const options = program.opts();
+
+// Set up the shutdown handler
+setupShutdownHandler(options.output);
+
+// Run the main function
+debug('Starting main function');
+runTestsOnSitemap(options.sitemap, options.output, options.limit)
+    .then(() => {
+        debug('Script completed successfully');
+    })
+    .catch((error) => {
+        console.error('Script failed with error:', error);
+    });
