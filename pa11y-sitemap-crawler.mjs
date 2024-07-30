@@ -381,7 +381,7 @@ program
     .version('1.0.0')
     .description('Run pa11y accessibility, Lighthouse SEO tests, internal link checks, and content analysis on all URLs in a sitemap')
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
-    .option('-o, --output <directory>', 'Output directory for results', 'seo_accessibility_results')
+    .option('-o, --output <directory>', 'Output directory for results', 'results')
     .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
