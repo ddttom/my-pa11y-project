@@ -61,3 +61,5 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+my-results.txt_lighthouse.csv
+my-results.txt_pa11y.csv
