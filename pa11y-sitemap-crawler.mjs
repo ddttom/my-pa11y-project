@@ -443,27 +443,3 @@ function setupShutdownHandler(outputDir) {
         process.exit(0);
     });
 }
-
-// Set up command-line interface
-program
-    .version('1.0.0')
-    .description('Run pa11y accessibility, Lighthouse SEO tests, internal link checks, and content analysis on all URLs in a sitemap')
-    .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
-    .option('-o, --output <directory>', 'Output directory for results', 'results')
-    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
-    .parse(process.argv);
-
-const options = program.opts();
-
-// Set up the shutdown handler
-setupShutdownHandler(options.output);
-
-// Run the main function
-debug('Starting main function');
-runTestsOnSitemap(options.sitemap, options.output, options.limit)
-    .then(() => {
-        debug('Script completed successfully');
-    })
-    .catch((error) => {
-        console.error('Script failed with error:', error);
-    });
