@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'fs/promises';
+import path from 'path';
 import axios from 'axios';
 import xml2js from 'xml2js';
 import pa11y from 'pa11y';
@@ -9,9 +10,22 @@ import * as chromeLauncher from 'chrome-launcher';
 import { program } from 'commander';
 import cheerio from 'cheerio';
 import { URL } from 'url';
+import { stringify } from 'csv-stringify/sync';
 
 let isShuttingDown = false;
-let results = [];
+let results = {
+    pa11y: [],
+    lighthouse: [],
+    internalLinks: [],
+    contentAnalysis: [],
+    orphanedUrls: new Set()
+};
+
+function debug(message) {
+    // console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+}
+
+debug('Script started');
 
 const pa11yOptions = {
     timeout: 60000,
@@ -47,13 +61,24 @@ const lighthouseOptions = {
     chromeFlags: ['--headless']
 };
 
+const axiosInstance = axios.create({
+    headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+});
+
+function fixUrl(url) {
+    return url.replace(/([^:]\/)\/+/g, "$1");
+}
+
 async function fetchAndParseSitemap(url) {
-    console.log(`Fetching sitemap from: ${url}`);
+    debug(`Fetching sitemap from: ${url}`);
     try {
-        const response = await axios.get(url);
+        const response = await axiosInstance.get(url);
+        debug('Sitemap fetched successfully');
         const parser = new xml2js.Parser();
-        console.log('Parsing sitemap XML');
-        return parser.parseStringPromise(response.data);
+        debug('Parsing sitemap XML');
+        const result = await parser.parseStringPromise(response.data);
+        debug('Sitemap parsed successfully');
+        return result;
     } catch (error) {
         console.error(`Error fetching or parsing sitemap from ${url}:`, error.message);
         throw error;
@@ -62,12 +87,12 @@ async function fetchAndParseSitemap(url) {
 
 async function extractUrls(parsedXml) {
     if (parsedXml.sitemapindex) {
-        console.log('Found a sitemap index. Processing nested sitemaps...');
-        const sitemapUrls = parsedXml.sitemapindex.sitemap.map(sitemap => sitemap.loc[0]);
+        debug('Found a sitemap index. Processing nested sitemaps...');
+        const sitemapUrls = parsedXml.sitemapindex.sitemap.map(sitemap => fixUrl(sitemap.loc[0]));
         let allUrls = [];
         for (const sitemapUrl of sitemapUrls) {
             if (isShuttingDown) break;
-            console.log(`Processing nested sitemap: ${sitemapUrl}`);
+            debug(`Processing nested sitemap: ${sitemapUrl}`);
             try {
                 const nestedParsedXml = await fetchAndParseSitemap(sitemapUrl);
                 const nestedUrls = await extractUrls(nestedParsedXml);
@@ -78,24 +103,33 @@ async function extractUrls(parsedXml) {
         }
         return allUrls;
     } else if (parsedXml.urlset) {
-        console.log('Extracting URLs from sitemap');
-        return parsedXml.urlset.url.map(url => url.loc[0]);
+        debug('Extracting URLs from sitemap');
+        return parsedXml.urlset.url.map(url => fixUrl(url.loc[0]));
     } else {
         throw new Error('Unknown sitemap format');
     }
 }
 
 async function runLighthouse(testUrl, opts, config = null) {
+    debug(`Running Lighthouse for: ${testUrl}`);
     const chrome = await chromeLauncher.launch({chromeFlags: opts.chromeFlags});
     opts.port = chrome.port;
-    const runnerResult = await lighthouse(testUrl, opts, config);
-    await chrome.kill();
-    return JSON.parse(runnerResult.report);
+    try {
+        const runnerResult = await lighthouse(testUrl, opts, config);
+        debug(`Lighthouse completed for: ${testUrl}`);
+        return JSON.parse(runnerResult.report);
+    } catch (error) {
+        console.error(`Lighthouse error for ${testUrl}:`, error.message);
+        return null;
+    } finally {
+        await chrome.kill();
+    }
 }
 
 async function getInternalLinks(pageUrl, baseUrl) {
+    debug(`Fetching internal links from: ${pageUrl}`);
     try {
-        const response = await axios.get(pageUrl);
+        const response = await axiosInstance.get(pageUrl);
         const $ = cheerio.load(response.data);
         const links = new Set();
 
@@ -104,11 +138,12 @@ async function getInternalLinks(pageUrl, baseUrl) {
             if (href) {
                 const absoluteUrl = new URL(href, baseUrl).href;
                 if (absoluteUrl.startsWith(baseUrl)) {
-                    links.add(absoluteUrl);
+                    links.add(fixUrl(absoluteUrl));
                 }
             }
         });
 
+        debug(`Found ${links.size} internal links on: ${pageUrl}`);
         return Array.from(links);
     } catch (error) {
         console.error(`Error fetching internal links from ${pageUrl}:`, error.message);
@@ -117,8 +152,9 @@ async function getInternalLinks(pageUrl, baseUrl) {
 }
 
 async function analyzeContent(pageUrl) {
+    debug(`Analyzing content of: ${pageUrl}`);
     try {
-        const response = await axios.get(pageUrl);
+        const response = await axiosInstance.get(pageUrl);
         const $ = cheerio.load(response.data);
 
         const title = $('title').text();
@@ -144,6 +180,7 @@ async function analyzeContent(pageUrl) {
             .slice(0, 5)
             .map(entry => entry[0]);
 
+        debug(`Content analysis completed for: ${pageUrl}`);
         return {
             title,
             metaDescription,
@@ -158,200 +195,172 @@ async function analyzeContent(pageUrl) {
     }
 }
 
-async function runTestsOnSitemap(sitemapUrl, outputFile, limit = -1) {
+async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
+    debug(`Starting process for sitemap: ${sitemapUrl}`);
+    debug(`Results will be saved to: ${outputDir}`);
+
     try {
-        console.log(`Starting process for sitemap: ${sitemapUrl}`);
-        console.log(`Results will be saved to: ${outputFile}`);
+        await fs.mkdir(outputDir, { recursive: true });
+        debug(`Output directory created: ${outputDir}`);
 
         const parsedXml = await fetchAndParseSitemap(sitemapUrl);
-        console.log('Sitemap fetched and parsed successfully');
+        debug('Sitemap fetched and parsed successfully');
 
         const urls = await extractUrls(parsedXml);
-        console.log(`Found ${urls.length} URLs in sitemap`);
+        debug(`Found ${urls.length} URLs in sitemap`);
 
         const urlsToTest = limit === -1 ? urls : urls.slice(0, limit);
         const totalTests = urlsToTest.length;
-        console.log(`Testing ${totalTests} URLs${limit === -1 ? ' (all URLs)' : ''}`);
+        debug(`Testing ${totalTests} URLs${limit === -1 ? ' (all URLs)' : ''}`);
 
         const baseUrl = new URL(urlsToTest[0]).origin;
         const sitemapUrls = new Set(urls);
-        const orphanedUrls = new Set();
+
+        // Ensure results object is properly initialized
+        results = {
+            pa11y: [],
+            lighthouse: [],
+            internalLinks: [],
+            contentAnalysis: [],
+            orphanedUrls: new Set()
+        };
 
         for (let i = 0; i < urlsToTest.length; i++) {
             if (isShuttingDown) break;
-            const testUrl = urlsToTest[i];
-            console.log(`Testing: ${testUrl}`);
+            const testUrl = fixUrl(urlsToTest[i]);
+            debug(`Testing: ${testUrl} (${i + 1}/${totalTests})`);
             try {
+                debug(`Running pa11y for: ${testUrl}`);
                 const pa11yResult = await pa11y(testUrl, pa11yOptions);
+                results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
+                debug(`pa11y completed for: ${testUrl}`);
+
+                debug(`Running Lighthouse for: ${testUrl}`);
                 const lighthouseResult = await runLighthouse(testUrl, lighthouseOptions);
+                if (lighthouseResult && lighthouseResult.categories && lighthouseResult.categories.seo) {
+                    results.lighthouse.push({ url: testUrl, seo: lighthouseResult.categories.seo });
+                } else {
+                    results.lighthouse.push({ url: testUrl, error: 'Lighthouse failed or returned unexpected results' });
+                }
+                debug(`Lighthouse completed for: ${testUrl}`);
+
+                debug(`Getting internal links for: ${testUrl}`);
                 const internalLinks = await getInternalLinks(testUrl, baseUrl);
+                results.internalLinks.push({ url: testUrl, links: internalLinks });
+                debug(`Internal links retrieved for: ${testUrl}`);
+
+                debug(`Analyzing content for: ${testUrl}`);
                 const contentAnalysis = await analyzeContent(testUrl);
+                if (contentAnalysis) {
+                    results.contentAnalysis.push({ url: testUrl, ...contentAnalysis });
+                } else {
+                    results.contentAnalysis.push({ url: testUrl, error: 'Content analysis failed' });
+                }
+                debug(`Content analysis completed for: ${testUrl}`);
 
                 internalLinks.forEach(link => {
-                    if (!sitemapUrls.has(link)) {
-                        orphanedUrls.add(link);
+                    if (!sitemapUrls.has(link) && !link.endsWith('.pdf')) {
+                        results.orphanedUrls.add(link);
                     }
                 });
 
-                results.push({
-                    url: testUrl,
-                    accessibility: pa11yResult.issues,
-                    seo: lighthouseResult.categories.seo,
-                    internalLinks,
-                    contentAnalysis
-                });
-                console.log(`Completed testing: ${testUrl} (${i + 1}/${totalTests})`);
+                debug(`Completed testing: ${testUrl}`);
             } catch (error) {
                 console.error(`Error testing ${testUrl}:`, error.message);
-                results.push({ url: testUrl, error: error.message });
+                ['pa11y', 'lighthouse', 'internalLinks', 'contentAnalysis'].forEach(report => {
+                    results[report].push({ url: testUrl, error: error.message });
+                });
             }
-            await new Promise(resolve => setTimeout(resolve, 1000));  // Wait 1 second between requests
+            await new Promise(resolve => setTimeout(resolve, 2000));  // Wait 2 seconds between requests
         }
 
-        results.push({ orphanedUrls: Array.from(orphanedUrls) });
-        await saveResults(results, outputFile);
+        await saveResults(results, outputDir);
         return results;
     } catch (error) {
         console.error('Error in runTestsOnSitemap:', error.message);
+        console.error('Error details:', error.stack);
+        // Attempt to save partial results if an error occurs
+        try {
+            await saveResults(results, outputDir);
+            debug('Partial results saved due to error');
+        } catch (saveError) {
+            console.error('Error saving partial results:', saveError.message);
+        }
     }
 }
-
-function formatResults(results) {
-    let output = 'Pa11y Accessibility, SEO, and Content Analysis Test Results\n';
-    output += '=========================================================\n\n';
-
-    let totalAccessibilityIssues = 0;
-    let accessibilityIssuesByType = {};
-    let accessibilityIssuesBySeverity = {};
-    let totalSEOScore = 0;
-    let orphanedUrls = [];
-
-    results.forEach((result, index) => {
-        if (result.orphanedUrls) {
-            orphanedUrls = result.orphanedUrls;
-            return;
-        }
-
-        output += `URL ${index + 1}: ${result.url}\n`;
-        output += '-'.repeat(result.url.length + 8) + '\n';
-
-        if (result.error) {
-            output += `Error: ${result.error}\n`;
-        } else {
-            // Accessibility results
-            if (result.accessibility && result.accessibility.length === 0) {
-                output += 'No accessibility issues found.\n';
-            } else if (result.accessibility) {
-                output += `Accessibility issues found: ${result.accessibility.length}\n\n`;
-                result.accessibility.forEach((issue, issueIndex) => {
-                    output += `Issue ${issueIndex + 1}:\n`;
-                    output += `  Type: ${issue.type}\n`;
-                    output += `  Code: ${issue.code}\n`;
-                    output += `  Message: ${issue.message}\n`;
-                    output += `  Context: ${issue.context}\n`;
-                    output += `  Selector: ${issue.selector}\n\n`;
-
-                    totalAccessibilityIssues++;
-                    accessibilityIssuesByType[issue.type] = (accessibilityIssuesByType[issue.type] || 0) + 1;
-                    accessibilityIssuesBySeverity[issue.typeCode] = (accessibilityIssuesBySeverity[issue.typeCode] || 0) + 1;
-                });
-            } else {
-                output += 'No accessibility data available.\n';
-            }
-
-            // SEO results
-            if (result.seo && result.seo.score !== undefined) {
-                output += 'SEO Results:\n';
-                output += `  Score: ${Math.round(result.seo.score * 100)}%\n`;
-                totalSEOScore += result.seo.score;
-
-                if (result.seo.auditRefs) {
-                    result.seo.auditRefs.forEach(audit => {
-                        const auditResult = result.seo.audits && result.seo.audits[audit.id];
-                        if (auditResult && auditResult.score !== undefined && auditResult.score !== 1) {
-                            output += `  ${auditResult.title}: ${auditResult.description}\n`;
-                        }
-                    });
-                }
-            } else {
-                output += 'No SEO data available.\n';
-            }
-
-            // Content Analysis results
-            if (result.contentAnalysis) {
-                output += '\nContent Analysis:\n';
-                output += `  Title: ${result.contentAnalysis.title}\n`;
-                output += `  Meta Description: ${result.contentAnalysis.metaDescription || 'Not found'}\n`;
-                output += `  H1: ${result.contentAnalysis.h1 || 'Not found'}\n`;
-                output += `  Word Count: ${result.contentAnalysis.wordCount}\n`;
-                output += '  Heading Structure:\n';
-                for (const [heading, count] of Object.entries(result.contentAnalysis.headings)) {
-                    output += `    ${heading}: ${count}\n`;
-                }
-                output += `  Top Keywords: ${result.contentAnalysis.keywords.join(', ')}\n`;
-            } else {
-                output += '\nNo content analysis data available.\n';
-            }
-
-            // Internal links
-            if (result.internalLinks) {
-                output += `\nInternal Links: ${result.internalLinks.length}\n`;
-            } else {
-                output += '\nNo internal links data available.\n';
-            }
-        }
-        output += '\n';
-    });
-
-    // Add summary section
-    output += 'Summary of Results\n';
-    output += '===================\n\n';
-
-    output += 'Accessibility Summary:\n';
-    output += `Total accessibility issues found: ${totalAccessibilityIssues}\n\n`;
-
-    output += 'Accessibility Issues by Type:\n';
-    for (let type in accessibilityIssuesByType) {
-        output += `  ${type}: ${accessibilityIssuesByType[type]}\n`;
-    }
-    output += '\n';
-
-    output += 'Accessibility Issues by Severity:\n';
-    for (let severity in accessibilityIssuesBySeverity) {
-        output += `  ${severity}: ${accessibilityIssuesBySeverity[severity]}\n`;
-    }
-    output += '\n';
-
-    const validSEOResults = results.filter(r => r.seo && r.seo.score !== undefined).length;
-    if (validSEOResults > 0) {
-        output += 'SEO Summary:\n';
-        output += `Average SEO score: ${Math.round((totalSEOScore / validSEOResults) * 100)}%\n\n`;
-    } else {
-        output += 'SEO Summary: No valid SEO data available.\n\n';
-    }
-
-    output += 'Orphaned URLs:\n';
-    orphanedUrls.forEach(url => {
-        output += `  ${url}\n`;
-    });
-    output += '\n';
-
-    output += `Total URLs in sitemap: ${results.length - 1}\n`;
-    output += `Total orphaned URLs: ${orphanedUrls.length}\n`;
-
-    return output;
+function formatCsv(data, headers) {
+    return stringify([headers, ...data.map(row => headers.map(header => row[header] || ''))]);
 }
 
-async function saveResults(results, outputFile) {
+async function saveResults(results, outputDir) {
+    debug(`Saving results to: ${outputDir}`);
     try {
-        const formattedResults = formatResults(results);
-        await fs.writeFile(outputFile, formattedResults);
-        console.log(`Results saved to ${outputFile}`);
+        // Pa11y results
+        const pa11yCsv = formatCsv(results.pa11y.flatMap(result => 
+            result.issues ? result.issues.map(issue => ({
+                url: result.url,
+                type: issue.type,
+                code: issue.code,
+                message: issue.message,
+                context: issue.context,
+                selector: issue.selector
+            })) : [{ url: result.url, error: result.error }]
+        ), ['url', 'type', 'code', 'message', 'context', 'selector', 'error']);
+        await fs.writeFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
+        debug('Pa11y results saved');
+
+        // Lighthouse results
+        const lighthouseCsv = formatCsv(results.lighthouse.map(result => ({
+            url: result.url,
+            score: result.seo ? result.seo.score : '',
+            error: result.error || ''
+        })), ['url', 'score', 'error']);
+        await fs.writeFile(path.join(outputDir, 'lighthouse_results.csv'), lighthouseCsv);
+        debug('Lighthouse results saved');
+
+        // Internal links results
+        const internalLinksCsv = formatCsv(results.internalLinks.flatMap(result => 
+            result.links ? result.links.map(link => ({ source: result.url, target: link })) 
+                         : [{ source: result.url, error: result.error }]
+        ), ['source', 'target', 'error']);
+        await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
+        debug('Internal links results saved');
+
+        // Content analysis results
+        const contentAnalysisCsv = formatCsv(results.contentAnalysis.map(result => ({
+            url: result.url,
+            title: result.title || '',
+            metaDescription: result.metaDescription || '',
+            h1: result.h1 || '',
+            wordCount: result.wordCount || '',
+            h1Count: result.headings?.h1 || '',
+            h2Count: result.headings?.h2 || '',
+            h3Count: result.headings?.h3 || '',
+            h4Count: result.headings?.h4 || '',
+            h5Count: result.headings?.h5 || '',
+            h6Count: result.headings?.h6 || '',
+            keywords: result.keywords ? result.keywords.join(', ') : '',
+            error: result.error || ''
+        })), ['url', 'title', 'metaDescription', 'h1', 'wordCount', 'h1Count', 'h2Count', 'h3Count', 'h4Count', 'h5Count', 'h6Count', 'keywords', 'error']);
+        await fs.writeFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv);
+        debug('Content analysis results saved');
+
+        // Orphaned URLs
+        if (results.orphanedUrls && results.orphanedUrls instanceof Set && results.orphanedUrls.size > 0) {
+            const orphanedUrlsCsv = formatCsv([...results.orphanedUrls].map(url => ({ url })), ['url']);
+            await fs.writeFile(path.join(outputDir, 'orphaned_urls.csv'), orphanedUrlsCsv);
+            debug('Orphaned URLs saved');
+        } else {
+            debug('No orphaned URLs to save');
+        }
+
+        debug(`All results saved to ${outputDir}`);
     } catch (error) {
-        console.error(`Error writing to file ${outputFile}:`, error.message);
+        console.error(`Error writing results to ${outputDir}:`, error);
+        console.error('Error details:', error.stack);
     }
 }
-function setupShutdownHandler(outputFile) {
+function setupShutdownHandler(outputDir) {
     process.on('SIGINT', async () => {
         console.log('\nGraceful shutdown initiated...');
         isShuttingDown = true;
@@ -360,7 +369,7 @@ function setupShutdownHandler(outputFile) {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         console.log('Saving partial results...');
-        await saveResults(results, outputFile);
+        await saveResults(results, outputDir);
 
         console.log('Shutdown complete. Exiting...');
         process.exit(0);
@@ -370,9 +379,9 @@ function setupShutdownHandler(outputFile) {
 // Set up command-line interface
 program
     .version('1.0.0')
-    .description('Run pa11y accessibility, Lighthouse SEO tests, and internal link checks on all URLs in a sitemap')
+    .description('Run pa11y accessibility, Lighthouse SEO tests, internal link checks, and content analysis on all URLs in a sitemap')
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
-    .option('-o, --output <file>', 'Output file for results', 'pa11y-seo-results.txt')
+    .option('-o, --output <directory>', 'Output directory for results', 'seo_accessibility_results')
     .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
@@ -382,4 +391,11 @@ const options = program.opts();
 setupShutdownHandler(options.output);
 
 // Run the main function
-runTestsOnSitemap(options.sitemap, options.output, options.limit);
+debug('Starting main function');
+runTestsOnSitemap(options.sitemap, options.output, options.limit)
+    .then(() => {
+        debug('Script completed successfully');
+    })
+    .catch((error) => {
+        console.error('Script failed with error:', error);
+    });
