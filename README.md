@@ -24,7 +24,7 @@ Before you begin, ensure you have met the following requirements:
 1. Clone this repository:
 
    ``` js
-   git clone https://github.com/your-username/pa11y-sitemap-crawler.git
+   git clone https://github.com/ddttom/pa11y-sitemap-crawler.git
    ```
 
 2. Navigate to the project directory:
