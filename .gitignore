@@ -2,6 +2,8 @@ my-results.json
 my-results.txt
 # Dependency directories
 node_modules/
+.cache/
+
 
 results/
 

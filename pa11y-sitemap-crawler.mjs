@@ -13,7 +13,7 @@ import pkg from 'puppeteer';
 const { launch } = pkg;
 import puppeteer from 'puppeteer';
 
-import { ensureCacheDir, getCachedHtml, setCachedHtml } from './caching.js';
+import { ensureCacheDir, getOrRenderData } from './caching.js';
 
 
 let isShuttingDown = false;
@@ -338,7 +338,81 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
             pa11y: [],
             internalLinks: [],
             contentAnalysis: [],
-            orphanedUrls: new Set()
+            orphanedUrls: new Set(),
+            urlMetrics: {
+                total: 0,
+                internal: 0,
+                external: 0,
+                internalIndexable: 0,
+                internalNonIndexable: 0,
+                nonAscii: 0,
+                uppercase: 0,
+                underscores: 0,
+                containsSpace: 0,
+                overLength: 0
+            },
+            responseCodeMetrics: {},
+            titleMetrics: {
+                missing: 0,
+                duplicate: 0,
+                tooLong: 0,
+                tooShort: 0,
+                pixelWidth: {}
+            },
+            metaDescriptionMetrics: {
+                missing: 0,
+                duplicate: 0,
+                tooLong: 0,
+                tooShort: 0,
+                pixelWidth: {}
+            },
+            h1Metrics: {
+                missing: 0,
+                duplicate: 0,
+                tooLong: 0,
+                multiple: 0
+            },
+            h2Metrics: {
+                missing: 0,
+                duplicate: 0,
+                tooLong: 0,
+                multiple: 0,
+                nonSequential: 0
+            },
+            contentMetrics: {
+                lowContent: 0,
+                duplicate: 0
+            },
+            imageMetrics: {
+                total: 0,
+                missingAlt: 0,
+                missingAltAttribute: 0,
+                largeImages: 0,
+                altTextTooLong: 0
+            },
+            linkMetrics: {
+                pagesWithoutInternalOutlinks: 0,
+                pagesWithHighExternalOutlinks: 0,
+                internalOutlinksWithoutAnchorText: 0,
+                nonDescriptiveAnchorText: 0
+            },
+            securityMetrics: {
+                httpUrls: 0,
+                missingHstsHeader: 0,
+                missingContentSecurityPolicy: 0,
+                missingXFrameOptions: 0,
+                missingXContentTypeOptions: 0
+            },
+            hreflangMetrics: {
+                pagesWithHreflang: 0,
+                missingReturnLinks: 0,
+                incorrectLanguageCodes: 0
+            },
+            canonicalMetrics: {
+                missing: 0,
+                selfReferencing: 0,
+                nonSelf: 0
+            }
         };
 
         for (let i = 0; i < urlsToTest.length; i++) {
@@ -348,77 +422,190 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
             debug(`Testing: ${testUrl} (${i + 1}/${totalTests})`);
             
             try {
-                let html = await getCachedHtml(testUrl);
-                if (!html) {
-                    debug(`Fetching fresh HTML for: ${testUrl}`);
-                    console.info(`Fetching fresh HTML for: ${testUrl}`);
-                    const response = await axios.get(testUrl);
-                    html = response.data;
-                    await setCachedHtml(testUrl, html);
-                } else {
-                    debug(`Using cached HTML for: ${testUrl}`);
-                    console.info(`Using cached HTML for: ${testUrl}`);
-                }
+                console.log(`Attempting to get or render data for ${testUrl}`);
+                let { html, jsErrors, statusCode, headers } = await getOrRenderData(testUrl);
+                console.log(`Data retrieved for ${testUrl}`);
 
-                // Collect JavaScript errors
-                const jsErrors = await collectJsErrors(testUrl);
-
-                // Run pa11y test
-                const pa11yResult = await pa11y(testUrl, { ...pa11yOptions, html });
-                results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
-
-                // Get internal links
-                const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
-                results.internalLinks.push({ url: testUrl, links: internalLinks });
-
-                // Analyze content
-                const contentAnalysis = await analyzeContent(html, testUrl, jsErrors);
-                if (contentAnalysis) {
-                    results.contentAnalysis.push(contentAnalysis);
-                    
-                    // Log heading errors
-                    if (contentAnalysis.headingErrors && contentAnalysis.headingErrors.length > 0) {
-                        console.warn(`Heading structure issues found for ${testUrl}`);
-                        contentAnalysis.headingErrors.forEach(error => console.warn(`- ${error}`));
-                    }
-                    
-                    // Log JavaScript errors
-                    if (contentAnalysis.jsErrors && contentAnalysis.jsErrors.length > 0) {
-                        console.warn(`JavaScript errors found for ${testUrl}`);
-                        contentAnalysis.jsErrors.forEach(error => console.warn(`- ${error}`));
-                    }
-                    
-                    // Log images without alt text
-                    if (contentAnalysis.imagesWithoutAlt > 0) {
-                        console.warn(`Found ${contentAnalysis.imagesWithoutAlt} image(s) without alt text on ${testUrl}`);
+                // Update URL metrics
+                results.urlMetrics.total++;
+                if (testUrl.startsWith(baseUrl)) {
+                    results.urlMetrics.internal++;
+                    // Check if URL is indexable (this is a simplified check)
+                    if (!html.includes('noindex') && statusCode === 200) {
+                        results.urlMetrics.internalIndexable++;
+                    } else {
+                        results.urlMetrics.internalNonIndexable++;
                     }
                 } else {
-                    results.contentAnalysis.push({ url: testUrl, error: 'Content analysis failed' });
+                    results.urlMetrics.external++;
                 }
 
-                // Check for orphaned URLs
-                if (!parsedContent.html) {
-                    internalLinks.forEach(link => {
-                        const strippedLink = link.split('#')[0];
-                        if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
-                            results.orphanedUrls.add(strippedLink);
+                // Check for non-ASCII characters, uppercase, underscores, spaces, and length
+                if (/[^\x00-\x7F]/.test(testUrl)) results.urlMetrics.nonAscii++;
+                if (/[A-Z]/.test(testUrl)) results.urlMetrics.uppercase++;
+                if (testUrl.includes('_')) results.urlMetrics.underscores++;
+                if (testUrl.includes(' ')) results.urlMetrics.containsSpace++;
+                if (testUrl.length > 115) results.urlMetrics.overLength++;
+
+                // Update response code metrics
+                results.responseCodeMetrics[statusCode] = (results.responseCodeMetrics[statusCode] || 0) + 1;
+
+                // Only proceed with further analysis if status code is 200
+                if (statusCode === 200) {
+                    const $ = cheerio.load(html);
+
+                    // Analyze title
+                    const title = $('title').text();
+                    if (!title) results.titleMetrics.missing++;
+                    else {
+                        const titleLength = title.length;
+                        if (titleLength > 60) results.titleMetrics.tooLong++;
+                        if (titleLength < 30) results.titleMetrics.tooShort++;
+                        const pixelWidth = estimatePixelWidth(title);
+                        results.titleMetrics.pixelWidth[pixelWidth] = (results.titleMetrics.pixelWidth[pixelWidth] || 0) + 1;
+                    }
+
+                    // Analyze meta description
+                    const metaDescription = $('meta[name="description"]').attr('content');
+                    if (!metaDescription) results.metaDescriptionMetrics.missing++;
+                    else {
+                        const descLength = metaDescription.length;
+                        if (descLength > 155) results.metaDescriptionMetrics.tooLong++;
+                        if (descLength < 70) results.metaDescriptionMetrics.tooShort++;
+                        const pixelWidth = estimatePixelWidth(metaDescription);
+                        results.metaDescriptionMetrics.pixelWidth[pixelWidth] = (results.metaDescriptionMetrics.pixelWidth[pixelWidth] || 0) + 1;
+                    }
+
+                    // Analyze H1
+                    const h1s = $('h1');
+                    if (h1s.length === 0) results.h1Metrics.missing++;
+                    if (h1s.length > 1) results.h1Metrics.multiple++;
+                    h1s.each((i, el) => {
+                        const h1Text = $(el).text();
+                        if (h1Text.length > 70) results.h1Metrics.tooLong++;
+                    });
+
+                    // Analyze H2
+                    const h2s = $('h2');
+                    if (h2s.length === 0) results.h2Metrics.missing++;
+                    if (h2s.length > 1) results.h2Metrics.multiple++;
+                    h2s.each((i, el) => {
+                        const h2Text = $(el).text();
+                        if (h2Text.length > 70) results.h2Metrics.tooLong++;
+                    });
+
+                    // Check for non-sequential H2
+                    if ($('h1').length && $('*').index($('h2').first()) < $('*').index($('h1').first())) {
+                        results.h2Metrics.nonSequential++;
+                    }
+
+                    // Analyze images
+                    $('img').each((i, el) => {
+                        results.imageMetrics.total++;
+                        const altText = $(el).attr('alt');
+                        if (!altText) {
+                            if ($(el).attr('alt') === undefined) {
+                                results.imageMetrics.missingAltAttribute++;
+                            } else {
+                                results.imageMetrics.missingAlt++;
+                            }
+                        } else if (altText.length > 100) {
+                            results.imageMetrics.altTextTooLong++;
                         }
                     });
+
+                    // Analyze links
+                    const internalLinkElements= $('a[href^="/"], a[href^="' + baseUrl + '"]');
+                    const externalLinks = $('a').not(internalLinkElements);
+                    if (internalLinkElements.length === 0) results.linkMetrics.pagesWithoutInternalOutlinks++;
+                    if (externalLinks.length > 100) results.linkMetrics.pagesWithHighExternalOutlinks++;
+                    internalLinkElements.each((i, el) => {
+                        if (!$(el).text().trim()) results.linkMetrics.internalOutlinksWithoutAnchorText++;
+                        if (['click here', 'read more', 'learn more'].includes($(el).text().toLowerCase().trim())) {
+                            results.linkMetrics.nonDescriptiveAnchorText++;
+                        }
+                    });
+
+                    // Analyze security headers
+                    if (testUrl.startsWith('http:')) results.securityMetrics.httpUrls++;
+                    if (!headers['strict-transport-security']) results.securityMetrics.missingHstsHeader++;
+                    if (!headers['content-security-policy']) results.securityMetrics.missingContentSecurityPolicy++;
+                    if (!headers['x-frame-options']) results.securityMetrics.missingXFrameOptions++;
+                    if (!headers['x-content-type-options']) results.securityMetrics.missingXContentTypeOptions++;
+
+                    // Analyze hreflang
+                    const hreflangTags = $('link[rel="alternate"][hreflang]');
+                    if (hreflangTags.length > 0) {
+                        results.hreflangMetrics.pagesWithHreflang++;
+                        // Additional hreflang checks could be added here
+                    }
+
+                    // Analyze canonical
+                    const canonicalTag = $('link[rel="canonical"]');
+                    if (canonicalTag.length === 0) {
+                        results.canonicalMetrics.missing++;
+                    } else {
+                        const canonicalUrl = canonicalTag.attr('href');
+                        if (canonicalUrl === testUrl) {
+                            results.canonicalMetrics.selfReferencing++;
+                        } else {
+                            results.canonicalMetrics.nonSelf++;
+                        }
+                    }
+
+                    // Run pa11y test
+                    console.log(`Running pa11y test for ${testUrl}`);
+                    const pa11yResult = await pa11y(testUrl, { ...pa11yOptions, html });
+                    results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
+
+                    // Get internal links
+                    const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
+                    results.internalLinks.push({ url: testUrl, links: internalLinks });
+
+                    // Analyze content
+                    const contentAnalysis = await analyzeContent(html, testUrl, jsErrors);
+                    if (contentAnalysis) {
+                        results.contentAnalysis.push(contentAnalysis);
+                        
+                        // Log heading errors
+                        if (contentAnalysis.headingErrors && contentAnalysis.headingErrors.length > 0) {
+                            console.warn(`Heading structure issues found for ${testUrl}`);
+                            contentAnalysis.headingErrors.forEach(error => console.warn(`- ${error}`));
+                        }
+                        
+                        // Log JavaScript errors
+                        if (jsErrors.length > 0) {
+                            console.warn(`JavaScript errors found for ${testUrl}`);
+                            jsErrors.forEach(error => console.warn(`- ${error}`));
+                        }
+                        
+                        // Log images without alt text
+                        if (contentAnalysis.imagesWithoutAlt && contentAnalysis.imagesWithoutAlt.length > 0) {
+                            console.warn(`Found ${contentAnalysis.imagesWithoutAlt.length} image(s) without alt text on ${testUrl}`);
+                        }
+                    } else {
+                        results.contentAnalysis.push({ url: testUrl, error: 'Content analysis failed' });
+                    }
+
+                    // Check for orphaned URLs
+                    if (!parsedContent.html) {
+                        internalLinks.forEach(link => {
+                            const strippedLink = link.split('#')[0];
+                            if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
+                                results.orphanedUrls.add(strippedLink);
+                            }
+                        });
+                    }
                 }
 
                 debug(`Completed testing: ${testUrl}`);
             } catch (error) {
-                console.error(`Error testing ${testUrl}:`, error.message);
-                console.error('Error details:', error.stack);
+                console.error(`Error processing ${testUrl}:`, error);
+                console.error('Error stack:', error.stack);
                 ['pa11y', 'internalLinks', 'contentAnalysis'].forEach(report => {
                     results[report].push({ url: testUrl, error: error.message });
                 });
             }
-        }
-
-        // If we're processing a single HTML page, we don't need to check for orphaned URLs
-        if (parsedContent.html) {
-            results.orphanedUrls = new Set();
         }
 
         // Analyze common pa11y issues after processing all URLs
@@ -432,7 +619,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         return results;
     } catch (error) {
         console.error('Error in runTestsOnSitemap:', error.message);
-        console.error('Error details:', error.stack);
+        console.error('Error stack:', error.stack);
         // Attempt to save partial results if an error occurs
         try {
             await saveResults(results, outputDir);
@@ -493,7 +680,7 @@ async function saveResults(results, outputDir) {
             headingErrors: result.headingErrors ? result.headingErrors.join('; ') : '',
             imageCount: result.images ? result.images.length : '',
             imagesWithoutAlt: result.images ? result.images.filter(img => !img.alt).length : '',
-            jsErrors: result.jsErrors ? result.jsErrors.join('; ') : '',
+            jsErrors: result.jsErrors ? result.jsErrors.join('\n') : '',
             error: result.error || ''
         })), ['url', 'title', 'metaDescription', 'h1', 'wordCount', 'h1Count', 'h2Count', 'h3Count', 'h4Count', 'h5Count', 'h6Count', 'keywords', 'headingErrors', 'imageCount', 'imagesWithoutAlt', 'jsErrors', 'error']);
         await fs.writeFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv);
@@ -507,6 +694,10 @@ async function saveResults(results, outputDir) {
         } else {
             debug('No orphaned URLs to save');
         }
+
+        const report = generateReport(results,sitemapUrl); ;
+        await fs.writeFile(path.join(outputDir, 'seo_report.txt'), report);
+        debug('SEO report saved');
 
         debug(`All results saved to ${outputDir}`);
     } catch (error) {
@@ -522,26 +713,40 @@ async function collectJsErrors(url) {
         
         const jsErrors = [];
         page.on('pageerror', error => {
-            const formattedErrorMessage = error.message.replace(/\n/g, '\\n');
-            if (!formattedErrorMessage.includes('Refused to connect to') || 
-                !formattedErrorMessage.includes('https://rum.hlx.page/.rum/')) {
-                jsErrors.push(formattedErrorMessage);
+            const errorDetails = {
+                message: error.message,
+                stack: error.stack,
+                type: error.name
+            };
+            jsErrors.push(JSON.stringify(errorDetails));
+        });
+
+        page.on('console', msg => {
+            if (msg.type() === 'error') {
+                const errorDetails = {
+                    message: msg.text(),
+                    type: 'ConsoleError',
+                    location: msg.location()
+                };
+                jsErrors.push(JSON.stringify(errorDetails));
             }
         });
 
         await page.goto(url, { waitUntil: 'networkidle0' });
         
+        // Wait for an additional 3 seconds to catch any delayed errors
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 3000)));
+        
         return jsErrors;
     } catch (error) {
         console.error(`Error collecting JS errors for ${url}:`, error.message);
-        return [];
+        return [`Error collecting JS errors: ${error.message}`];
     } finally {
         if (browser) {
             await browser.close();
         }
     }
 }
-
 
 
 
@@ -613,8 +818,151 @@ async function saveRawPa11yResult(results, outputDir) {
       return result;
     });
   }
-  
 
+  function estimatePixelWidth(text) {
+    // This is a rough estimate. Actual pixel width can vary based on font, browser, etc.
+    const averageCharWidth = 6; // Assuming an average character width of 6 pixels
+    return text.length * averageCharWidth;
+}
+
+function generateReport(results, sitemapUrl) {
+    function categorizeResponseCodes(responseCodeMetrics) {
+        const categories = {
+            '2xx': 0,
+            '3xx': 0,
+            '4xx': 0,
+            '5xx': 0,
+            'other': 0
+        };
+        
+        for (const [code, count] of Object.entries(responseCodeMetrics || {})) {
+            const codeNum = parseInt(code);
+            if (codeNum >= 200 && codeNum < 300) categories['2xx'] += count;
+            else if (codeNum >= 300 && codeNum < 400) categories['3xx'] += count;
+            else if (codeNum >= 400 && codeNum < 500) categories['4xx'] += count;
+            else if (codeNum >= 500 && codeNum < 600) categories['5xx'] += count;
+            else categories['other'] += count;
+        }
+        
+        return categories;
+    }
+
+    const responseCategories = categorizeResponseCodes(results.responseCodeMetrics);
+
+    // Helper function to safely get a count or return 0
+    const safeCount = (obj, prop) => obj && obj[prop] ? obj[prop] : 0;
+
+    // Helper function to safely calculate percentage
+    const safePercentage = (count, total) => total ? ((count / total) * 100).toFixed(2) : '0.00';
+
+    const report = `
+Site Crawled\t${sitemapUrl}
+Date\t${new Date().toLocaleDateString()}
+Time\t${new Date().toLocaleTimeString()}
+
+Summary\tURLs\t% of Total\tTotal URLs\tTotal URLs Description
+Total URLs Encountered\t${safeCount(results.urlMetrics, 'total')}\t100.00%\t${safeCount(results.urlMetrics, 'total')}\tURLs Encountered
+Total Internal URLs\t${safeCount(results.urlMetrics, 'internal')}\t${safePercentage(safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tURLs Encountered
+Total External URLs\t${safeCount(results.urlMetrics, 'external')}\t${safePercentage(safeCount(results.urlMetrics, 'external'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tURLs Encountered
+Total Internal Indexable URLs\t${safeCount(results.urlMetrics, 'internalIndexable')}\t${safePercentage(safeCount(results.urlMetrics, 'internalIndexable'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tURLs Encountered
+Total Internal Non-Indexable URLs\t${safeCount(results.urlMetrics, 'internalNonIndexable')}\t${safePercentage(safeCount(results.urlMetrics, 'internalNonIndexable'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tURLs Encountered
+
+Response Codes
+All\t${safeCount(results.urlMetrics, 'total')}\t100.00%\t${safeCount(results.urlMetrics, 'total')}\tAll Internal & External Crawled URLs
+Success (2xx)\t${responseCategories['2xx']}\t${safePercentage(responseCategories['2xx'], safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll Internal & External Crawled URLs
+Redirection (3xx)\t${responseCategories['3xx']}\t${safePercentage(responseCategories['3xx'], safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll Internal & External Crawled URLs
+Client Error (4xx)\t${responseCategories['4xx']}\t${safePercentage(responseCategories['4xx'], safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll Internal & External Crawled URLs
+Server Error (5xx)\t${responseCategories['5xx']}\t${safePercentage(responseCategories['5xx'], safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll Internal & External Crawled URLs
+Other\t${responseCategories['other']}\t${safePercentage(responseCategories['other'], safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll Internal & External Crawled URLs
+
+URL
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+Non ASCII Characters\t${safeCount(results.urlMetrics, 'nonAscii')}\t${safePercentage(safeCount(results.urlMetrics, 'nonAscii'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+Underscores\t${safeCount(results.urlMetrics, 'underscores')}\t${safePercentage(safeCount(results.urlMetrics, 'underscores'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+Uppercase\t${safeCount(results.urlMetrics, 'uppercase')}\t${safePercentage(safeCount(results.urlMetrics, 'uppercase'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+Contains Space\t${safeCount(results.urlMetrics, 'containsSpace')}\t${safePercentage(safeCount(results.urlMetrics, 'containsSpace'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+Over 115 Characters\t${safeCount(results.urlMetrics, 'overLength')}\t${safePercentage(safeCount(results.urlMetrics, 'overLength'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+
+Page Titles
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Missing\t${safeCount(results.titleMetrics, 'missing')}\t${safePercentage(safeCount(results.titleMetrics, 'missing'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Duplicate\t${safeCount(results.titleMetrics, 'duplicate')}\t${safePercentage(safeCount(results.titleMetrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Over 60 Characters\t${safeCount(results.titleMetrics, 'tooLong')}\t${safePercentage(safeCount(results.titleMetrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Below 30 Characters\t${safeCount(results.titleMetrics, 'tooShort')}\t${safePercentage(safeCount(results.titleMetrics, 'tooShort'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Over 561 Pixels\t${safeCount(results.titleMetrics.pixelWidth, '561')}\t${safePercentage(safeCount(results.titleMetrics.pixelWidth, '561'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Below 200 Pixels\t${safeCount(results.titleMetrics.pixelWidth, '200')}\t${safePercentage(safeCount(results.titleMetrics.pixelWidth, '200'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+Meta Description
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Missing\t${safeCount(results.metaDescriptionMetrics, 'missing')}\t${safePercentage(safeCount(results.metaDescriptionMetrics, 'missing'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Duplicate\t${safeCount(results.metaDescriptionMetrics, 'duplicate')}\t${safePercentage(safeCount(results.metaDescriptionMetrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Over 155 Characters\t${safeCount(results.metaDescriptionMetrics, 'tooLong')}\t${safePercentage(safeCount(results.metaDescriptionMetrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Below 70 Characters\t${safeCount(results.metaDescriptionMetrics, 'tooShort')}\t${safePercentage(safeCount(results.metaDescriptionMetrics, 'tooShort'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Over 985 Pixels\t${safeCount(results.metaDescriptionMetrics.pixelWidth, '985')}\t${safePercentage(safeCount(results.metaDescriptionMetrics.pixelWidth, '985'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Below 400 Pixels\t${safeCount(results.metaDescriptionMetrics.pixelWidth, '400')}\t${safePercentage(safeCount(results.metaDescriptionMetrics.pixelWidth, '400'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+H1
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Missing\t${safeCount(results.h1Metrics, 'missing')}\t${safePercentage(safeCount(results.h1Metrics, 'missing'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Duplicate\t${safeCount(results.h1Metrics, 'duplicate')}\t${safePercentage(safeCount(results.h1Metrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Over 70 Characters\t${safeCount(results.h1Metrics, 'tooLong')}\t${safePercentage(safeCount(results.h1Metrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Multiple\t${safeCount(results.h1Metrics, 'multiple')}\t${safePercentage(safeCount(results.h1Metrics, 'multiple'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+H2
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Missing\t${safeCount(results.h2Metrics, 'missing')}\t${safePercentage(safeCount(results.h2Metrics, 'missing'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Duplicate\t${safeCount(results.h2Metrics, 'duplicate')}\t${safePercentage(safeCount(results.h2Metrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Over 70 Characters\t${safeCount(results.h2Metrics, 'tooLong')}\t${safePercentage(safeCount(results.h2Metrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Multiple\t${safeCount(results.h2Metrics, 'multiple')}\t${safePercentage(safeCount(results.h2Metrics, 'multiple'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Non-Sequential\t${safeCount(results.h2Metrics, 'nonSequential')}\t${safePercentage(safeCount(results.h2Metrics, 'nonSequential'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+Images
+All\t${safeCount(results.imageMetrics, 'total')}\t100.00%\t${safeCount(results.imageMetrics, 'total')}\tImages
+Missing Alt Text\t${safeCount(results.imageMetrics, 'missingAlt')}\t${safePercentage(safeCount(results.imageMetrics, 'missingAlt'), safeCount(results.imageMetrics, 'total'))}%\t${safeCount(results.imageMetrics, 'total')}\tImages
+Missing Alt Attribute\t${safeCount(results.imageMetrics, 'missingAltAttribute')}\t${safePercentage(safeCount(results.imageMetrics, 'missingAltAttribute'), safeCount(results.imageMetrics, 'total'))}%\t${safeCount(results.imageMetrics, 'total')}\tImages
+Alt Text Over 100 Characters\t${safeCount(results.imageMetrics, 'altTextTooLong')}\t${safePercentage(safeCount(results.imageMetrics, 'altTextTooLong'), safeCount(results.imageMetrics, 'total'))}%\t${safeCount(results.imageMetrics, 'total')}\tImages
+
+Links
+Pages Without Internal Outlinks\t${safeCount(results.linkMetrics, 'pagesWithoutInternalOutlinks')}\t${safePercentage(safeCount(results.linkMetrics, 'pagesWithoutInternalOutlinks'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Pages With High External Outlinks\t${safeCount(results.linkMetrics, 'pagesWithHighExternalOutlinks')}\t${safePercentage(safeCount(results.linkMetrics, 'pagesWithHighExternalOutlinks'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Internal Outlinks With No Anchor Text\t${safeCount(results.linkMetrics, 'internalOutlinksWithoutAnchorText')}\t${safePercentage(safeCount(results.linkMetrics, 'internalOutlinksWithoutAnchorText'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Non-Descriptive Anchor Text In Internal Outlinks\t${safeCount(results.linkMetrics, 'nonDescriptiveAnchorText')}\t${safePercentage(safeCount(results.linkMetrics, 'nonDescriptiveAnchorText'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+Security
+HTTP URLs\t${safeCount(results.securityMetrics, 'httpUrls')}\t${safePercentage(safeCount(results.securityMetrics, 'httpUrls'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll URLs
+Missing HSTS Header\t${safeCount(results.securityMetrics, 'missingHstsHeader')}\t${safePercentage(safeCount(results.securityMetrics, 'missingHstsHeader'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll URLs
+Missing Content-Security-Policy Header\t${safeCount(results.securityMetrics, 'missingContentSecurityPolicy')}\t${safePercentage(safeCount(results.securityMetrics, 'missingContentSecurityPolicy'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll URLs
+Missing X-Frame-Options Header\t${safeCount(results.securityMetrics, 'missingXFrameOptions')}\t${safePercentage(safeCount(results.securityMetrics, 'missingXFrameOptions'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll URLs
+Missing X-Content-Type-Options Header\t${safeCount(results.securityMetrics, 'missingXContentTypeOptions')}\t${safePercentage(safeCount(results.securityMetrics, 'missingXContentTypeOptions'), safeCount(results.urlMetrics, 'total'))}%\t${safeCount(results.urlMetrics, 'total')}\tAll URLs
+
+Hreflang
+Contains hreflang\t${safeCount(results.hreflangMetrics, 'pagesWithHreflang')}\t${safePercentage(safeCount(results.hreflangMetrics, 'pagesWithHreflang'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Missing Return Links\t${safeCount(results.hreflangMetrics, 'missingReturnLinks')}\t${safePercentage(safeCount(results.hreflangMetrics, 'missingReturnLinks'), safeCount(results.hreflangMetrics, 'pagesWithHreflang'))}%\t${safeCount(results.hreflangMetrics, 'pagesWithHreflang')}\tPages with hreflang
+Incorrect Language & Region Codes\t${safeCount(results.hreflangMetrics, 'incorrectLanguageCodes')}\t${safePercentage(safeCount(results.hreflangMetrics, 'incorrectLanguageCodes'), safeCount(results.hreflangMetrics, 'pagesWithHreflang'))}%\t${safeCount(results.hreflangMetrics, 'pagesWithHreflang')}\tPages with hreflang
+
+Canonicals
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Contains Canonical\t${safeCount(results.canonicalMetrics, 'selfReferencing') + safeCount(results.canonicalMetrics, 'nonSelf')}\t${safePercentage(safeCount(results.canonicalMetrics, 'selfReferencing') + safeCount(results.canonicalMetrics, 'nonSelf'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Self Referencing\t${safeCount(results.canonicalMetrics, 'selfReferencing')}\t${safePercentage(safeCount(results.canonicalMetrics, 'selfReferencing'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Canonicalised\t${safeCount(results.canonicalMetrics, 'nonSelf')}\t${safePercentage(safeCount(results.canonicalMetrics, 'nonSelf'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Missing\t${safeCount(results.canonicalMetrics, 'missing')}\t${safePercentage(safeCount(results.canonicalMetrics, 'missing'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+Content
+All\t${safeCount(results.urlMetrics, 'internal')}\t100.00%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Low Content Pages\t${safeCount(results.contentMetrics, 'lowContent')}\t${safePercentage(safeCount(results.contentMetrics, 'lowContent'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+Near Duplicates\t${safeCount(results.contentMetrics, 'duplicate')}\t${safePercentage(safeCount(results.contentMetrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+
+Orphaned URLs\t${results.orphanedUrls ? results.orphanedUrls.size : 0}\t${safePercentage(results.orphanedUrls ? results.orphanedUrls.size : 0, safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal URLs
+
+Pa11y Accessibility Issues
+Total Issues\t${(results.pa11y || []).reduce((total, result) => total + (result.issues ? result.issues.length : 0), 0)}
+
+JavaScript Errors
+Pages with JavaScript Errors\t${(results.contentAnalysis || []).filter(page => page && page.jsErrors && page.jsErrors.length > 0).length}\t${safePercentage((results.contentAnalysis || []).filter(page => page && page.jsErrors && page.jsErrors.length > 0).length, safeCount(results.urlMetrics, 'internal'))}%\t${safeCount(results.urlMetrics, 'internal')}\tInternal HTML pages
+    `;
+
+    return report;
+}
 // Set up command-line interface
 program
     .version('1.0.0')
