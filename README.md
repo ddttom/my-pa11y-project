@@ -56,7 +56,7 @@ Where:
 Example:
 
 ``` js
-node pa11y-sitemap-crawler.mjs -s https://example.com/sitemap.xml -o ./results -l 100
+node pa11y-sitemap-crawler.mjs -s https://example.com/sitemap.xml -o ./results
 ```
 
 This will crawl the sitemap at <https://example.com/sitemap.xml>, test up to 100 URLs, and save the results in the ./results directory.

@@ -25,7 +25,7 @@ let results = {
 };
 
 function debug(message) {
-    // console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+   // console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
 }
 
 debug('Script started');
@@ -312,6 +312,14 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
     debug(`Results will be saved to: ${outputDir}`);
 
     try {
+         // Validate the URL
+         console.log(sitemapUrl);
+         try {
+            new URL(sitemapUrl);
+        } catch (error) {
+            throw new Error(`Invalid sitemap URL: ${sitemapUrl}`);
+        }
+
         await fs.mkdir(outputDir, { recursive: true });
         await ensureCacheDir();
         debug(`Output and cache directories created`);
@@ -333,6 +341,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
 
         const baseUrl = new URL(urlsToTest[0]).origin;
         const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
+
 
         let results = {
             pa11y: [],
@@ -629,7 +638,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         }
     }
 }
-async function saveResults(results, outputDir) {
+async function saveResults(results, outputDir,sitemapUrl) {
     debug(`Saving results to: ${outputDir}`);
     try {
         // Pa11y results
@@ -856,7 +865,6 @@ function generateReport(results, sitemapUrl) {
     const safePercentage = (count, total) => total ? ((count / total) * 100).toFixed(2) : '0.00';
 
     const report = `
-Site Crawled\t${sitemapUrl}
 Date\t${new Date().toLocaleDateString()}
 Time\t${new Date().toLocaleTimeString()}
 
@@ -965,15 +973,20 @@ Pages with JavaScript Errors\t${(results.contentAnalysis || []).filter(page => p
 }
 // Set up command-line interface
 program
-    .version('1.0.0')
-    .description('Run pa11y accessibility, Lighthouse SEO tests, internal link checks, and content analysis on all URLs in a sitemap')
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
-    .option('-o, --output <directory>', 'Output directory for results', 'results')
+    .requiredOption('-o, --output <directory>', 'Output directory for results')
     .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
 const options = program.opts();
 
+runTestsOnSitemap(options.sitemap, options.output, options.limit)
+    .then(() => {
+        console.log('Crawl completed successfully');
+    })
+    .catch((error) => {
+        console.error('Crawl failed:', error);
+    });
 // Set up the shutdown handler
 setupShutdownHandler(options.output);
 
