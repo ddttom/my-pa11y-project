@@ -627,7 +627,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
     }
 }
 
-async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results) {
+async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers) {
     const $ = cheerio.load(html);
     
     updateTitleMetrics($, results);
