@@ -217,6 +217,49 @@ async function analyzeContent(html, pageUrl, jsErrors = []) {
                 stylesheets.push(href);
             }
         });
+        // Schema.org Usage
+        const schemaTypes = new Set();
+        $('script[type="application/ld+json"]').each((i, elem) => {
+            try {
+                const data = JSON.parse($(elem).html());
+                if (data['@type']) {
+                    schemaTypes.add(data['@type']);
+                }
+            } catch (error) {
+                console.error(`Error parsing structured data on ${pageUrl}:`, error.message);
+            }
+        });
+
+        // Page Size
+        const pageSize = Buffer.byteLength(html, 'utf8');
+
+        // Resource Usage
+        const resources = {
+            scripts: [],
+            stylesheets: [],
+            images: []
+        };
+
+        $('script').each((i, elem) => {
+            const src = $(elem).attr('src');
+            if (src) {
+                resources.scripts.push(src);
+            }
+        });
+
+        $('link[rel="stylesheet"]').each((i, elem) => {
+            const href = $(elem).attr('href');
+            if (href) {
+                resources.stylesheets.push(href);
+            }
+        });
+
+        $('img').each((i, elem) => {
+            const src = $(elem).attr('src');
+            if (src) {
+                resources.images.push(src);
+            }
+        });
 
         // Check for responsive meta tag
         const hasResponsiveMetaTag = $('meta[name="viewport"]').length > 0;
@@ -276,6 +319,9 @@ async function analyzeContent(html, pageUrl, jsErrors = []) {
 
         debug(`Content analysis completed for: ${pageUrl}`);
         return {
+            schemaTypes: Array.from(schemaTypes),
+            pageSize,
+            resources,
             url: pageUrl,
             title,
             metaDescription,
@@ -312,407 +358,236 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
     debug(`Results will be saved to: ${outputDir}`);
 
     try {
-         // Validate the URL
-         console.log(sitemapUrl);
-         try {
-            new URL(sitemapUrl);
-        } catch (error) {
-            throw new Error(`Invalid sitemap URL: ${sitemapUrl}`);
-        }
-
-        await fs.mkdir(outputDir, { recursive: true });
-        await ensureCacheDir();
-        debug(`Output and cache directories created`);
-
-        const parsedContent = await fetchAndParseSitemap(sitemapUrl);
-        debug('Content fetched and parsed successfully');
-
-        const urls = await extractUrls(parsedContent);
-        debug(`Found ${urls.length} URL(s) to process`);
-
-        if (urls.length === 0) {
-            console.error('No valid URLs found to process');
-            return;
-        }
-
-        const urlsToTest = limit === -1 ? urls : urls.slice(0, limit);
-        const totalTests = urlsToTest.length;
-        debug(`Testing ${totalTests} URL(s)${limit === -1 ? ' (all URLs)' : ''}`);
-
-        const baseUrl = new URL(urlsToTest[0]).origin;
-        const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
-
-
-        let results = {
-            pa11y: [],
-            internalLinks: [],
-            contentAnalysis: [],
-            orphanedUrls: new Set(),
-            urlMetrics: {
-                total: 0,
-                internal: 0,
-                external: 0,
-                internalIndexable: 0,
-                internalNonIndexable: 0,
-                nonAscii: 0,
-                uppercase: 0,
-                underscores: 0,
-                containsSpace: 0,
-                overLength: 0
-            },
-            responseCodeMetrics: {},
-            titleMetrics: {
-                missing: 0,
-                duplicate: 0,
-                tooLong: 0,
-                tooShort: 0,
-                pixelWidth: {}
-            },
-            metaDescriptionMetrics: {
-                missing: 0,
-                duplicate: 0,
-                tooLong: 0,
-                tooShort: 0,
-                pixelWidth: {}
-            },
-            h1Metrics: {
-                missing: 0,
-                duplicate: 0,
-                tooLong: 0,
-                multiple: 0
-            },
-            h2Metrics: {
-                missing: 0,
-                duplicate: 0,
-                tooLong: 0,
-                multiple: 0,
-                nonSequential: 0
-            },
-            contentMetrics: {
-                lowContent: 0,
-                duplicate: 0
-            },
-            imageMetrics: {
-                total: 0,
-                missingAlt: 0,
-                missingAltAttribute: 0,
-                largeImages: 0,
-                altTextTooLong: 0
-            },
-            linkMetrics: {
-                pagesWithoutInternalOutlinks: 0,
-                pagesWithHighExternalOutlinks: 0,
-                internalOutlinksWithoutAnchorText: 0,
-                nonDescriptiveAnchorText: 0
-            },
-            securityMetrics: {
-                httpUrls: 0,
-                missingHstsHeader: 0,
-                missingContentSecurityPolicy: 0,
-                missingXFrameOptions: 0,
-                missingXContentTypeOptions: 0
-            },
-            hreflangMetrics: {
-                pagesWithHreflang: 0,
-                missingReturnLinks: 0,
-                incorrectLanguageCodes: 0
-            },
-            canonicalMetrics: {
-                missing: 0,
-                selfReferencing: 0,
-                nonSelf: 0
-            }
-        };
-
-        for (let i = 0; i < urlsToTest.length; i++) {
-            if (isShuttingDown) break;
-            const testUrl = fixUrl(urlsToTest[i]);
-            console.log(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
-            debug(`Testing: ${testUrl} (${i + 1}/${totalTests})`);
-            
-            try {
-                console.log(`Attempting to get or render data for ${testUrl}`);
-                let { html, jsErrors, statusCode, headers } = await getOrRenderData(testUrl);
-                console.log(`Data retrieved for ${testUrl}`);
-
-                // Update URL metrics
-                results.urlMetrics.total++;
-                if (testUrl.startsWith(baseUrl)) {
-                    results.urlMetrics.internal++;
-                    // Check if URL is indexable (this is a simplified check)
-                    if (!html.includes('noindex') && statusCode === 200) {
-                        results.urlMetrics.internalIndexable++;
-                    } else {
-                        results.urlMetrics.internalNonIndexable++;
-                    }
-                } else {
-                    results.urlMetrics.external++;
-                }
-
-                // Check for non-ASCII characters, uppercase, underscores, spaces, and length
-                if (/[^\x00-\x7F]/.test(testUrl)) results.urlMetrics.nonAscii++;
-                if (/[A-Z]/.test(testUrl)) results.urlMetrics.uppercase++;
-                if (testUrl.includes('_')) results.urlMetrics.underscores++;
-                if (testUrl.includes(' ')) results.urlMetrics.containsSpace++;
-                if (testUrl.length > 115) results.urlMetrics.overLength++;
-
-                // Update response code metrics
-                results.responseCodeMetrics[statusCode] = (results.responseCodeMetrics[statusCode] || 0) + 1;
-
-                // Only proceed with further analysis if status code is 200
-                if (statusCode === 200) {
-                    const $ = cheerio.load(html);
-
-                    // Analyze title
-                    const title = $('title').text();
-                    if (!title) results.titleMetrics.missing++;
-                    else {
-                        const titleLength = title.length;
-                        if (titleLength > 60) results.titleMetrics.tooLong++;
-                        if (titleLength < 30) results.titleMetrics.tooShort++;
-                        const pixelWidth = estimatePixelWidth(title);
-                        results.titleMetrics.pixelWidth[pixelWidth] = (results.titleMetrics.pixelWidth[pixelWidth] || 0) + 1;
-                    }
-
-                    // Analyze meta description
-                    const metaDescription = $('meta[name="description"]').attr('content');
-                    if (!metaDescription) results.metaDescriptionMetrics.missing++;
-                    else {
-                        const descLength = metaDescription.length;
-                        if (descLength > 155) results.metaDescriptionMetrics.tooLong++;
-                        if (descLength < 70) results.metaDescriptionMetrics.tooShort++;
-                        const pixelWidth = estimatePixelWidth(metaDescription);
-                        results.metaDescriptionMetrics.pixelWidth[pixelWidth] = (results.metaDescriptionMetrics.pixelWidth[pixelWidth] || 0) + 1;
-                    }
-
-                    // Analyze H1
-                    const h1s = $('h1');
-                    if (h1s.length === 0) results.h1Metrics.missing++;
-                    if (h1s.length > 1) results.h1Metrics.multiple++;
-                    h1s.each((i, el) => {
-                        const h1Text = $(el).text();
-                        if (h1Text.length > 70) results.h1Metrics.tooLong++;
-                    });
-
-                    // Analyze H2
-                    const h2s = $('h2');
-                    if (h2s.length === 0) results.h2Metrics.missing++;
-                    if (h2s.length > 1) results.h2Metrics.multiple++;
-                    h2s.each((i, el) => {
-                        const h2Text = $(el).text();
-                        if (h2Text.length > 70) results.h2Metrics.tooLong++;
-                    });
-
-                    // Check for non-sequential H2
-                    if ($('h1').length && $('*').index($('h2').first()) < $('*').index($('h1').first())) {
-                        results.h2Metrics.nonSequential++;
-                    }
-
-                    // Analyze images
-                    $('img').each((i, el) => {
-                        results.imageMetrics.total++;
-                        const altText = $(el).attr('alt');
-                        if (!altText) {
-                            if ($(el).attr('alt') === undefined) {
-                                results.imageMetrics.missingAltAttribute++;
-                            } else {
-                                results.imageMetrics.missingAlt++;
-                            }
-                        } else if (altText.length > 100) {
-                            results.imageMetrics.altTextTooLong++;
-                        }
-                    });
-
-                    // Analyze links
-                    const internalLinkElements= $('a[href^="/"], a[href^="' + baseUrl + '"]');
-                    const externalLinks = $('a').not(internalLinkElements);
-                    if (internalLinkElements.length === 0) results.linkMetrics.pagesWithoutInternalOutlinks++;
-                    if (externalLinks.length > 100) results.linkMetrics.pagesWithHighExternalOutlinks++;
-                    internalLinkElements.each((i, el) => {
-                        if (!$(el).text().trim()) results.linkMetrics.internalOutlinksWithoutAnchorText++;
-                        if (['click here', 'read more', 'learn more'].includes($(el).text().toLowerCase().trim())) {
-                            results.linkMetrics.nonDescriptiveAnchorText++;
-                        }
-                    });
-
-                    // Analyze security headers
-                    if (testUrl.startsWith('http:')) results.securityMetrics.httpUrls++;
-                    if (!headers['strict-transport-security']) results.securityMetrics.missingHstsHeader++;
-                    if (!headers['content-security-policy']) results.securityMetrics.missingContentSecurityPolicy++;
-                    if (!headers['x-frame-options']) results.securityMetrics.missingXFrameOptions++;
-                    if (!headers['x-content-type-options']) results.securityMetrics.missingXContentTypeOptions++;
-
-                    // Analyze hreflang
-                    const hreflangTags = $('link[rel="alternate"][hreflang]');
-                    if (hreflangTags.length > 0) {
-                        results.hreflangMetrics.pagesWithHreflang++;
-                        // Additional hreflang checks could be added here
-                    }
-
-                    // Analyze canonical
-                    const canonicalTag = $('link[rel="canonical"]');
-                    if (canonicalTag.length === 0) {
-                        results.canonicalMetrics.missing++;
-                    } else {
-                        const canonicalUrl = canonicalTag.attr('href');
-                        if (canonicalUrl === testUrl) {
-                            results.canonicalMetrics.selfReferencing++;
-                        } else {
-                            results.canonicalMetrics.nonSelf++;
-                        }
-                    }
-
-                    // Run pa11y test
-                    console.log(`Running pa11y test for ${testUrl}`);
-                    const pa11yResult = await pa11y(testUrl, { ...pa11yOptions, html });
-                    results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
-
-                    // Get internal links
-                    const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
-                    results.internalLinks.push({ url: testUrl, links: internalLinks });
-
-                    // Analyze content
-                    const contentAnalysis = await analyzeContent(html, testUrl, jsErrors);
-                    if (contentAnalysis) {
-                        results.contentAnalysis.push(contentAnalysis);
-                        
-                        // Log heading errors
-                        if (contentAnalysis.headingErrors && contentAnalysis.headingErrors.length > 0) {
-                            console.warn(`Heading structure issues found for ${testUrl}`);
-                            contentAnalysis.headingErrors.forEach(error => console.warn(`- ${error}`));
-                        }
-                        
-                        // Log JavaScript errors
-                        if (jsErrors.length > 0) {
-                            console.warn(`JavaScript errors found for ${testUrl}`);
-                            jsErrors.forEach(error => console.warn(`- ${error}`));
-                        }
-                        
-                        // Log images without alt text
-                        if (contentAnalysis.imagesWithoutAlt && contentAnalysis.imagesWithoutAlt.length > 0) {
-                            console.warn(`Found ${contentAnalysis.imagesWithoutAlt.length} image(s) without alt text on ${testUrl}`);
-                        }
-                    } else {
-                        results.contentAnalysis.push({ url: testUrl, error: 'Content analysis failed' });
-                    }
-
-                    // Check for orphaned URLs
-                    if (!parsedContent.html) {
-                        internalLinks.forEach(link => {
-                            const strippedLink = link.split('#')[0];
-                            if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
-                                results.orphanedUrls.add(strippedLink);
-                            }
-                        });
-                    }
-                }
-
-                debug(`Completed testing: ${testUrl}`);
-            } catch (error) {
-                console.error(`Error processing ${testUrl}:`, error);
-                console.error('Error stack:', error.stack);
-                ['pa11y', 'internalLinks', 'contentAnalysis'].forEach(report => {
-                    results[report].push({ url: testUrl, error: error.message });
-                });
-            }
-        }
-
-        // Analyze common pa11y issues after processing all URLs
-        const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
-        await saveCommonPa11yIssues(commonPa11yIssues, outputDir);
-        
-        // Filter out repeated issues from main pa11y results
-        results.pa11y = filterRepeatedPa11yIssues(results.pa11y, commonPa11yIssues);
-
-        await saveResults(results, outputDir);
+        await validateAndPrepare(sitemapUrl, outputDir);
+        const urls = await getUrlsFromSitemap(sitemapUrl, limit);
+        const results = await processUrls(urls, sitemapUrl);
+        await postProcessResults(results);
+        await saveResults(results, outputDir, sitemapUrl);
         return results;
     } catch (error) {
-        console.error('Error in runTestsOnSitemap:', error.message);
-        console.error('Error stack:', error.stack);
-        // Attempt to save partial results if an error occurs
-        try {
-            await saveResults(results, outputDir);
-            debug('Partial results saved due to error');
-        } catch (saveError) {
-            console.error('Error saving partial results:', saveError.message);
-        }
+        handleError(error, outputDir);
     }
 }
-async function saveResults(results, outputDir,sitemapUrl) {
-    debug(`Saving results to: ${outputDir}`);
+
+async function validateAndPrepare(sitemapUrl, outputDir) {
+    validateUrl(sitemapUrl);
+    await createDirectories(outputDir);
+}
+
+function validateUrl(url) {
     try {
-        // Pa11y results
-        await saveRawPa11yResult(results, outputDir);
+        new URL(url);
+    } catch (error) {
+        throw new Error(`Invalid sitemap URL: ${url}`);
+    }
+}
 
-        const pa11yCsv = formatCsv(results.pa11y.flatMap(result => 
-            result.issues ? result.issues.map(issue => ({
-                url: result.url,
-                type: issue.type,
-                code: issue.code,
-                message: issue.message,
-                context: issue.context,
-                selector: issue.selector
-            })) : [{ url: result.url, error: result.error }]
-        ), ['url', 'type', 'code', 'message', 'context', 'selector', 'error']);
-        await fs.writeFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
-        debug('Pa11y results saved');
+async function createDirectories(outputDir) {
+    await fs.mkdir(outputDir, { recursive: true });
+    await ensureCacheDir();
+    debug(`Output and cache directories created`);
+}
 
-        // Internal links results
-        const internalLinksCsv = formatCsv(results.internalLinks.flatMap(result => 
-            result.links ? result.links.map(link => ({ source: result.url, target: link })) 
-                         : [{ source: result.url, error: result.error }]
-        ), ['source', 'target', 'error']);
-        await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
-        debug('Internal links results saved');
+async function getUrlsFromSitemap(sitemapUrl, limit) {
+    const parsedContent = await fetchAndParseSitemap(sitemapUrl);
+    const urls = await extractUrls(parsedContent);
+    debug(`Found ${urls.length} URL(s) to process`);
 
-        // Images without alt text results
-        const imagesWithoutAltCsv = formatCsv(
-        results.contentAnalysis.flatMap(result => result.imagesWithoutAlt || []),
-        ['url', 'src', 'location']);
-        await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv);
-        debug('Images without alt analysis results saved');
+    if (urls.length === 0) {
+        throw new Error('No valid URLs found to process');
+    }
 
-        // Content analysis results
-        const contentAnalysisCsv = formatCsv(results.contentAnalysis.map(result => ({
-            url: result.url,
-            title: result.title || '',
-            metaDescription: result.metaDescription || '',
-            h1: result.h1 || '',
-            wordCount: result.wordCount || '',
-            h1Count: result.headings?.h1 || '',
-            h2Count: result.headings?.h2 || '',
-            h3Count: result.headings?.h3 || '',
-            h4Count: result.headings?.h4 || '',
-            h5Count: result.headings?.h5 || '',
-            h6Count: result.headings?.h6 || '',
-            keywords: result.keywords ? result.keywords.join(', ') : '',
-            headingErrors: result.headingErrors ? result.headingErrors.join('; ') : '',
-            imageCount: result.images ? result.images.length : '',
-            imagesWithoutAlt: result.images ? result.images.filter(img => !img.alt).length : '',
-            jsErrors: result.jsErrors ? result.jsErrors.join('\n') : '',
-            error: result.error || ''
-        })), ['url', 'title', 'metaDescription', 'h1', 'wordCount', 'h1Count', 'h2Count', 'h3Count', 'h4Count', 'h5Count', 'h6Count', 'keywords', 'headingErrors', 'imageCount', 'imagesWithoutAlt', 'jsErrors', 'error']);
-        await fs.writeFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv);
-        debug('Content analysis results saved');
+    return limit === -1 ? urls : urls.slice(0, limit);
+}
 
-        // Orphaned URLs
-        if (results.orphanedUrls && results.orphanedUrls instanceof Set && results.orphanedUrls.size > 0) {
-            const orphanedUrlsCsv = formatCsv([...results.orphanedUrls].map(url => ({ url })), ['url']);
-            await fs.writeFile(path.join(outputDir, 'orphaned_urls.csv'), orphanedUrlsCsv);
-            debug('Orphaned URLs saved');
-        } else {
-            debug('No orphaned URLs to save');
+async function processUrls(urls, sitemapUrl) {
+    const totalTests = urls.length;
+    debug(`Testing ${totalTests} URL(s)${totalTests === urls.length ? ' (all URLs)' : ''}`);
+
+    const baseUrl = new URL(urls[0]).origin;
+    const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
+
+    let results = initializeResults();
+
+    for (let i = 0; i < urls.length; i++) {
+        if (isShuttingDown) break;
+        const testUrl = fixUrl(urls[i]);
+        console.log(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
+        await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results);
+    }
+
+    return results;
+}
+
+async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, results) {
+    debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
+    
+    try {
+        let { html, jsErrors, statusCode, headers } = await getOrRenderData(testUrl);
+        updateUrlMetrics(testUrl, baseUrl, html, statusCode, results);
+        updateResponseCodeMetrics(statusCode, results);
+
+        if (statusCode === 200) {
+            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results);
         }
 
-        const report = generateReport(results,sitemapUrl); ;
-        await fs.writeFile(path.join(outputDir, 'seo_report.txt'), report);
-        debug('SEO report saved');
+        debug(`Completed testing: ${testUrl}`);
+    } catch (error) {
+        handleUrlProcessingError(testUrl, error, results);
+    }
+}
 
+async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results) {
+    const $ = cheerio.load(html);
+    
+    updateTitleMetrics($, results);
+    updateMetaDescriptionMetrics($, results);
+    updateHeadingMetrics($, results);
+    updateImageMetrics($, results);
+    updateLinkMetrics($, baseUrl, results);
+    updateSecurityMetrics(testUrl, headers, results);
+    updateHreflangMetrics($, results);
+    updateCanonicalMetrics($, testUrl, results);
+
+    await runPa11yTest(testUrl, html, results);
+    const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
+    updateInternalLinks(testUrl, internalLinks, results);
+    const contentAnalysis = await analyzeContent(html, testUrl, jsErrors);
+    updateContentAnalysis(contentAnalysis, results);
+
+    checkOrphanedUrls(internalLinks, sitemapUrls, results);
+}
+
+async function postProcessResults(results) {
+    const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
+    await saveCommonPa11yIssues(commonPa11yIssues, outputDir);
+    results.pa11y = filterRepeatedPa11yIssues(results.pa11y, commonPa11yIssues);
+}
+
+function handleError(error, outputDir) {
+    console.error('Error in runTestsOnSitemap:', error.message);
+    console.error('Error stack:', error.stack);
+    try {
+        saveResults(results, outputDir);
+        debug('Partial results saved due to error');
+    } catch (saveError) {
+        console.error('Error saving partial results:', saveError.message);
+    }
+}
+async function saveResults(results, outputDir, sitemapUrl) {
+    debug(`Saving results to: ${outputDir}`);
+    try {
+        await savePa11yResults(results, outputDir);
+        await saveInternalLinks(results, outputDir);
+        await saveImagesWithoutAlt(results, outputDir);
+        await saveContentAnalysis(results, outputDir);
+        await saveOrphanedUrls(results, outputDir);
+        await saveSeoReport(results, outputDir, sitemapUrl);
         debug(`All results saved to ${outputDir}`);
     } catch (error) {
         console.error(`Error writing results to ${outputDir}:`, error);
         console.error('Error details:', error.stack);
     }
+}
+
+async function savePa11yResults(results, outputDir) {
+    await saveRawPa11yResult(results, outputDir);
+    const pa11yCsv = formatCsv(flattenPa11yResults(results.pa11y), 
+        ['url', 'type', 'code', 'message', 'context', 'selector', 'error']);
+    await fs.writeFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
+    debug('Pa11y results saved');
+}
+
+function flattenPa11yResults(pa11yResults) {
+    return pa11yResults.flatMap(result => 
+        result.issues ? result.issues.map(issue => ({
+            url: result.url,
+            type: issue.type,
+            code: issue.code,
+            message: issue.message,
+            context: issue.context,
+            selector: issue.selector
+        })) : [{ url: result.url, error: result.error }]
+    );
+}
+
+async function saveInternalLinks(results, outputDir) {
+    const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks), 
+        ['source', 'target', 'error']);
+    await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
+    debug('Internal links results saved');
+}
+
+function flattenInternalLinks(internalLinks) {
+    return internalLinks.flatMap(result => 
+        result.links ? result.links.map(link => ({ source: result.url, target: link })) 
+                     : [{ source: result.url, error: result.error }]
+    );
+}
+
+async function saveImagesWithoutAlt(results, outputDir) {
+    const imagesWithoutAltCsv = formatCsv(
+        results.contentAnalysis.flatMap(result => result.imagesWithoutAlt || []),
+        ['url', 'src', 'location']);
+    await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv);
+    debug('Images without alt analysis results saved');
+}
+
+async function saveContentAnalysis(results, outputDir) {
+    const contentAnalysisCsv = formatCsv(results.contentAnalysis.map(formatContentAnalysisResult), 
+        ['url', 'title', 'metaDescription', 'h1', 'wordCount', 'h1Count', 'h2Count', 'h3Count', 
+         'h4Count', 'h5Count', 'h6Count', 'keywords', 'headingErrors', 'imageCount', 
+         'imagesWithoutAlt', 'jsErrors', 'schemaTypes', 'pageSize', 'scriptsCount', 
+         'stylesheetsCount', 'imagesCount', 'totalResourceCount', 'error']);
+    await fs.writeFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv);
+    debug('Content analysis results saved');
+}
+
+function formatContentAnalysisResult(result) {
+    return {
+        url: result.url,
+        title: result.title || '',
+        metaDescription: result.metaDescription || '',
+        h1: result.h1 || '',
+        wordCount: result.wordCount || '',
+        h1Count: result.headings?.h1 || '',
+        h2Count: result.headings?.h2 || '',
+        h3Count: result.headings?.h3 || '',
+        h4Count: result.headings?.h4 || '',
+        h5Count: result.headings?.h5 || '',
+        h6Count: result.headings?.h6 || '',
+        keywords: result.keywords ? result.keywords.join(', ') : '',
+        headingErrors: result.headingErrors ? result.headingErrors.join('; ') : '',
+        imageCount: result.images ? result.images.length : '',
+        imagesWithoutAlt: result.images ? result.images.filter(img => !img.alt).length : '',
+        jsErrors: result.jsErrors ? result.jsErrors.join('\n') : '',
+        schemaTypes: result.schemaTypes ? result.schemaTypes.join(', ') : '',
+        pageSize: result.pageSize || '',
+        scriptsCount: result.resources ? result.resources.scripts.length : '',
+        stylesheetsCount: result.resources ? result.resources.stylesheets.length : '',
+        imagesCount: result.resources ? result.resources.images.length : '',
+        totalResourceCount: result.resources ? 
+            result.resources.scripts.length + 
+            result.resources.stylesheets.length + 
+            result.resources.images.length : '',
+        error: result.error || ''
+    };
+}
+
+async function saveOrphanedUrls(results, outputDir) {
+    if (results.orphanedUrls && results.orphanedUrls instanceof Set && results.orphanedUrls.size > 0) {
+        const orphanedUrlsCsv = formatCsv([...results.orphanedUrls].map(url => ({ url })), ['url']);
+        await fs.writeFile(path.join(outputDir, 'orphaned_urls.csv'), orphanedUrlsCsv);
+        debug('Orphaned URLs saved');
+    } else {
+        debug('No orphaned URLs to save');
+    }
+}
+
+async function saveSeoReport(results, outputDir, sitemapUrl) {
+    const report = generateReport(results, sitemapUrl);
+    await fs.writeFile(path.join(outputDir, 'seo_report.txt'), report);
+    debug('SEO report saved');
 }
 async function collectJsErrors(url) {
     let browser;
