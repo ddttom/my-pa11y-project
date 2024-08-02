@@ -643,8 +643,8 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             const $ = cheerio.load(html);
             const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
             
-            // Merge pageData with additional data
-            const enhancedPageData = {
+             // Merge pageData with additional data
+             const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
                 internalLinks: internalLinks,
@@ -662,13 +662,13 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
                 ...enhancedPageData,
                 performanceMetrics: performanceMetrics
             });
+            
             results.seoScores.push({
                 url: testUrl,
-                score: seoScore.score,
+                score: seoScore.score, // Make sure this is included
                 details: seoScore.details
             });
         }
-
         debug(`Completed testing: ${testUrl}`);
     } catch (error) {
         handleUrlProcessingError(testUrl, error, results);
@@ -739,7 +739,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
 async function saveSeoScores(results, outputDir) {
     const seoScoresFormatted = results.seoScores.map(score => ({
         url: score.url,
-        score: score.score, // Ensure this is included
+        score: score.score, // This should now be populated
         'details.titleOptimization': score.details.titleOptimization,
         'details.metaDescriptionOptimization': score.details.metaDescriptionOptimization,
         'details.urlStructure': score.details.urlStructure,
