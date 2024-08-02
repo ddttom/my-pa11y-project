@@ -1324,7 +1324,7 @@ function safeCount(obj, prop) {
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .requiredOption('-o, --output <directory>', 'Output directory for results')
-    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
+    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, 5)
     .parse(process.argv);
 
 const options = program.opts();
