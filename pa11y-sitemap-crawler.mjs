@@ -662,7 +662,11 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
                 ...enhancedPageData,
                 performanceMetrics: performanceMetrics
             });
-            results.seoScores.push({ url: testUrl, ...seoScore });
+            results.seoScores.push({
+                url: testUrl,
+                score: seoScore.score,
+                details: seoScore.details
+            });
         }
 
         debug(`Completed testing: ${testUrl}`);
@@ -735,8 +739,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
 async function saveSeoScores(results, outputDir) {
     const seoScoresFormatted = results.seoScores.map(score => ({
         url: score.url,
-        score: score.score,
-        maxScore: score.maxScore,
+        score: score.score, // Ensure this is included
         'details.titleOptimization': score.details.titleOptimization,
         'details.metaDescriptionOptimization': score.details.metaDescriptionOptimization,
         'details.urlStructure': score.details.urlStructure,
@@ -752,7 +755,7 @@ async function saveSeoScores(results, outputDir) {
     }));
 
     const seoScoresCsv = formatCsv(seoScoresFormatted, 
-        ['url', 'score', 'maxScore', 'details.titleOptimization', 'details.metaDescriptionOptimization',
+        ['url', 'score', 'details.titleOptimization', 'details.metaDescriptionOptimization',
          'details.urlStructure', 'details.h1Optimization', 'details.contentLength', 'details.internalLinking',
          'details.imageOptimization', 'details.pageSpeed', 'details.mobileOptimization', 'details.securityFactors',
          'details.structuredData', 'details.socialMediaTags']);

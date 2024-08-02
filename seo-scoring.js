@@ -100,8 +100,7 @@ const SEO_WEIGHTS = {
     const finalScore = (totalScore / maxPossibleScore) * 100;
   
     return {
-      score: Math.round(finalScore),
-      maxScore: 100,
+      score: Math.round(finalScore), // This ensures the score is included
       details: {
         titleOptimization: titleScore,
         metaDescriptionOptimization: metaDescScore,
