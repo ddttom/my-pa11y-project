@@ -737,22 +737,41 @@ async function saveResults(results, outputDir, sitemapUrl) {
 }
 
 async function saveSeoScores(results, outputDir) {
-    const seoScoresFormatted = results.seoScores.map(score => ({
-        url: score.url,
-        score: score.score, // This should now be populated
-        'details.titleOptimization': score.details.titleOptimization,
-        'details.metaDescriptionOptimization': score.details.metaDescriptionOptimization,
-        'details.urlStructure': score.details.urlStructure,
-        'details.h1Optimization': score.details.h1Optimization,
-        'details.contentLength': score.details.contentLength,
-        'details.internalLinking': score.details.internalLinking,
-        'details.imageOptimization': score.details.imageOptimization,
-        'details.pageSpeed': score.details.pageSpeed,
-        'details.mobileOptimization': score.details.mobileOptimization,
-        'details.securityFactors': score.details.securityFactors,
-        'details.structuredData': score.details.structuredData,
-        'details.socialMediaTags': score.details.socialMediaTags
-    }));
+    const seoScoresFormatted = results.seoScores.map(score => {
+        const roundedScore = {};
+        for (const [key, value] of Object.entries(score)) {
+            if (key === 'url') {
+                roundedScore[key] = value;
+            } else if (key === 'details') {
+                roundedScore[key] = {};
+                for (const [detailKey, detailValue] of Object.entries(value)) {
+                    roundedScore[key][detailKey] = typeof detailValue === 'number' 
+                        ? Number(detailValue.toFixed(2)) 
+                        : detailValue;
+                }
+            } else {
+                roundedScore[key] = typeof value === 'number' 
+                    ? Number(value.toFixed(2)) 
+                    : value;
+            }
+        }
+        return {
+            url: roundedScore.url,
+            score: roundedScore.score,
+            'details.titleOptimization': roundedScore.details.titleOptimization,
+            'details.metaDescriptionOptimization': roundedScore.details.metaDescriptionOptimization,
+            'details.urlStructure': roundedScore.details.urlStructure,
+            'details.h1Optimization': roundedScore.details.h1Optimization,
+            'details.contentLength': roundedScore.details.contentLength,
+            'details.internalLinking': roundedScore.details.internalLinking,
+            'details.imageOptimization': roundedScore.details.imageOptimization,
+            'details.pageSpeed': roundedScore.details.pageSpeed,
+            'details.mobileOptimization': roundedScore.details.mobileOptimization,
+            'details.securityFactors': roundedScore.details.securityFactors,
+            'details.structuredData': roundedScore.details.structuredData,
+            'details.socialMediaTags': roundedScore.details.socialMediaTags
+        };
+    });
 
     const seoScoresCsv = formatCsv(seoScoresFormatted, 
         ['url', 'score', 'details.titleOptimization', 'details.metaDescriptionOptimization',
@@ -1097,7 +1116,15 @@ function generateReport(results, sitemapUrl) {
         ...generatePerformanceAnalysis(results)
     ];
 
-    return stringify(reportData);
+    // Round all numeric values in the report to 2 decimal places
+    const roundedReportData = reportData.map(row => 
+        row.map(cell => 
+            typeof cell === 'number' ? Number(cell.toFixed(2)) : cell
+        )
+    );
+
+    return stringify(roundedReportData)
+
 }
 function generateSeoScoreAnalysis(results) {
     const averageScore = results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length;
