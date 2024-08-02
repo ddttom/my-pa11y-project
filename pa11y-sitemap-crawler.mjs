@@ -776,7 +776,7 @@ async function saveOrphanedUrls(results, outputDir) {
 
 async function saveSeoReport(results, outputDir, sitemapUrl) {
     const report = generateReport(results, sitemapUrl);
-    await fs.writeFile(path.join(outputDir, 'seo_report.txt'), report);
+    await fs.writeFile(path.join(outputDir, 'seo_report.csv'), report);
     debug('SEO report saved');
 }
 async function collectJsErrors(url) {
