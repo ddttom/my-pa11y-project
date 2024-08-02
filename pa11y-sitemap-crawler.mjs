@@ -13,6 +13,7 @@ import pkg from 'puppeteer';
 const { launch } = pkg;
 import puppeteer from 'puppeteer';
 import { ensureCacheDir, getOrRenderData } from './caching.js';
+import { calculateSeoScore } from './seo-scoring.js';
 
 
 let isShuttingDown = false;
@@ -134,6 +135,25 @@ async function getInternalLinks(html, pageUrl, baseUrl) {
 
     return Array.from(links);
 }
+
+async function analyzePerformance(url) {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(url, {waitUntil: 'networkidle0'});
+
+    const performanceMetrics = await page.evaluate(() => {
+      const timing = performance.timing;
+      return {
+        loadTime: timing.loadEventEnd - timing.navigationStart,
+        domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+        firstPaint: performance.getEntriesByType('paint')[0].startTime,
+        firstContentfulPaint: performance.getEntriesByType('paint')[1].startTime
+      };
+    });
+
+    await browser.close();
+    return performanceMetrics;
+  }
 
 
 async function analyzeContent(html, pageUrl, jsErrors = []) {
@@ -609,16 +629,30 @@ async function processUrls(urls, sitemapUrl) {
     return results;
 }
 
+  
+  
 async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, results) {
     debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
     
     try {
-        let { html, jsErrors, statusCode, headers } = await getOrRenderData(testUrl);
+        let { html, jsErrors, statusCode, headers, pageData } = await getOrRenderData(testUrl);
         updateUrlMetrics(testUrl, baseUrl, html, statusCode, results);
         updateResponseCodeMetrics(statusCode, results);
 
         if (statusCode === 200) {
-            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers);
+            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, pageData);
+            
+            // Perform performance analysis first
+            const performanceMetrics = await analyzePerformance(testUrl);
+            results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
+
+            // Then calculate SEO score using the cached pageData and performance metrics
+            const seoScore = calculateSeoScore({
+                ...pageData,
+                url: testUrl,
+                performanceMetrics: performanceMetrics
+            });
+            results.seoScores.push({ url: testUrl, ...seoScore });
         }
 
         debug(`Completed testing: ${testUrl}`);
@@ -627,7 +661,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
     }
 }
 
-async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers) {
+async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, pageData) {
     const $ = cheerio.load(html);
     
     updateTitleMetrics($, results);
@@ -642,12 +676,18 @@ async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls,
     await runPa11yTest(testUrl, html, results);
     const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
     updateInternalLinks(testUrl, internalLinks, results);
-    const contentAnalysis = await analyzeContent(html, testUrl, jsErrors);
+    
+    // Use the cached pageData instead of re-analyzing
+    const contentAnalysis = {
+        url: testUrl,
+        ...pageData,
+        jsErrors: jsErrors
+    };
+    
     updateContentAnalysis(contentAnalysis, results);
 
     checkOrphanedUrls(internalLinks, sitemapUrls, results);
 }
-
 async function postProcessResults(results, outputDir) {
     const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
     await saveCommonPa11yIssues(commonPa11yIssues, outputDir);
@@ -673,11 +713,30 @@ async function saveResults(results, outputDir, sitemapUrl) {
         await saveContentAnalysis(results, outputDir);
         await saveOrphanedUrls(results, outputDir);
         await saveSeoReport(results, outputDir, sitemapUrl);
+        await saveSeoScores(results, outputDir);
+        await savePerformanceAnalysis(results, outputDir);
         debug(`All results saved to ${outputDir}`);
     } catch (error) {
         console.error(`Error writing results to ${outputDir}:`, error);
         console.error('Error details:', error.stack);
     }
+}
+
+async function saveSeoScores(results, outputDir) {
+    const seoScoresCsv = formatCsv(results.seoScores, 
+        ['url', 'score', 'maxScore', 'details.titleOptimization', 'details.metaDescriptionOptimization',
+         'details.urlStructure', 'details.h1Optimization', 'details.contentLength', 'details.internalLinking',
+         'details.imageOptimization', 'details.pageSpeed', 'details.mobileOptimization', 'details.securityFactors',
+         'details.structuredData', 'details.socialMediaTags']);
+    await fs.writeFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv);
+    debug('SEO scores saved');
+}
+
+async function savePerformanceAnalysis(results, outputDir) {
+    const performanceAnalysisCsv = formatCsv(results.performanceAnalysis, 
+        ['url', 'loadTime', 'domContentLoaded', 'firstPaint', 'firstContentfulPaint']);
+    await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
+    debug('Performance analysis saved');
 }
 
 async function savePa11yResults(results, outputDir) {
@@ -979,7 +1038,9 @@ function initializeResults() {
         contentMetrics: {
             lowContent: 0,
             duplicate: 0
-        }
+        },
+        seoScores: [],
+        performanceAnalysis: []
     };
 }
 
@@ -1000,23 +1061,43 @@ function generateReport(results, sitemapUrl) {
         ...generateContentAnalysis(results),
         ...generateOrphanedUrlsAnalysis(results),
         ...generatePa11yAnalysis(results),
-        ...generateJavaScriptErrorsAnalysis(results)
+        ...generateJavaScriptErrorsAnalysis(results),
+        ...generateSeoScoreAnalysis(results),
+        ...generatePerformanceAnalysis(results)
     ];
 
     return stringify(reportData);
 }
+function generateSeoScoreAnalysis(results) {
+    const averageScore = results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length;
+    return [
+        ['SEO Scores'],
+        generateMetricRow('Average SEO Score', averageScore.toFixed(2)),
+        generateMetricRow('URLs Analyzed', results.seoScores.length),
+        []
+    ];
+}
 
+function generatePerformanceAnalysis(results) {
+    const averageLoadTime = results.performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / results.performanceAnalysis.length;
+    return [
+        ['Performance Analysis'],
+        generateMetricRow('Average Load Time (ms)', averageLoadTime.toFixed(2)),
+        generateMetricRow('URLs Analyzed', results.performanceAnalysis.length),
+        []
+    ];
+}
 
 function generatePageTitleAnalysis(results) {
     return [
         ['Page Titles'],
-        generateMetricRow('All', safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Missing', safeCount(results.titleMetrics, 'missing'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Duplicate', safeCount(results.titleMetrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Over 60 Characters', safeCount(results.titleMetrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Below 30 Characters', safeCount(results.titleMetrics, 'tooShort'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Over 561 Pixels', safeCount(results.titleMetrics.pixelWidth, '561'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Below 200 Pixels', safeCount(results.titleMetrics.pixelWidth, '200'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('All', safeCount(results.urlMetrics, 'internal')),
+        generateMetricRow('Missing', safeCount(results.titleMetrics, 'missing')),
+        generateMetricRow('Duplicate', safeCount(results.titleMetrics, 'duplicate')),
+        generateMetricRow('Over 60 Characters', safeCount(results.titleMetrics, 'tooLong')),
+        generateMetricRow('Below 30 Characters', safeCount(results.titleMetrics, 'tooShort')),
+        generateMetricRow('Over 561 Pixels', safeCount(results.titleMetrics.pixelWidth, '561')),
+        generateMetricRow('Below 200 Pixels', safeCount(results.titleMetrics.pixelWidth, '200')),
         []
     ];
 }
@@ -1048,7 +1129,7 @@ function generateHeader() {
 
 function generateSummary(results, responseCategories) {
     return [
-        ['Summary', 'URLs', '% of Total', 'Total URLs', 'Total URLs Description'],
+        ['Summary', 'URLs'],
         ...generateSummaryRows(results, responseCategories),
         [] // Empty row for spacing
     ];
@@ -1056,49 +1137,50 @@ function generateSummary(results, responseCategories) {
 
 function generateSummaryRows(results, responseCategories) {
     return [
-        generateMetricRow('Total URLs Encountered', results.urlMetrics.total, results.urlMetrics.total, 'URLs Encountered'),
-        generateMetricRow('Total Internal URLs', results.urlMetrics.internal, results.urlMetrics.total, 'URLs Encountered'),
-        generateMetricRow('Total External URLs', results.urlMetrics.external, results.urlMetrics.total, 'URLs Encountered'),
-        generateMetricRow('Total Internal Indexable URLs', results.urlMetrics.internalIndexable, results.urlMetrics.total, 'URLs Encountered'),
-        generateMetricRow('Total Internal Non-Indexable URLs', results.urlMetrics.internalNonIndexable, results.urlMetrics.total, 'URLs Encountered'),
+        generateMetricRow('Total URLs Encountered', results.urlMetrics.total),
+        generateMetricRow('Total Internal URLs', results.urlMetrics.internal),
+        generateMetricRow('Total External URLs', results.urlMetrics.external),
+        generateMetricRow('Total Internal Indexable URLs', results.urlMetrics.internalIndexable),
+        generateMetricRow('Total Internal Non-Indexable URLs', results.urlMetrics.internalNonIndexable),
         [],
         ['Response Codes'],
-        generateMetricRow('All', results.urlMetrics.total, results.urlMetrics.total, 'All Internal & External Crawled URLs'),
-        generateMetricRow('Success (2xx)', responseCategories['2xx'], results.urlMetrics.total, 'All Internal & External Crawled URLs'),
-        generateMetricRow('Redirection (3xx)', responseCategories['3xx'], results.urlMetrics.total, 'All Internal & External Crawled URLs'),
-        generateMetricRow('Client Error (4xx)', responseCategories['4xx'], results.urlMetrics.total, 'All Internal & External Crawled URLs'),
-        generateMetricRow('Server Error (5xx)', responseCategories['5xx'], results.urlMetrics.total, 'All Internal & External Crawled URLs'),
-        generateMetricRow('Other', responseCategories['other'], results.urlMetrics.total, 'All Internal & External Crawled URLs')
+        generateMetricRow('All', results.urlMetrics.total),
+        generateMetricRow('Success (2xx)', responseCategories['2xx']),
+        generateMetricRow('Redirection (3xx)', responseCategories['3xx']),
+        generateMetricRow('Client Error (4xx)', responseCategories['4xx']),
+        generateMetricRow('Server Error (5xx)', responseCategories['5xx']),
+        generateMetricRow('Other', responseCategories['other'])
     ];
 }
 
-function generateMetricRow(label, count, total, description) {
-    const percentage = safePercentage(count, total);
-    return [label, count, `${percentage}%`, total, description];
+function generateMetricRow(label, count) {
+    return [label, count];
 }
+
 
 function generateUrlAnalysis(results) {
     return [
         ['URL'],
-        generateMetricRow('All', results.urlMetrics.internal, results.urlMetrics.internal, 'Internal URLs'),
-        generateMetricRow('Non ASCII Characters', results.urlMetrics.nonAscii, results.urlMetrics.internal, 'Internal URLs'),
-        generateMetricRow('Underscores', results.urlMetrics.underscores, results.urlMetrics.internal, 'Internal URLs'),
-        generateMetricRow('Uppercase', results.urlMetrics.uppercase, results.urlMetrics.internal, 'Internal URLs'),
-        generateMetricRow('Contains Space', results.urlMetrics.containsSpace, results.urlMetrics.internal, 'Internal URLs'),
-        generateMetricRow('Over 115 Characters', results.urlMetrics.overLength, results.urlMetrics.internal, 'Internal URLs'),
-        [] // Empty row for spacing
+        generateMetricRow('All', results.urlMetrics.internal),
+        generateMetricRow('Non ASCII Characters', results.urlMetrics.nonAscii),
+        generateMetricRow('Underscores', results.urlMetrics.underscores),
+        generateMetricRow('Uppercase', results.urlMetrics.uppercase),
+        generateMetricRow('Contains Space', results.urlMetrics.containsSpace),
+        generateMetricRow('Over 115 Characters', results.urlMetrics.overLength),
+        []
     ];
 }
+
 function generateMetaDescriptionAnalysis(results) {
     return [
         ['Meta Description'],
-        generateMetricRow('All', safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Missing', safeCount(results.metaDescriptionMetrics, 'missing'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Duplicate', safeCount(results.metaDescriptionMetrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Over 155 Characters', safeCount(results.metaDescriptionMetrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Below 70 Characters', safeCount(results.metaDescriptionMetrics, 'tooShort'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Over 985 Pixels', safeCount(results.metaDescriptionMetrics.pixelWidth, '985'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Below 400 Pixels', safeCount(results.metaDescriptionMetrics.pixelWidth, '400'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('All', safeCount(results.urlMetrics, 'internal')),
+        generateMetricRow('Missing', safeCount(results.metaDescriptionMetrics, 'missing')),
+        generateMetricRow('Duplicate', safeCount(results.metaDescriptionMetrics, 'duplicate')),
+        generateMetricRow('Over 155 Characters', safeCount(results.metaDescriptionMetrics, 'tooLong')),
+        generateMetricRow('Below 70 Characters', safeCount(results.metaDescriptionMetrics, 'tooShort')),
+        generateMetricRow('Over 985 Pixels', safeCount(results.metaDescriptionMetrics.pixelWidth, '985')),
+        generateMetricRow('Below 400 Pixels', safeCount(results.metaDescriptionMetrics.pixelWidth, '400')),
         []
     ];
 }
@@ -1106,19 +1188,19 @@ function generateMetaDescriptionAnalysis(results) {
 function generateHeadingAnalysis(results) {
     return [
         ['H1'],
-        generateMetricRow('All', safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Missing', safeCount(results.h1Metrics, 'missing'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Duplicate', safeCount(results.h1Metrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Over 70 Characters', safeCount(results.h1Metrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Multiple', safeCount(results.h1Metrics, 'multiple'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('All', safeCount(results.urlMetrics, 'internal')),
+        generateMetricRow('Missing', safeCount(results.h1Metrics, 'missing')),
+        generateMetricRow('Duplicate', safeCount(results.h1Metrics, 'duplicate')),
+        generateMetricRow('Over 70 Characters', safeCount(results.h1Metrics, 'tooLong')),
+        generateMetricRow('Multiple', safeCount(results.h1Metrics, 'multiple')),
         [],
         ['H2'],
-        generateMetricRow('All', safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Missing', safeCount(results.h2Metrics, 'missing'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Duplicate', safeCount(results.h2Metrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Over 70 Characters', safeCount(results.h2Metrics, 'tooLong'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Multiple', safeCount(results.h2Metrics, 'multiple'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Non-Sequential', safeCount(results.h2Metrics, 'nonSequential'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('All', safeCount(results.urlMetrics, 'internal')),
+        generateMetricRow('Missing', safeCount(results.h2Metrics, 'missing')),
+        generateMetricRow('Duplicate', safeCount(results.h2Metrics, 'duplicate')),
+        generateMetricRow('Over 70 Characters', safeCount(results.h2Metrics, 'tooLong')),
+        generateMetricRow('Multiple', safeCount(results.h2Metrics, 'multiple')),
+        generateMetricRow('Non-Sequential', safeCount(results.h2Metrics, 'nonSequential')),
         []
     ];
 }
@@ -1126,21 +1208,20 @@ function generateHeadingAnalysis(results) {
 function generateImageAnalysis(results) {
     return [
         ['Images'],
-        generateMetricRow('All', safeCount(results.imageMetrics, 'total'), safeCount(results.imageMetrics, 'total'), 'Images'),
-        generateMetricRow('Missing Alt Text', safeCount(results.imageMetrics, 'missingAlt'), safeCount(results.imageMetrics, 'total'), 'Images'),
-        generateMetricRow('Missing Alt Attribute', safeCount(results.imageMetrics, 'missingAltAttribute'), safeCount(results.imageMetrics, 'total'), 'Images'),
-        generateMetricRow('Alt Text Over 100 Characters', safeCount(results.imageMetrics, 'altTextTooLong'), safeCount(results.imageMetrics, 'total'), 'Images'),
+        generateMetricRow('All', safeCount(results.imageMetrics, 'total')),
+        generateMetricRow('Missing Alt Text', safeCount(results.imageMetrics, 'missingAlt')),
+        generateMetricRow('Missing Alt Attribute', safeCount(results.imageMetrics, 'missingAltAttribute')),
+        generateMetricRow('Alt Text Over 100 Characters', safeCount(results.imageMetrics, 'altTextTooLong')),
         []
     ];
 }
-
 function generateLinkAnalysis(results) {
     return [
         ['Links'],
-        generateMetricRow('Pages Without Internal Outlinks', safeCount(results.linkMetrics, 'pagesWithoutInternalOutlinks'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Pages With High External Outlinks', safeCount(results.linkMetrics, 'pagesWithHighExternalOutlinks'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Internal Outlinks With No Anchor Text', safeCount(results.linkMetrics, 'internalOutlinksWithoutAnchorText'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Non-Descriptive Anchor Text In Internal Outlinks', safeCount(results.linkMetrics, 'nonDescriptiveAnchorText'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('Pages Without Internal Outlinks', safeCount(results.linkMetrics, 'pagesWithoutInternalOutlinks')),
+        generateMetricRow('Pages With High External Outlinks', safeCount(results.linkMetrics, 'pagesWithHighExternalOutlinks')),
+        generateMetricRow('Internal Outlinks With No Anchor Text', safeCount(results.linkMetrics, 'internalOutlinksWithoutAnchorText')),
+        generateMetricRow('Non-Descriptive Anchor Text In Internal Outlinks', safeCount(results.linkMetrics, 'nonDescriptiveAnchorText')),
         []
     ];
 }
@@ -1148,11 +1229,11 @@ function generateLinkAnalysis(results) {
 function generateSecurityAnalysis(results) {
     return [
         ['Security'],
-        generateMetricRow('HTTP URLs', safeCount(results.securityMetrics, 'httpUrls'), safeCount(results.urlMetrics, 'total'), 'All URLs'),
-        generateMetricRow('Missing HSTS Header', safeCount(results.securityMetrics, 'missingHstsHeader'), safeCount(results.urlMetrics, 'total'), 'All URLs'),
-        generateMetricRow('Missing Content-Security-Policy Header', safeCount(results.securityMetrics, 'missingContentSecurityPolicy'), safeCount(results.urlMetrics, 'total'), 'All URLs'),
-        generateMetricRow('Missing X-Frame-Options Header', safeCount(results.securityMetrics, 'missingXFrameOptions'), safeCount(results.urlMetrics, 'total'), 'All URLs'),
-        generateMetricRow('Missing X-Content-Type-Options Header', safeCount(results.securityMetrics, 'missingXContentTypeOptions'), safeCount(results.urlMetrics, 'total'), 'All URLs'),
+        generateMetricRow('HTTP URLs', safeCount(results.securityMetrics, 'httpUrls')),
+        generateMetricRow('Missing HSTS Header', safeCount(results.securityMetrics, 'missingHstsHeader')),
+        generateMetricRow('Missing Content-Security-Policy Header', safeCount(results.securityMetrics, 'missingContentSecurityPolicy')),
+        generateMetricRow('Missing X-Frame-Options Header', safeCount(results.securityMetrics, 'missingXFrameOptions')),
+        generateMetricRow('Missing X-Content-Type-Options Header', safeCount(results.securityMetrics, 'missingXContentTypeOptions')),
         []
     ];
 }
@@ -1160,9 +1241,9 @@ function generateSecurityAnalysis(results) {
 function generateHreflangAnalysis(results) {
     return [
         ['Hreflang'],
-        generateMetricRow('Contains hreflang', safeCount(results.hreflangMetrics, 'pagesWithHreflang'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Missing Return Links', safeCount(results.hreflangMetrics, 'missingReturnLinks'), safeCount(results.hreflangMetrics, 'pagesWithHreflang'), 'Pages with hreflang'),
-        generateMetricRow('Incorrect Language & Region Codes', safeCount(results.hreflangMetrics, 'incorrectLanguageCodes'), safeCount(results.hreflangMetrics, 'pagesWithHreflang'), 'Pages with hreflang'),
+        generateMetricRow('Contains hreflang', safeCount(results.hreflangMetrics, 'pagesWithHreflang')),
+        generateMetricRow('Missing Return Links', safeCount(results.hreflangMetrics, 'missingReturnLinks')),
+        generateMetricRow('Incorrect Language & Region Codes', safeCount(results.hreflangMetrics, 'incorrectLanguageCodes')),
         []
     ];
 }
@@ -1170,11 +1251,11 @@ function generateHreflangAnalysis(results) {
 function generateCanonicalAnalysis(results) {
     return [
         ['Canonicals'],
-        generateMetricRow('All', safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Contains Canonical', safeCount(results.canonicalMetrics, 'selfReferencing') + safeCount(results.canonicalMetrics, 'nonSelf'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Self Referencing', safeCount(results.canonicalMetrics, 'selfReferencing'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Canonicalised', safeCount(results.canonicalMetrics, 'nonSelf'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Missing', safeCount(results.canonicalMetrics, 'missing'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('All', safeCount(results.urlMetrics, 'internal')),
+        generateMetricRow('Contains Canonical', safeCount(results.canonicalMetrics, 'selfReferencing') + safeCount(results.canonicalMetrics, 'nonSelf')),
+        generateMetricRow('Self Referencing', safeCount(results.canonicalMetrics, 'selfReferencing')),
+        generateMetricRow('Canonicalised', safeCount(results.canonicalMetrics, 'nonSelf')),
+        generateMetricRow('Missing', safeCount(results.canonicalMetrics, 'missing')),
         []
     ];
 }
@@ -1182,9 +1263,9 @@ function generateCanonicalAnalysis(results) {
 function generateContentAnalysis(results) {
     return [
         ['Content'],
-        generateMetricRow('All', safeCount(results.urlMetrics, 'internal'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Low Content Pages', safeCount(results.contentMetrics, 'lowContent'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
-        generateMetricRow('Near Duplicates', safeCount(results.contentMetrics, 'duplicate'), safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('All', safeCount(results.urlMetrics, 'internal')),
+        generateMetricRow('Low Content Pages', safeCount(results.contentMetrics, 'lowContent')),
+        generateMetricRow('Near Duplicates', safeCount(results.contentMetrics, 'duplicate')),
         []
     ];
 }
@@ -1192,7 +1273,7 @@ function generateContentAnalysis(results) {
 function generateOrphanedUrlsAnalysis(results) {
     return [
         ['Orphaned URLs'],
-        generateMetricRow('Orphaned URLs', results.orphanedUrls ? results.orphanedUrls.size : 0, safeCount(results.urlMetrics, 'internal'), 'Internal URLs'),
+        generateMetricRow('Orphaned URLs', results.orphanedUrls ? results.orphanedUrls.size : 0),
         []
     ];
 }
@@ -1210,18 +1291,18 @@ function generateJavaScriptErrorsAnalysis(results) {
     const pagesWithJsErrors = (results.contentAnalysis || []).filter(page => page && page.jsErrors && page.jsErrors.length > 0).length;
     return [
         ['JavaScript Errors'],
-        generateMetricRow('Pages with JavaScript Errors', pagesWithJsErrors, safeCount(results.urlMetrics, 'internal'), 'Internal HTML pages'),
+        generateMetricRow('Pages with JavaScript Errors', pagesWithJsErrors),
         []
     ];
 }
 
+// Make sure to keep your safeCount function if it's still needed:
 function safeCount(obj, prop) {
     return obj && obj[prop] ? obj[prop] : 0;
 }
 
-function safePercentage(count, total) {
-    return total ? ((count / total) * 100).toFixed(2) : '0.00';
-}
+
+
 // Set up command-line interface
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')

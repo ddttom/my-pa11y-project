@@ -2,14 +2,15 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import puppeteer from 'puppeteer';
+import { calculateSeoScore } from './seo-scoring.js'; // Assume we've moved the SEO scoring to a separate file
 
 const CACHE_DIR = path.join(process.cwd(), '.cache');
-
 
 function debug(message) 
 {
    //  console.log(`[DEBUG] ${message}`);
 }
+
 function generateCacheKey(url) {
     const key = crypto.createHash('md5').update(url).digest('hex');
     debug(`Generated cache key for ${url}: ${key}`);
@@ -87,16 +88,48 @@ async function renderAndCacheData(url) {
         const renderedHtml = await page.content();
         debug(`Content extracted for ${url}`);
         
+        // Extract necessary data for SEO score calculation
+        const pageData = await page.evaluate(() => {
+            return {
+                title: document.title,
+                metaDescription: document.querySelector('meta[name="description"]')?.content,
+                h1: document.querySelector('h1')?.textContent,
+                wordCount: document.body.innerText.trim().split(/\s+/).length,
+                hasResponsiveMetaTag: !!document.querySelector('meta[name="viewport"]'),
+                images: Array.from(document.images).map(img => ({
+                    src: img.src,
+                    alt: img.alt
+                })),
+                internalLinks: Array.from(document.links).filter(link => link.hostname === window.location.hostname).length,
+                structuredData: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(script => script.textContent),
+                openGraphTags: Object.fromEntries(
+                    Array.from(document.querySelectorAll('meta[property^="og:"]')).map(tag => [tag.getAttribute('property'), tag.content])
+                ),
+                twitterTags: Object.fromEntries(
+                    Array.from(document.querySelectorAll('meta[name^="twitter:"]')).map(tag => [tag.getAttribute('name'), tag.content])
+                )
+            };
+        });
+
+        // Calculate SEO score
+        const seoScore = calculateSeoScore({
+            ...pageData,
+            url: url,
+            jsErrors: jsErrors
+        });
+        
         const data = {
             html: renderedHtml,
             jsErrors: jsErrors,
             statusCode: statusCode,
-            headers: headers
+            headers: headers,
+            pageData: pageData,
+            seoScore: seoScore
         };
         
         await setCachedData(url, data);
         
-        debug(`Successfully rendered and cached ${url}`);
+        debug(`Successfully rendered, scored, and cached ${url}`);
         return data;
     } catch (error) {
         console.error(`Error rendering and caching ${url}:`, error);
