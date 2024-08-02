@@ -5,6 +5,11 @@ import puppeteer from 'puppeteer';
 
 const CACHE_DIR = path.join(process.cwd(), '.cache');
 
+
+function debug(message) 
+{
+   //  console.log(`[DEBUG] ${message}`);
+}
 function generateCacheKey(url) {
     const key = crypto.createHash('md5').update(url).digest('hex');
     debug(`Generated cache key for ${url}: ${key}`);
