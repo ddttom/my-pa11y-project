@@ -24,7 +24,7 @@ let results = {
 };
 
 function debug(message) {
-   // console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+   // debug(`[DEBUG] ${new Date().toISOString()}: ${message}`);
 }
 
 debug('Script started');
@@ -581,7 +581,7 @@ async function createDirectories(outputDir) {
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
     const urls = await extractUrls(parsedContent);
-    debug(`Found ${urls.length} URL(s) to process`);
+    console.info(`Found ${urls.length} URL(s) to process`);
 
     if (urls.length === 0) {
         throw new Error('No valid URLs found to process');
@@ -592,7 +592,7 @@ async function getUrlsFromSitemap(sitemapUrl, limit) {
 
 async function processUrls(urls, sitemapUrl) {
     const totalTests = urls.length;
-    debug(`Testing ${totalTests} URL(s)${totalTests === urls.length ? ' (all URLs)' : ''}`);
+    console.info(`Testing ${totalTests} URL(s)${totalTests === urls.length ? ' (all URLs)' : ''}`);
 
     const baseUrl = new URL(urls[0]).origin;
     const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
@@ -602,7 +602,7 @@ async function processUrls(urls, sitemapUrl) {
     for (let i = 0; i < urls.length; i++) {
         if (isShuttingDown) break;
         const testUrl = fixUrl(urls[i]);
-        console.log(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
+        console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
         await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results);
     }
 
@@ -665,7 +665,7 @@ function handleError(error, outputDir) {
     }
 }
 async function saveResults(results, outputDir, sitemapUrl) {
-    debug(`Saving results to: ${outputDir}`);
+    console.info(`Saving results to: ${outputDir}`);
     try {
         await savePa11yResults(results, outputDir);
         await saveInternalLinks(results, outputDir);
@@ -826,16 +826,16 @@ async function collectJsErrors(url) {
 
 function setupShutdownHandler(outputDir) {
     process.on('SIGINT', async () => {
-        console.log('\nGraceful shutdown initiated...');
+        debug('\nGraceful shutdown initiated...');
         isShuttingDown = true;
 
         // Wait a moment to allow the current operation to complete
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        console.log('Saving partial results...');
+        debug('Saving partial results...');
         await saveResults(results, outputDir);
 
-        console.log('Shutdown complete. Exiting...');
+        console.info('Shutdown complete. Exiting...');
         process.exit(0);
     });
 }
