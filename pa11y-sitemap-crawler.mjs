@@ -640,16 +640,26 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
         updateResponseCodeMetrics(statusCode, results);
 
         if (statusCode === 200) {
-            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, pageData);
+            const $ = cheerio.load(html);
+            const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
             
-            // Perform performance analysis first
+            // Merge pageData with additional data
+            const enhancedPageData = {
+                ...pageData,
+                url: testUrl,
+                internalLinks: internalLinks,
+                hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
+                openGraphTags: $('meta[property^="og:"]').length > 0,
+                twitterTags: $('meta[name^="twitter:"]').length > 0
+            };
+
+            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData);
+            
             const performanceMetrics = await analyzePerformance(testUrl);
             results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
 
-            // Then calculate SEO score using the cached pageData and performance metrics
             const seoScore = calculateSeoScore({
-                ...pageData,
-                url: testUrl,
+                ...enhancedPageData,
                 performanceMetrics: performanceMetrics
             });
             results.seoScores.push({ url: testUrl, ...seoScore });
@@ -723,7 +733,25 @@ async function saveResults(results, outputDir, sitemapUrl) {
 }
 
 async function saveSeoScores(results, outputDir) {
-    const seoScoresCsv = formatCsv(results.seoScores, 
+    const seoScoresFormatted = results.seoScores.map(score => ({
+        url: score.url,
+        score: score.score,
+        maxScore: score.maxScore,
+        'details.titleOptimization': score.details.titleOptimization,
+        'details.metaDescriptionOptimization': score.details.metaDescriptionOptimization,
+        'details.urlStructure': score.details.urlStructure,
+        'details.h1Optimization': score.details.h1Optimization,
+        'details.contentLength': score.details.contentLength,
+        'details.internalLinking': score.details.internalLinking,
+        'details.imageOptimization': score.details.imageOptimization,
+        'details.pageSpeed': score.details.pageSpeed,
+        'details.mobileOptimization': score.details.mobileOptimization,
+        'details.securityFactors': score.details.securityFactors,
+        'details.structuredData': score.details.structuredData,
+        'details.socialMediaTags': score.details.socialMediaTags
+    }));
+
+    const seoScoresCsv = formatCsv(seoScoresFormatted, 
         ['url', 'score', 'maxScore', 'details.titleOptimization', 'details.metaDescriptionOptimization',
          'details.urlStructure', 'details.h1Optimization', 'details.contentLength', 'details.internalLinking',
          'details.imageOptimization', 'details.pageSpeed', 'details.mobileOptimization', 'details.securityFactors',

@@ -25,57 +25,74 @@ const SEO_WEIGHTS = {
     let maxPossibleScore = 0;
   
     // Title optimization
-    const titleScore = scoreTitleOptimization(pageData.title);
+    const titleLength = pageData.title ? pageData.title.length : 0;
+    const titleScore = scoreRange(titleLength, 30, 60);
     totalScore += titleScore * SEO_WEIGHTS.titleOptimization;
     maxPossibleScore += SEO_WEIGHTS.titleOptimization;
   
     // Meta description optimization
-    const metaDescScore = scoreMetaDescription(pageData.metaDescription);
+    const metaDescLength = pageData.metaDescription ? pageData.metaDescription.length : 0;
+    const metaDescScore = scoreRange(metaDescLength, 70, 155);
     totalScore += metaDescScore * SEO_WEIGHTS.metaDescriptionOptimization;
     maxPossibleScore += SEO_WEIGHTS.metaDescriptionOptimization;
   
     // URL structure
-    const urlScore = scoreUrlStructure(pageData.url);
+    const urlScore = pageData.url.includes('_') ? 0 : 1;
     totalScore += urlScore * SEO_WEIGHTS.urlStructure;
     maxPossibleScore += SEO_WEIGHTS.urlStructure;
   
     // H1 optimization
-    const h1Score = scoreH1Optimization(pageData.h1);
+    const h1Count = pageData.headings ? pageData.headings.h1 : 0;
+    const h1Score = h1Count === 1 ? 1 : 0;
     totalScore += h1Score * SEO_WEIGHTS.h1Optimization;
     maxPossibleScore += SEO_WEIGHTS.h1Optimization;
   
     // Content length
-    const contentScore = scoreContentLength(pageData.wordCount);
+    const wordCount = pageData.wordCount || 0;
+    const contentScore = scoreRange(wordCount, 300, 1500);
     totalScore += contentScore * SEO_WEIGHTS.contentLength;
     maxPossibleScore += SEO_WEIGHTS.contentLength;
   
     // Internal linking
-    const internalLinkScore = scoreInternalLinking(pageData.internalLinks);
+    const internalLinksCount = pageData.internalLinks ? pageData.internalLinks.length : 0;
+    const internalLinkScore = scoreRange(internalLinksCount, 2, 20);
     totalScore += internalLinkScore * SEO_WEIGHTS.internalLinking;
     maxPossibleScore += SEO_WEIGHTS.internalLinking;
   
     // Image optimization
-    const imageScore = scoreImageOptimization(pageData.images);
+    const imagesWithAlt = pageData.images ? pageData.images.filter(img => img.alt).length : 0;
+    const totalImages = pageData.images ? pageData.images.length : 0;
+    const imageScore = totalImages > 0 ? imagesWithAlt / totalImages : 0;
     totalScore += imageScore * SEO_WEIGHTS.imageOptimization;
     maxPossibleScore += SEO_WEIGHTS.imageOptimization;
   
+    // Page speed
+    let pageSpeedScore = 0;
+    if (pageData.performanceMetrics && pageData.performanceMetrics.loadTime) {
+      pageSpeedScore = scoreRange(pageData.performanceMetrics.loadTime, 5000, 1000, true);
+    }
+    totalScore += pageSpeedScore * SEO_WEIGHTS.pageSpeed;
+    maxPossibleScore += SEO_WEIGHTS.pageSpeed;
+  
     // Mobile optimization
-    const mobileScore = scoreMobileOptimization(pageData.hasResponsiveMetaTag);
+    const mobileScore = pageData.hasResponsiveMetaTag ? 1 : 0;
     totalScore += mobileScore * SEO_WEIGHTS.mobileOptimization;
     maxPossibleScore += SEO_WEIGHTS.mobileOptimization;
   
     // Security factors
-    const securityScore = scoreSecurityFactors(pageData.url);
+    const securityScore = pageData.url.startsWith('https') ? 1 : 0;
     totalScore += securityScore * SEO_WEIGHTS.securityFactors;
     maxPossibleScore += SEO_WEIGHTS.securityFactors;
   
     // Structured data
-    const structuredDataScore = scoreStructuredData(pageData.structuredData);
+    const structuredDataScore = pageData.structuredData && pageData.structuredData.length > 0 ? 1 : 0;
     totalScore += structuredDataScore * SEO_WEIGHTS.structuredData;
     maxPossibleScore += SEO_WEIGHTS.structuredData;
   
     // Social media tags
-    const socialScore = scoreSocialMediaTags(pageData.openGraphTags, pageData.twitterTags);
+    const hasOpenGraph = pageData.openGraphTags && Object.keys(pageData.openGraphTags).length > 0;
+    const hasTwitterCard = pageData.twitterTags && Object.keys(pageData.twitterTags).length > 0;
+    const socialScore = (hasOpenGraph || hasTwitterCard) ? 1 : 0;
     totalScore += socialScore * SEO_WEIGHTS.socialMediaTags;
     maxPossibleScore += SEO_WEIGHTS.socialMediaTags;
   
@@ -93,6 +110,7 @@ const SEO_WEIGHTS = {
         contentLength: contentScore,
         internalLinking: internalLinkScore,
         imageOptimization: imageScore,
+        pageSpeed: pageSpeedScore,
         mobileOptimization: mobileScore,
         securityFactors: securityScore,
         structuredData: structuredDataScore,
