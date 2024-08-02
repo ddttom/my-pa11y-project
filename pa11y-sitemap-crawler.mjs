@@ -14,7 +14,7 @@ const { launch } = pkg;
 import puppeteer from 'puppeteer';
 import { ensureCacheDir, getOrRenderData } from './caching.js';
 import { calculateSeoScore } from './seo-scoring.js';
-
+import { saveContentAnalysis } from './content-analysis.js';
 
 let isShuttingDown = false;
 let results = {
