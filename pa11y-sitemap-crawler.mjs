@@ -15,6 +15,8 @@ import puppeteer from 'puppeteer';
 import { ensureCacheDir, getOrRenderData } from './caching.js';
 import { calculateSeoScore } from './seo-scoring.js';
 import { saveContentAnalysis } from './content-analysis.js';
+import { generateSitemap } from './sitemap-generator.js';
+
 
 let isShuttingDown = false;
 let results = {
@@ -614,9 +616,15 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
     try {
         await validateAndPrepare(sitemapUrl, outputDir);
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
-        const results = await processUrls(urls, sitemapUrl);
+
+        // Extract the hostname and protocol from the sitemapUrl
+        const parsedUrl = new URL(sitemapUrl);
+        const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
+
+        const results = await processUrls(urls, baseUrl);
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
+        await generateSitemap(results, outputDir, baseUrl);
         return results;
     } catch (error) {
         handleError(error, outputDir);
