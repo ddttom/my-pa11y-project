@@ -612,19 +612,21 @@ async function runPa11yTest(testUrl, html, results) {
 async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
     debug(`Starting process for sitemap or page: ${sitemapUrl}`);
     debug(`Results will be saved to: ${outputDir}`);
+    debug(`Limit set to: ${limit}`);
 
     try {
         await validateAndPrepare(sitemapUrl, outputDir);
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
+        
+        if (urls.length === 0) {
+            console.warn('No valid URLs found to process');
+            return;
+        }
 
-        // Extract the hostname and protocol from the sitemapUrl
-        const parsedUrl = new URL(sitemapUrl);
-        const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
-
-        const results = await processUrls(urls, baseUrl);
+        const results = await processUrls(urls, sitemapUrl);
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
-        await generateSitemap(results, outputDir, baseUrl);
+        await generateSitemap(results, outputDir, new URL(sitemapUrl).origin);
         return results;
     } catch (error) {
         handleError(error, outputDir);
@@ -652,14 +654,20 @@ async function createDirectories(outputDir) {
 
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
-    const urls = await extractUrls(parsedContent);
+    let urls = await extractUrls(parsedContent);
     console.info(`Found ${urls.length} URL(s)`);
 
     if (urls.length === 0) {
         throw new Error('No valid URLs found to process');
     }
 
-    return limit === -1 ? urls : urls.slice(0, limit);
+    // Apply limit if it's a positive number
+    if (limit > 0 && limit < urls.length) {
+        urls = urls.slice(0, limit);
+    }
+
+    console.info(`Testing ${urls.length} URL(s)`);
+    return urls;
 }
 
 async function processUrls(urls, sitemapUrl) {
@@ -677,6 +685,9 @@ async function processUrls(urls, sitemapUrl) {
         console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
         await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results);
     }
+    
+    // Calculate max internal links
+    results.maxInternalLinks = Math.max(...results.contentAnalysis.map(page => page.internalLinksCount || 0));
 
     return results;
 }
@@ -695,11 +706,15 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             const $ = cheerio.load(html);
             const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
             
-             // Merge pageData with additional data
-             const enhancedPageData = {
+            // Count internal links
+            const internalLinksCount = internalLinks.length;
+
+            // Merge pageData with additional data
+            const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
                 internalLinks: internalLinks,
+                internalLinksCount: internalLinksCount, // Add this line
                 hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
                 openGraphTags: $('meta[property^="og:"]').length > 0,
                 twitterTags: $('meta[name^="twitter:"]').length > 0
@@ -717,7 +732,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             
             results.seoScores.push({
                 url: testUrl,
-                score: seoScore.score, // Make sure this is included
+                score: seoScore.score,
                 details: seoScore.details
             });
         }
@@ -1366,16 +1381,14 @@ function safeCount(obj, prop) {
 
 
 // Set up command-line interface
+
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .requiredOption('-o, --output <directory>', 'Output directory for results')
-    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
+    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', (value) => parseInt(value, 10), -1)
     .parse(process.argv);
 
 const options = program.opts();
-
-// Set up the shutdown handler
-setupShutdownHandler(options.output);
 
 // Run the main function
 debug('Starting main function');
