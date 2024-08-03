@@ -156,13 +156,13 @@ async function analyzePerformance(url) {
   }
 
 
-async function analyzeContent(html, pageUrl, jsErrors = []) {
+  async function analyzeContent(html, pageUrl, jsErrors = []) {
     debug(`Analyzing content of: ${pageUrl}`);
     try {
         const $ = cheerio.load(html);
         
         const basicInfo = extractBasicInfo($);
-        const headingAnalysis = analyzeHeadings($);
+        const { headings, headingErrors } = analyzeHeadings($);
         const imageAnalysis = analyzeImages($, pageUrl);
         const keywordAnalysis = analyzeKeywords($);
         const resourceAnalysis = analyzeResources($);
@@ -172,11 +172,11 @@ async function analyzeContent(html, pageUrl, jsErrors = []) {
         const formAnalysis = analyzeForms($);
         const tableAnalysis = analyzeTables($);
 
-        debug(`Content analysis completed for: ${pageUrl}`);
-        return {
+        const result = {
             url: pageUrl,
             ...basicInfo,
-            ...headingAnalysis,
+            ...headings,
+            headingErrors,
             ...imageAnalysis,
             ...keywordAnalysis,
             ...resourceAnalysis,
@@ -187,6 +187,10 @@ async function analyzeContent(html, pageUrl, jsErrors = []) {
             tables: tableAnalysis,
             jsErrors: jsErrors.length > 0 ? jsErrors : undefined
         };
+
+        // console.log('Content analysis result:', JSON.stringify(result, null, 2));
+        debug(`Content analysis completed for: ${pageUrl}`);
+        return result;
     } catch (error) {
         console.error(`Error analyzing content of ${pageUrl}:`, error.message);
         return null;
@@ -207,14 +211,24 @@ function extractBasicInfo($) {
 }
 
 function analyzeHeadings($) {
-    const headings = {};
+    const headings = {
+        h1: 0,
+        h2: 0,
+        h3: 0,
+        h4: 0,
+        h5: 0,
+        h6: 0
+    };
     const headingErrors = [];
+
     ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(h => {
         headings[h] = $(h).length;
     });
 
     if (headings.h1 === 0) {
         headingErrors.push("No H1 element found on the page.");
+    } else if (headings.h1 > 1) {
+        headingErrors.push(`Multiple H1 elements found: ${headings.h1}`);
     }
 
     let lastHeadingLevel = 0;
@@ -228,7 +242,8 @@ function analyzeHeadings($) {
         }
     }
 
-    return { headings, headingErrors: headingErrors.length > 0 ? headingErrors : undefined };
+    // console.log('Heading analysis result:', { headings, headingErrors });
+    return { headings, headingErrors };
 }
 
 function analyzeImages($, pageUrl) {
@@ -366,6 +381,35 @@ function analyzeTables($) {
     });
     return tables;
 }
+
+  
+async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
+    let imagesWithoutAlt = [];
+    
+    if (Array.isArray(contentAnalysis)) {
+        imagesWithoutAlt = contentAnalysis.flatMap(page => page.imagesWithoutAlt || []);
+    } else if (contentAnalysis && typeof contentAnalysis === 'object') {
+        // If contentAnalysis is an object, try to extract imagesWithoutAlt directly
+        imagesWithoutAlt = contentAnalysis.imagesWithoutAlt || [];
+    } else {
+        console.warn('contentAnalysis is neither an array nor an object. No images without alt text will be saved.');
+    }
+    
+    if (imagesWithoutAlt.length > 0) {
+        const headers = ['url', 'src', 'location'];
+        const imagesWithoutAltCsv = formatCsv(imagesWithoutAlt, headers);
+        
+        try {
+            await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, 'utf8');
+            console.log('Images without alt text saved');
+        } catch (error) {
+            console.error('Error saving images without alt text:', error);
+        }
+    } else {
+        console.log('No images without alt text found');
+    }
+}
+
 function formatCsv(data, headers) {
     return stringify([headers, ...data.map(row => headers.map(header => row[header] || ''))]);
 }
@@ -601,7 +645,7 @@ async function createDirectories(outputDir) {
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
     const urls = await extractUrls(parsedContent);
-    console.info(`Found ${urls.length} URL(s) to process`);
+    console.info(`Found ${urls.length} URL(s)`);
 
     if (urls.length === 0) {
         throw new Error('No valid URLs found to process');
@@ -612,7 +656,7 @@ async function getUrlsFromSitemap(sitemapUrl, limit) {
 
 async function processUrls(urls, sitemapUrl) {
     const totalTests = urls.length;
-    console.info(`Testing ${totalTests} URL(s)${totalTests === urls.length ? ' (all URLs)' : ''}`);
+    console.info(`Testing ${totalTests} URL(s)${totalTests === urls.length ? '' : ''}`);
 
     const baseUrl = new URL(urls[0]).origin;
     const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
@@ -725,7 +769,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
         await saveInternalLinks(results, outputDir);
         await saveImagesWithoutAlt(results, outputDir);
         await saveContentAnalysis(results, outputDir);
-        await saveOrphanedUrls(results, outputDir);
+        await saveOrphanedUrls(results.contentAnalysis, outputDir);
         await saveSeoReport(results, outputDir, sitemapUrl);
         await saveSeoScores(results, outputDir);
         await savePerformanceAnalysis(results, outputDir);
@@ -824,13 +868,6 @@ function flattenInternalLinks(internalLinks) {
     );
 }
 
-async function saveImagesWithoutAlt(results, outputDir) {
-    const imagesWithoutAltCsv = formatCsv(
-        results.contentAnalysis.flatMap(result => result.imagesWithoutAlt || []),
-        ['url', 'src', 'location']);
-    await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv);
-    debug('Images without alt analysis results saved');
-}
 
 async function saveOrphanedUrls(results, outputDir) {
     if (results.orphanedUrls && results.orphanedUrls instanceof Set && results.orphanedUrls.size > 0) {
@@ -1324,7 +1361,7 @@ function safeCount(obj, prop) {
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .requiredOption('-o, --output <directory>', 'Output directory for results')
-    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, 5)
+    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
 const options = program.opts();
