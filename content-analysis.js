@@ -147,7 +147,6 @@ async function saveContentAnalysis(results, outputDir) {
     "keywords",
     "headingErrors",
     "imageCount",
-    "imagesWithoutAlt",
     "jsErrors",
     "schemaTypes",
     "pageSize",
