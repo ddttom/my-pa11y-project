@@ -65,7 +65,7 @@ This will crawl the sitemap at <https://example.com/sitemap.xml>, test up to 100
 
 The script generates several output files in the specified output directory:
 
-- `seo_report.txt`: A comprehensive report of all SEO and accessibility findings
+- `seo_report.csv`: A comprehensive report of all SEO and accessibility findings
 - `pa11y_results.csv`: Detailed Pa11y accessibility test results
 - `internal_links.csv`: Analysis of internal links
 - `content_analysis.csv`: Content analysis results

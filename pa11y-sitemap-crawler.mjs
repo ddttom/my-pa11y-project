@@ -16,7 +16,7 @@ import { ensureCacheDir, getOrRenderData } from './caching.js';
 import { calculateSeoScore } from './seo-scoring.js';
 import { saveContentAnalysis } from './content-analysis.js';
 import { generateSitemap } from './sitemap-generator.js';
-
+import pa11yOptions  from './pa11y-options.js';
 
 let isShuttingDown = false;
 let results = {
@@ -32,31 +32,6 @@ function debug(message) {
 
 debug('Script started');
 
-const pa11yOptions = {
-    timeout: 60000,
-    wait: 2000,
-    ignore: [
-        'WCAG2AA.Principle3.Guideline3_1.3_1_1.H57.2',
-        'css-parsing-error',
-        'WCAG2AA.Principle4.Guideline4_1.4_1_2.H91.A.EmptyNoId'
-    ],
-    viewport: {
-        width: 1280,
-        height: 1024
-    },
-    chromeLaunchConfig: {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-web-security',
-            '--disable-gpu',
-            '--ignore-certificate-errors',
-            '--ignore-certificate-errors-spki-list',
-            '--disable-extensions'
-        ],
-        ignoreHTTPSErrors: true
-    }
-};
 
 const axiosInstance = axios.create({
     headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
@@ -612,21 +587,19 @@ async function runPa11yTest(testUrl, html, results) {
 async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
     debug(`Starting process for sitemap or page: ${sitemapUrl}`);
     debug(`Results will be saved to: ${outputDir}`);
-    debug(`Limit set to: ${limit}`);
 
     try {
         await validateAndPrepare(sitemapUrl, outputDir);
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
-        
-        if (urls.length === 0) {
-            console.warn('No valid URLs found to process');
-            return;
-        }
 
-        const results = await processUrls(urls, sitemapUrl);
+        // Extract the hostname and protocol from the sitemapUrl
+        const parsedUrl = new URL(sitemapUrl);
+        const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
+
+        const results = await processUrls(urls, baseUrl);
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
-        await generateSitemap(results, outputDir, new URL(sitemapUrl).origin);
+        await generateSitemap(results, outputDir, baseUrl);
         return results;
     } catch (error) {
         handleError(error, outputDir);
@@ -654,20 +627,14 @@ async function createDirectories(outputDir) {
 
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
-    let urls = await extractUrls(parsedContent);
+    const urls = await extractUrls(parsedContent);
     console.info(`Found ${urls.length} URL(s)`);
 
     if (urls.length === 0) {
         throw new Error('No valid URLs found to process');
     }
 
-    // Apply limit if it's a positive number
-    if (limit > 0 && limit < urls.length) {
-        urls = urls.slice(0, limit);
-    }
-
-    console.info(`Testing ${urls.length} URL(s)`);
-    return urls;
+    return limit === -1 ? urls : urls.slice(0, limit);
 }
 
 async function processUrls(urls, sitemapUrl) {
@@ -685,9 +652,6 @@ async function processUrls(urls, sitemapUrl) {
         console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
         await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results);
     }
-    
-    // Calculate max internal links
-    results.maxInternalLinks = Math.max(...results.contentAnalysis.map(page => page.internalLinksCount || 0));
 
     return results;
 }
@@ -706,15 +670,11 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             const $ = cheerio.load(html);
             const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
             
-            // Count internal links
-            const internalLinksCount = internalLinks.length;
-
-            // Merge pageData with additional data
-            const enhancedPageData = {
+             // Merge pageData with additional data
+             const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
                 internalLinks: internalLinks,
-                internalLinksCount: internalLinksCount, // Add this line
                 hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
                 openGraphTags: $('meta[property^="og:"]').length > 0,
                 twitterTags: $('meta[name^="twitter:"]').length > 0
@@ -732,7 +692,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             
             results.seoScores.push({
                 url: testUrl,
-                score: seoScore.score,
+                score: seoScore.score, // Make sure this is included
                 details: seoScore.details
             });
         }
@@ -1381,14 +1341,16 @@ function safeCount(obj, prop) {
 
 
 // Set up command-line interface
-
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .requiredOption('-o, --output <directory>', 'Output directory for results')
-    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', (value) => parseInt(value, 10), -1)
+    .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
     .parse(process.argv);
 
 const options = program.opts();
+
+// Set up the shutdown handler
+setupShutdownHandler(options.output);
 
 // Run the main function
 debug('Starting main function');
