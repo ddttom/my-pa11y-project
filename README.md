@@ -1,6 +1,6 @@
 # Pa11y Sitemap Crawler
 
-This project is a comprehensive web crawler that performs accessibility testing, SEO analysis, and various other checks on websites using their sitemap. It combines the power of Pa11y for accessibility testing with custom implementations for SEO and content analysis.
+This project is a comprehensive web crawler that performs accessibility testing, SEO analysis, and various other checks on websites using their sitemap. It combines the power of Pa11y for accessibility testing with custom implementations for SEO and content analysis.  Created by Tom Cranstoun Aug 2024
 
 ## Features
 
@@ -16,7 +16,7 @@ This project is a comprehensive web crawler that performs accessibility testing,
 
 Before you begin, ensure you have met the following requirements:
 
-- Node.js (v14 or later)
+- Node.js (v18 or later)
 - npm (usually comes with Node.js)
 
 ## Installation
@@ -24,13 +24,13 @@ Before you begin, ensure you have met the following requirements:
 1. Clone this repository:
 
    ``` js
-   git clone https://github.com/ddttom/pa11y-sitemap-crawler.git
+   git clone https://github.com/ddttom/my-pa11y-ptoject.git
    ```
 
 2. Navigate to the project directory:
 
    ``` js
-   cd pa11y-sitemap-crawler
+   cd my-pa11y-project
    ```
 
 3. Install the dependencies:
@@ -70,6 +70,11 @@ The script generates several output files in the specified output directory:
 - `internal_links.csv`: Analysis of internal links
 - `content_analysis.csv`: Content analysis results
 - Other CSV files with various metrics and analyses
+- `sitemap.xml`: the ideal sitemap for the crawled site. you can re-crawl using this to include orphaned links
+
+## Cache Rules
+
+If you pull a new pa11y project, remember to clear your '.cache' folder. When sites are updated remember to clear your cache. occasionally clear cache
 
 ## Configuration
 
