@@ -17,6 +17,7 @@
     "chrome": "^0.1.0",
     "commander": "^12.1.0",
     "csv-stringify": "^6.5.1",
+    "csv-writer": "^1.6.0",
     "fs": "^0.0.1-security",
     "lighthouse": "^12.1.0",
     "pa11y": "^8.0.0",
