@@ -1,6 +1,7 @@
 import { create } from 'xmlbuilder2';
 import fs from 'fs/promises';
 import path from 'path';
+import { createObjectCsvWriter } from 'csv-writer';
 
 async function generateSitemap(results, outputDir, baseUrl, options = {}) {
     // Input validation
@@ -36,6 +37,18 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
     for (let i = 0; i < results.contentAnalysis.length; i += finalOptions.maxUrlsPerFile) {
         chunks.push(results.contentAnalysis.slice(i, i + finalOptions.maxUrlsPerFile));
     }
+
+    // Create a CSV writer for image data
+    const csvWriter = createObjectCsvWriter({
+        path: path.join(outputDir, 'pages_with_images.csv'),
+        header: [
+            {id: 'pageUrl', title: 'Page URL'},
+            {id: 'imageUrl', title: 'Image URL'},
+            {id: 'altText', title: 'Alt Text'}
+        ]
+    });
+
+    let imageData = [];
 
     for (let i = 0; i < chunks.length; i++) {
         const root = create({ version: '1.0', encoding: 'UTF-8' })
@@ -105,18 +118,25 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
             priority = Math.max(0.0, Math.min(1.0, priority));
 
             url.ele('priority').txt(priority.toFixed(1));
-/*
+
             // Add image information if available
             if (page.images && page.images.length > 0) {
                 page.images.forEach(image => {
                     const imgEle = url.ele('image:image');
-                    imgEle.ele('image:loc').txt(new URL(image.src, page.url).href);
+                    const imageUrl = new URL(image.src, page.url).href;
+                    imgEle.ele('image:loc').txt(imageUrl);
                     if (image.alt) {
                         imgEle.ele('image:title').txt(image.alt);
                     }
+
+                    // Add image data to CSV
+                    imageData.push({
+                        pageUrl: page.url,
+                        imageUrl: imageUrl,
+                        altText: image.alt || ''
+                    });
                 });
             }
-                */
         });
 
         const xml = root.end({ prettyPrint: true });
@@ -128,6 +148,14 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
         } catch (error) {
             console.error(`Error writing sitemap file ${i + 1}:`, error);
         }
+    }
+
+    // Write image data to CSV file
+    try {
+        await csvWriter.writeRecords(imageData);
+        console.log('CSV file with image data generated successfully');
+    } catch (error) {
+        console.error('Error writing CSV file:', error);
     }
 
     // If we have multiple sitemap files, create a sitemap index
