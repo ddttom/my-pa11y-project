@@ -105,7 +105,7 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
             priority = Math.max(0.0, Math.min(1.0, priority));
 
             url.ele('priority').txt(priority.toFixed(1));
-
+/*
             // Add image information if available
             if (page.images && page.images.length > 0) {
                 page.images.forEach(image => {
@@ -116,6 +116,7 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
                     }
                 });
             }
+                */
         });
 
         const xml = root.end({ prettyPrint: true });
