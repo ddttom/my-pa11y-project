@@ -1661,14 +1661,15 @@ function safeCount(obj, prop) {
 
 
 // Set up command-line interface
+
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .requiredOption('-o, --output <directory>', 'Output directory for results')
     .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
+    .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
     .parse(process.argv);
 
 const options = program.opts();
-
 // Set up the shutdown handler
 setupShutdownHandler(options.output);
 

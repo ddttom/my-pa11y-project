@@ -2,12 +2,29 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import puppeteer from "puppeteer";
+import axios from "axios";
+import cheerio from "cheerio";
 import { calculateSeoScore } from "./seo-scoring.js";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 
 function debug(message) {
   //  console.log(`[DEBUG] ${message}`);
+}
+
+async function launchBrowserWithRetry(maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await puppeteer.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        defaultViewport: null,
+        timeout: 60000
+      });
+    } catch (error) {
+      console.error(`Browser launch attempt ${i + 1} failed:`, error);
+      if (i === maxRetries - 1) throw error;
+    }
+  }
 }
 
 function generateCacheKey(url) {
@@ -48,10 +65,7 @@ async function renderAndCacheData(url) {
   let browser;
   try {
     debug(`Starting to render ${url}`);
-    browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      defaultViewport: null,
-    });
+    browser = await launchBrowserWithRetry();
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(60000);
     await page.setViewport({ width: 1280, height: 800 });
@@ -265,7 +279,7 @@ async function setCachedData(url, data) {
   }
 }
 
-async function getOrRenderData(url) {
+async function getOrRenderData(url, noPuppeteer = false) {
   debug(`getOrRenderData called for ${url}`);
   let cachedData = await getCachedData(url);
   if (cachedData) {
@@ -273,10 +287,74 @@ async function getOrRenderData(url) {
     debug(`Returning cached data for ${url}`);
     return cachedData;
   }
-  debug(`No cache found, rendering data for ${url}`);
-  const newData = await renderAndCacheData(url);
+  debug(`No cache found, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
+  const newData = noPuppeteer ? await fetchDataWithoutPuppeteer(url) : await renderAndCacheData(url);
   newData.contentFreshness = analyzeContentFreshness(newData);
   return newData;
+}
+
+async function fetchDataWithoutPuppeteer(url) {
+  try {
+    debug(`Fetching data without Puppeteer for ${url}`);
+    const response = await axios.get(url);
+    const html = response.data;
+    const $ = cheerio.load(html);
+    
+    const pageData = {
+      title: $('title').text(),
+      metaDescription: $('meta[name="description"]').attr('content') || '',
+      h1: $('h1').first().text(),
+      wordCount: $('body').text().trim().split(/\s+/).length,
+      hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
+      images: $('img').map((i, el) => ({
+        src: $(el).attr('src'),
+        alt: $(el).attr('alt') || '',
+      })).get(),
+      internalLinks: $('a[href^="/"], a[href^="' + url + '"]').length,
+      structuredData: $('script[type="application/ld+json"]').map((i, el) => $(el).html()).get(),
+      openGraphTags: $('meta[property^="og:"]').map((i, el) => ({
+        [$(el).attr('property')]: $(el).attr('content'),
+      })).get(),
+      twitterTags: $('meta[name^="twitter:"]').map((i, el) => ({
+        [$(el).attr('name')]: $(el).attr('content'),
+      })).get(),
+      h1Count: $('h1').length,
+      h2Count: $('h2').length,
+      h3Count: $('h3').length,
+      h4Count: $('h4').length,
+      h5Count: $('h5').length,
+      h6Count: $('h6').length,
+      scriptsCount: $('script').length,
+      stylesheetsCount: $('link[rel="stylesheet"]').length,
+      htmlLang: $('html').attr('lang'),
+      canonicalUrl: $('link[rel="canonical"]').attr('href'),
+      formsCount: $('form').length,
+      tablesCount: $('table').length,
+      pageSize: html.length,
+      lastModified: response.headers['last-modified'] || null,
+    };
+
+    const data = {
+      html: html,
+      jsErrors: [],  // We can't capture JS errors without Puppeteer
+      statusCode: response.status,
+      headers: response.headers,
+      pageData: pageData,
+      seoScore: calculateSeoScore({
+        ...pageData,
+        url: url,
+        jsErrors: [],
+      }),
+      lastCrawled: new Date().toISOString(),
+    };
+
+    await setCachedData(url, data);
+    debug(`Successfully fetched, scored, and cached ${url} without Puppeteer`);
+    return data;
+  } catch (error) {
+    console.error(`Error fetching data without Puppeteer for ${url}:`, error);
+    throw error;
+  }
 }
 
 function analyzeContentFreshness(data) {
