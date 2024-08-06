@@ -322,10 +322,21 @@ function analyzeImages($, pageUrl) {
         const width = $(elem).attr('width');
         const height = $(elem).attr('height');
         images.push({ src, alt, width, height });
-        if (!alt) {
+        if (alt === undefined || alt.trim() === '') {
             let location = '';
-            const parents = $(elem).parents().map((_, parent) => $(parent).prop('tagName')).get();
-            location = parents.reverse().join(' > ') + ' > img';
+            let element = elem;
+            while (element && element !== $.root()[0]) {
+                if (element.attribs && element.attribs.id) {
+                    location = `#${element.attribs.id} > ${location}`;
+                    break;
+                } else if (element.attribs && element.attribs.class) {
+                    location = `.${element.attribs.class.split(' ')[0]} > ${location}`;
+                    break;
+                }
+                element = element.parent;
+            }
+            location = location || 'body > ';
+            location += 'img';
             imagesWithoutAlt.push({ url: pageUrl, src, location });
         }
     });
@@ -463,7 +474,12 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
     
     if (imagesWithoutAlt.length > 0) {
         const headers = ['url', 'src', 'location'];
-        const imagesWithoutAltCsv = formatCsv(imagesWithoutAlt, headers);
+        const formattedImagesWithoutAlt = imagesWithoutAlt.map(img => ({
+            url: img.url,
+            src: img.src,
+            location: img.location || ''
+        }));
+        const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers);
         
         try {
             await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, 'utf8');
