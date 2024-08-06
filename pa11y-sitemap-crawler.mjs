@@ -190,7 +190,7 @@ async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
     }
 }
 
-async function analyzeInternalLinks($, pageUrl, baseUrl) {
+async function analyzeInternalLinks($, pageUrl, baseUrl, options) {
     const internalLinks = [];
     const badLinks = [];
 
@@ -215,16 +215,16 @@ async function analyzeInternalLinks($, pageUrl, baseUrl) {
     });
 
     const checkedLinks = await Promise.all(internalLinks.map(async (link) => {
-        const { statusCode } = await checkInternalLink(link.url);
+        const { statusCode } = await checkInternalLink(link.url, options);
         return { ...link, statusCode };
     }));
 
     return { checkedLinks, badLinks };
 }
 
-async function checkInternalLink(url) {
+async function checkInternalLink(url, options) {
     try {
-        const { statusCode } = await getOrRenderData(url);
+        const { statusCode } = await getOrRenderData(url, options);
         return { statusCode };
     } catch (error) {
         console.error(`Error checking internal link ${url}:`, error.message);
@@ -700,23 +700,6 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     }
 }
 
-async function processUrls(urls, baseUrl, results, options) {
-    const totalTests = urls.length;
-    console.info(`Processing ${totalTests} URL(s)`);
-
-    const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
-
-    for (let i = 0; i < urls.length; i++) {
-        if (isShuttingDown) break;
-        const testUrl = fixUrl(urls[i]);
-        console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
-        await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results, options);
-    }
-
-    return results;
-}
-
-
 async function validateAndPrepare(sitemapUrl, outputDir) {
     if (!sitemapUrl) {
         throw new Error('No sitemap URL or HTML file provided.');
@@ -801,7 +784,7 @@ function isValidUrl(url) {
 
 async function processUrls(urls, baseUrl, results, options) {
     const totalTests = urls.length;
-    console.info(`Testing ${totalTests} URL(s)${totalTests === urls.length ? '' : ''}`);
+    console.info(`Processing ${totalTests} URL(s)`);
 
     const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
 
@@ -821,11 +804,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
     debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
     
     try {
-        let { html, jsErrors, statusCode, headers, pageData } = await getOrRenderData(testUrl, {
-            noPuppeteer: options.noPuppeteer,
-            cacheOnly: options.cacheOnly,
-            noCache: options.noCache
-        });
+        let { html, jsErrors, statusCode, headers, pageData } = await getOrRenderData(testUrl, options);
 
         if (!html || !statusCode) {
             console.warn(`No data retrieved for ${testUrl}. Skipping.`);
@@ -837,7 +816,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
         if (statusCode === 200) {
             const $ = cheerio.load(html);
-            const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl);
+            const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl, options);
             
             const enhancedPageData = {
                 ...pageData,
@@ -848,19 +827,20 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
                 twitterTags: $('meta[name^="twitter:"]').length > 0
             };
 
-            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData);
+            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData, options);
             
             if (!results.badLinks) results.badLinks = [];
             results.badLinks.push(...badLinks);
 
+            let performanceMetrics = null;
             if (!options.noPuppeteer) {
-                const performanceMetrics = await analyzePerformance(testUrl);
+                performanceMetrics = await analyzePerformance(testUrl);
                 results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
             }
 
             const seoScore = calculateSeoScore({
                 ...enhancedPageData,
-                performanceMetrics: options.noPuppeteer ? null : performanceMetrics
+                performanceMetrics
             });
             
             results.seoScores.push({
@@ -875,7 +855,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
     }
 }
 
-async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, pageData) {
+async function analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, pageData, options) {
     const $ = cheerio.load(html);
     
     updateTitleMetrics($, results);

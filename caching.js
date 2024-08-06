@@ -315,22 +315,22 @@ async function setCachedData(url, data) {
   }
 }
 
-async function getOrRenderData(url, options) {
-  const { noPuppeteer, cacheOnly, noCache } = options;
+async function getOrRenderData(url, options = {}) {
+  const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
   debug(`getOrRenderData called for ${url}`);
 
   if (!noCache) {
-    let cachedData = await getCachedData(url);
-    if (cachedData) {
-      cachedData.contentFreshness = analyzeContentFreshness(cachedData);
-      debug(`Returning cached data for ${url}`);
-      return cachedData;
-    }
+      let cachedData = await getCachedData(url);
+      if (cachedData) {
+          cachedData.contentFreshness = analyzeContentFreshness(cachedData);
+          debug(`Returning cached data for ${url}`);
+          return cachedData;
+      }
   }
 
   if (cacheOnly) {
-    console.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
-    return null;
+      console.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
+      return { html: null, statusCode: null };
   }
 
   debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
@@ -338,7 +338,7 @@ async function getOrRenderData(url, options) {
   newData.contentFreshness = analyzeContentFreshness(newData);
 
   if (!noCache) {
-    await setCachedData(url, newData);
+      await setCachedData(url, newData);
   }
 
   return newData;
