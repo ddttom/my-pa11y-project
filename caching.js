@@ -12,6 +12,42 @@ function debug(message) {
   //  console.log(`[DEBUG] ${message}`);
 }
 
+const cachingOptions = [
+  {
+    name: 'Default (Puppeteer + Caching)',
+    description: 'Uses Puppeteer to render pages and caches the results. Provides full JavaScript support and captures dynamic content.',
+    flag: null
+  },
+  {
+    name: 'No Puppeteer',
+    description: 'Fetches pages without using Puppeteer. Faster but may miss dynamically loaded content. Still uses caching.',
+    flag: '--no-puppeteer'
+  },
+  {
+    name: 'Cache Only',
+    description: 'Only uses cached data. Will not fetch new data for uncached pages. Fastest option but may return stale or missing data.',
+    flag: '--cache-only'
+  },
+  {
+    name: 'No Cache',
+    description: 'Disables caching. Always fetches fresh data. Useful for getting the most up-to-date information, but slower and more resource-intensive.',
+    flag: '--no-cache'
+  }
+];
+
+function displayCachingOptions() {
+  console.log('Available Caching Options:');
+  console.log('-------------------------');
+  cachingOptions.forEach((option, index) => {
+    console.log(`${index + 1}. ${option.name}`);
+    console.log(`   Description: ${option.description}`);
+    console.log(`   Flag: ${option.flag || 'No flag (default)'}`);
+    console.log();
+  });
+}
+
+
+
 async function launchBrowserWithRetry(maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -279,19 +315,35 @@ async function setCachedData(url, data) {
   }
 }
 
-async function getOrRenderData(url, noPuppeteer = false) {
+async function getOrRenderData(url, options) {
+  const { noPuppeteer, cacheOnly, noCache } = options;
   debug(`getOrRenderData called for ${url}`);
-  let cachedData = await getCachedData(url);
-  if (cachedData) {
-    cachedData.contentFreshness = analyzeContentFreshness(cachedData);
-    debug(`Returning cached data for ${url}`);
-    return cachedData;
+
+  if (!noCache) {
+    let cachedData = await getCachedData(url);
+    if (cachedData) {
+      cachedData.contentFreshness = analyzeContentFreshness(cachedData);
+      debug(`Returning cached data for ${url}`);
+      return cachedData;
+    }
   }
-  debug(`No cache found, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
+
+  if (cacheOnly) {
+    console.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
+    return null;
+  }
+
+  debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
   const newData = noPuppeteer ? await fetchDataWithoutPuppeteer(url) : await renderAndCacheData(url);
   newData.contentFreshness = analyzeContentFreshness(newData);
+
+  if (!noCache) {
+    await setCachedData(url, newData);
+  }
+
   return newData;
 }
+
 
 async function fetchDataWithoutPuppeteer(url) {
   try {
@@ -400,4 +452,4 @@ function analyzeContentFreshness(data) {
   return freshness;
 }
 
-export { ensureCacheDir, getOrRenderData };
+export { ensureCacheDir, getOrRenderData , displayCachingOptions, cachingOptions };

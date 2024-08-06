@@ -12,12 +12,13 @@ import { stringify } from 'csv-stringify/sync';
 import pkg from 'puppeteer';
 const { launch } = pkg;
 import puppeteer from 'puppeteer';
-import { ensureCacheDir, getOrRenderData } from './caching.js';
+import { ensureCacheDir, getOrRenderData, displayCachingOptions } from './caching.js';
 import { calculateSeoScore } from './seo-scoring.js';
 import { saveContentAnalysis } from './content-analysis.js';
 import { generateSitemap } from './sitemap-generator.js';
 import pa11yOptions  from './pa11y-options.js';
-import { formatCsv } from './utils.js'
+import { formatCsv, debug } from './utils.js'
+
 
 let isShuttingDown = false;
 let results = {
@@ -26,12 +27,6 @@ let results = {
     contentAnalysis: [],
     orphanedUrls: new Set()
 };
-
-function debug(message) {
-   // debug(`[DEBUG] ${new Date().toISOString()}: ${message}`);
-}
-
-debug('Script started');
 
 
 const axiosInstance = axios.create({
@@ -699,7 +694,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         const parsedUrl = new URL(isUrl(sitemapUrl) ? sitemapUrl : `file://${path.resolve(sitemapUrl)}`);
         const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 
-        results = await processUrls(urls, baseUrl, results);
+        results = await processUrls(urls, baseUrl, results, options);
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
         await generateSitemap(results, outputDir, baseUrl);
@@ -776,20 +771,17 @@ async function getUrlsFromSitemap(sitemapUrl, limit) {
     return limit === -1 ? urls : urls.slice(0, limit);
 }
 
-async function processUrls(urls, sitemapUrl) {
+async function processUrls(urls, baseUrl, results, options) {
     const totalTests = urls.length;
     console.info(`Testing ${totalTests} URL(s)${totalTests === urls.length ? '' : ''}`);
 
-    const baseUrl = new URL(urls[0]).origin;
     const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
-
-    let results = initializeResults();
 
     for (let i = 0; i < urls.length; i++) {
         if (isShuttingDown) break;
         const testUrl = fixUrl(urls[i]);
         console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
-        await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results);
+        await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results, options);
     }
 
     return results;
@@ -1666,6 +1658,8 @@ program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
     .requiredOption('-o, --output <directory>', 'Output directory for results')
     .option('-l, --limit <number>', 'Limit the number of URLs to test. Use -1 to test all URLs.', parseInt, -1)
+    .option('--cache-only', 'Use only cached data, do not fetch new data')
+    .option('--no-cache', 'Disable caching, always fetch fresh data')
     .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
     .parse(process.argv);
 
@@ -1674,8 +1668,10 @@ const options = program.opts();
 setupShutdownHandler(options.output);
 
 // Run the main function
-debug('Starting main function');
-runTestsOnSitemap(options.sitemap, options.output, options.limit)
+console.log('Welcome to the Pa11y Crawler\n');
+displayCachingOptions();
+console.log('Starting the crawl process...\n');
+runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     .then(() => {
         debug('Script completed successfully');
     })

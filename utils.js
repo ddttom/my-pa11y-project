@@ -42,6 +42,6 @@ export function formatCsv(data, headers) {
         }
     });
 
-    console.log('CSV formatting completed.');
+    debug('CSV formatting completed.');
     return csvContent;
 }
