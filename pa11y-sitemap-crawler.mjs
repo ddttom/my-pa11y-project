@@ -941,11 +941,9 @@ async function saveResults(results, outputDir, sitemapUrl) {
             } else {
                 result = await operation.func(results, outputDir);
             }
-            if (operation.name === 'Images without alt') {
-                
-            } else {
-                console.log(`${operation.name} saved successfully`);
-            }
+            
+            debug(`${operation.name} saved successfully`);
+            
         } catch (error) {
             console.error(`Error saving ${operation.name}:`, error.message);
             console.error('Error stack:', error.stack);
