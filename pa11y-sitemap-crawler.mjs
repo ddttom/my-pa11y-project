@@ -17,6 +17,7 @@ import { calculateSeoScore } from './seo-scoring.js';
 import { saveContentAnalysis } from './content-analysis.js';
 import { generateSitemap } from './sitemap-generator.js';
 import pa11yOptions  from './pa11y-options.js';
+import { formatCsv } from './utils.js'
 
 let isShuttingDown = false;
 let results = {
@@ -402,10 +403,6 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
         console.log('No images without alt text found');
     }
 }
-
-function formatCsv(data, headers) {
-    return stringify([headers, ...data.map(row => headers.map(header => row[header] || ''))]);
-}
 // Update URL metrics
 function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results) {
     results.urlMetrics.total++;
@@ -776,6 +773,8 @@ function handleError(error, outputDir) {
 }
 async function saveResults(results, outputDir, sitemapUrl) {
     console.info(`Saving results to: ${outputDir}`);
+    console.log('Results object keys:', Object.keys(results));
+
     const saveOperations = [
         { name: 'Pa11y results', func: savePa11yResults },
         { name: 'Internal links', func: saveInternalLinks },
@@ -790,6 +789,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
 
     for (const operation of saveOperations) {
         try {
+            console.log(`Attempting to save ${operation.name}...`);
             if (operation.name === 'Orphaned URLs') {
                 await operation.func(results.contentAnalysis, outputDir);
             } else if (operation.name === 'SEO report') {
@@ -797,83 +797,57 @@ async function saveResults(results, outputDir, sitemapUrl) {
             } else {
                 await operation.func(results, outputDir);
             }
-            debug(`${operation.name} saved successfully`);
+            console.log(`${operation.name} saved successfully`);
         } catch (error) {
             console.error(`Error saving ${operation.name}:`, error.message);
+            console.error('Error stack:', error.stack);
         }
     }
 
-    debug(`All results saved to ${outputDir}`);
+    console.log(`All results saved to ${outputDir}`);
 }
 
-async function saveSeoScores(results, outputDir) {
-    const seoScoresFormatted = results.seoScores.map(score => {
-        const roundedScore = {};
-        for (const [key, value] of Object.entries(score)) {
-            if (key === 'url') {
-                roundedScore[key] = value;
-            } else if (key === 'details') {
-                roundedScore[key] = {};
-                for (const [detailKey, detailValue] of Object.entries(value)) {
-                    roundedScore[key][detailKey] = typeof detailValue === 'number' 
-                        ? Number(detailValue.toFixed(2)) 
-                        : detailValue;
-                }
-            } else {
-                roundedScore[key] = typeof value === 'number' 
-                    ? Number(value.toFixed(2)) 
-                    : value;
-            }
-        }
-        return {
-            url: roundedScore.url,
-            score: roundedScore.score,
-            'details.titleOptimization': roundedScore.details.titleOptimization,
-            'details.metaDescriptionOptimization': roundedScore.details.metaDescriptionOptimization,
-            'details.urlStructure': roundedScore.details.urlStructure,
-            'details.h1Optimization': roundedScore.details.h1Optimization,
-            'details.contentLength': roundedScore.details.contentLength,
-            'details.internalLinking': roundedScore.details.internalLinking,
-            'details.imageOptimization': roundedScore.details.imageOptimization,
-            'details.pageSpeed': roundedScore.details.pageSpeed,
-            'details.mobileOptimization': roundedScore.details.mobileOptimization,
-            'details.securityFactors': roundedScore.details.securityFactors,
-            'details.structuredData': roundedScore.details.structuredData,
-            'details.socialMediaTags': roundedScore.details.socialMediaTags
-        };
-    });
-
-    const seoScoresCsv = formatCsv(seoScoresFormatted, 
-        ['url', 'score', 'details.titleOptimization', 'details.metaDescriptionOptimization',
-         'details.urlStructure', 'details.h1Optimization', 'details.contentLength', 'details.internalLinking',
-         'details.imageOptimization', 'details.pageSpeed', 'details.mobileOptimization', 'details.securityFactors',
-         'details.structuredData', 'details.socialMediaTags']);
-    await fs.writeFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv);
-    debug('SEO scores saved');
-}
 
 async function saveSeoScoresSummary(results, outputDir) {
-    // Check if seoScores exist and have data
-    if (!results.seoScores || results.seoScores.length === 0) {
-        console.warn('No SEO scores available to summarize.');
-        return; // Exit the function early if there are no scores
+    console.log('Attempting to save SEO scores summary...');
+    console.log('Results object keys:', Object.keys(results));
+
+    if (!results.seoScores || !Array.isArray(results.seoScores) || results.seoScores.length === 0) {
+        console.warn('seoScores is missing, not an array, or empty.');
+        
+        // Save diagnostic information
+        const diagnosticInfo = JSON.stringify(results, null, 2);
+        await fs.writeFile(path.join(outputDir, 'seo_scores_diagnostic.json'), diagnosticInfo);
+        console.log('Diagnostic information saved to seo_scores_diagnostic.json');
+        
+        return;
     }
 
+    console.log(`Found ${results.seoScores.length} SEO scores to process.`);
+
     const getScoreComment = (score) => {
+        if (score >= 90) return 'Excellent';
         if (score >= 80) return 'Good';
-        if (score >= 60) return 'Medium';
-        return 'Needs Improvement';
+        if (score >= 70) return 'Fair';
+        if (score >= 60) return 'Needs Improvement';
+        return 'Poor';
     };
 
-    const sumScores = results.seoScores.reduce((sum, score) => {
-        sum.totalScore += score.score || 0;
-        if (score.details) {
-            for (const [key, value] of Object.entries(score.details)) {
-                sum.details[key] = (sum.details[key] || 0) + (value || 0);
+    const sumScores = results.seoScores.reduce((sum, score, index) => {
+        if (score && typeof score === 'object') {
+            sum.totalScore += score.score || 0;
+            if (score.details && typeof score.details === 'object') {
+                for (const [key, value] of Object.entries(score.details)) {
+                    sum.details[key] = (sum.details[key] || 0) + (value || 0);
+                }
             }
+        } else {
+            console.warn(`Invalid score object at index ${index}:`, score);
         }
         return sum;
     }, { totalScore: 0, details: {} });
+
+    console.log('Score summation completed.');
 
     const urlCount = results.seoScores.length;
     const averageScores = {
@@ -885,12 +859,23 @@ async function saveSeoScoresSummary(results, outputDir) {
         averageScores.details[key] = value / urlCount;
     }
 
+    console.log('Average scores calculated.');
+
     const summaryData = [
-        ['Metric', 'Average Score', 'Comment'],
-        ['Overall SEO Score', averageScores.overallScore.toFixed(2), getScoreComment(averageScores.overallScore)]
+        ['Metric', 'Average Score', 'Comment']
     ];
 
-    // Add detailed scores only if they exist
+    const addMetricToSummary = (metricName, score) => {
+        const formattedScore = (score * 100).toFixed(2);
+        summaryData.push([
+            metricName,
+            formattedScore,
+            getScoreComment(parseFloat(formattedScore))
+        ]);
+    };
+
+    addMetricToSummary('Overall SEO Score', averageScores.overallScore / 100);
+
     const detailKeys = [
         'titleOptimization', 'metaDescriptionOptimization', 'urlStructure', 'h1Optimization',
         'contentLength', 'internalLinking', 'imageOptimization', 'pageSpeed', 'mobileOptimization',
@@ -899,66 +884,154 @@ async function saveSeoScoresSummary(results, outputDir) {
 
     for (const key of detailKeys) {
         if (averageScores.details[key] !== undefined) {
-            const score = averageScores.details[key];
-            summaryData.push([
-                key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()), // Convert camelCase to Title Case
-                score.toFixed(2),
-                getScoreComment(score)
-            ]);
+            addMetricToSummary(
+                key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+                averageScores.details[key]
+            );
+        } else {
+            console.warn(`Detail key '${key}' not found in average scores.`);
         }
     }
 
-    const seoScoresSummaryCsv = formatCsv(summaryData);
-    await fs.writeFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv);
-    debug('SEO scores summary saved');
+    console.log('Summary data prepared.');
+    console.log('Summary data:', summaryData);
+
+    try {
+        const seoScoresSummaryCsv = formatCsv(summaryData);
+        await fs.writeFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv);
+        console.log('SEO scores summary saved successfully');
+    } catch (error) {
+        console.error('Error while formatting or saving SEO scores summary:', error);
+        console.error('Error stack:', error.stack);
+    }
 }
 
+async function saveSeoScores(results, outputDir) {
+    console.log('Attempting to save SEO scores...');
+    if (!results.seoScores || !Array.isArray(results.seoScores)) {
+        console.error('SEO scores are missing or not an array:', results.seoScores);
+        return;
+    }
+
+    const seoScoresFormatted = results.seoScores.map(score => {
+        if (!score || typeof score !== 'object') {
+            console.error('Invalid score object:', score);
+            return null;
+        }
+
+        const roundedScore = {
+            url: score.url || '',
+            score: typeof score.score === 'number' ? Number(score.score.toFixed(2)) : 'N/A',
+        };
+
+        if (score.details && typeof score.details === 'object') {
+            for (const [key, value] of Object.entries(score.details)) {
+                roundedScore[`details.${key}`] = typeof value === 'number' 
+                    ? Number(value.toFixed(2)) 
+                    : 'N/A';
+            }
+        }
+
+        return roundedScore;
+    }).filter(Boolean);
+
+    const headers = ['url', 'score', 'details.titleOptimization', 'details.metaDescriptionOptimization',
+        'details.urlStructure', 'details.h1Optimization', 'details.contentLength', 'details.internalLinking',
+        'details.imageOptimization', 'details.pageSpeed', 'details.mobileOptimization', 'details.securityFactors',
+        'details.structuredData', 'details.socialMediaTags'];
+
+    const seoScoresCsv = formatCsv(seoScoresFormatted, headers);
+    await fs.writeFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv);
+    console.log('SEO scores saved successfully');
+}
+
+
+
 async function savePerformanceAnalysis(results, outputDir) {
-    const roundedPerformanceAnalysis = results.performanceAnalysis.map(entry => {
-        const loadTime = Number(entry.loadTime.toFixed(2));
-        const domContentLoaded = Number(entry.domContentLoaded.toFixed(2));
-        const firstPaint = Number(entry.firstPaint.toFixed(2));
-        const firstContentfulPaint = Number(entry.firstContentfulPaint.toFixed(2));
+    console.log('Attempting to save performance analysis...');
+    if (!results.performanceAnalysis || !Array.isArray(results.performanceAnalysis)) {
+        console.error('Performance analysis data is missing or not an array');
+        return;
+    }
 
-        // Function to determine performance comment
-        const getPerformanceComment = (metric, thresholds) => {
-            if (metric <= thresholds.good) return 'Good';
-            if (metric <= thresholds.medium) return 'Medium';
-            return 'Improvement required';
-        };
-
-        // Thresholds for each metric (in milliseconds)
+    const getPerformanceComment = (metric, value) => {
         const thresholds = {
-            loadTime: { good: 2000, medium: 3000 },
-            domContentLoaded: { good: 1000, medium: 2000 },
-            firstPaint: { good: 1000, medium: 2000 },
-            firstContentfulPaint: { good: 1500, medium: 2500 }
+            loadTime: { excellent: 1000, good: 2000, fair: 3000 },
+            domContentLoaded: { excellent: 500, good: 1000, fair: 2000 },
+            firstPaint: { excellent: 1000, good: 2000, fair: 3000 },
+            firstContentfulPaint: { excellent: 1500, good: 2500, fair: 4000 }
         };
 
-        // Generate comments
-        const loadTimeComment = getPerformanceComment(loadTime, thresholds.loadTime);
-        const domContentLoadedComment = getPerformanceComment(domContentLoaded, thresholds.domContentLoaded);
-        const firstPaintComment = getPerformanceComment(firstPaint, thresholds.firstPaint);
-        const firstContentfulPaintComment = getPerformanceComment(firstContentfulPaint, thresholds.firstContentfulPaint);
+        if (value <= thresholds[metric].excellent) return 'Excellent';
+        if (value <= thresholds[metric].good) return 'Good';
+        if (value <= thresholds[metric].fair) return 'Fair';
+        return 'Needs Improvement';
+    };
 
+    const roundedPerformanceAnalysis = results.performanceAnalysis.map(entry => ({
+        url: entry.url,
+        loadTime: Number(entry.loadTime.toFixed(2)),
+        loadTimeComment: getPerformanceComment('loadTime', entry.loadTime),
+        domContentLoaded: Number(entry.domContentLoaded.toFixed(2)),
+        domContentLoadedComment: getPerformanceComment('domContentLoaded', entry.domContentLoaded),
+        firstPaint: Number(entry.firstPaint.toFixed(2)),
+        firstPaintComment: getPerformanceComment('firstPaint', entry.firstPaint),
+        firstContentfulPaint: Number(entry.firstContentfulPaint.toFixed(2)),
+        firstContentfulPaintComment: getPerformanceComment('firstContentfulPaint', entry.firstContentfulPaint)
+    }));
+
+    // Calculate summary statistics
+    const calculateStats = (metric) => {
+        const values = roundedPerformanceAnalysis.map(entry => entry[metric]).sort((a, b) => a - b);
         return {
-            url: entry.url,
-            loadTime,
-            loadTimeComment,
-            domContentLoaded,
-            domContentLoadedComment,
-            firstPaint,
-            firstPaintComment,
-            firstContentfulPaint,
-            firstContentfulPaintComment
+            min: values[0],
+            max: values[values.length - 1],
+            median: values[Math.floor(values.length / 2)],
+            average: values.reduce((sum, val) => sum + val, 0) / values.length
         };
-    });
+    };
 
-    const performanceAnalysisCsv = formatCsv(roundedPerformanceAnalysis, 
+    const summaryStats = {
+        loadTime: calculateStats('loadTime'),
+        domContentLoaded: calculateStats('domContentLoaded'),
+        firstPaint: calculateStats('firstPaint'),
+        firstContentfulPaint: calculateStats('firstContentfulPaint')
+    };
+
+    // Prepare CSV data
+    const csvData = [
         ['url', 'loadTime', 'loadTimeComment', 'domContentLoaded', 'domContentLoadedComment', 
-         'firstPaint', 'firstPaintComment', 'firstContentfulPaint', 'firstContentfulPaintComment']);
-    await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
-    debug('Performance analysis saved with comments');
+         'firstPaint', 'firstPaintComment', 'firstContentfulPaint', 'firstContentfulPaintComment'],
+        ...roundedPerformanceAnalysis.map(entry => [
+            entry.url,
+            entry.loadTime,
+            entry.loadTimeComment,
+            entry.domContentLoaded,
+            entry.domContentLoadedComment,
+            entry.firstPaint,
+            entry.firstPaintComment,
+            entry.firstContentfulPaint,
+            entry.firstContentfulPaintComment
+        ]),
+        [], // Empty row for separation
+        ['Summary Statistics'],
+        ['Metric', 'Min', 'Max', 'Median', 'Average'],
+        ...Object.entries(summaryStats).map(([metric, stats]) => [
+            metric,
+            stats.min.toFixed(2),
+            stats.max.toFixed(2),
+            stats.median.toFixed(2),
+            stats.average.toFixed(2)
+        ])
+    ];
+
+    try {
+        const performanceAnalysisCsv = formatCsv(csvData);
+        await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
+        console.log('Performance analysis saved with comments and summary statistics');
+    } catch (error) {
+        console.error('Error saving performance analysis:', error);
+    }
 }
 async function savePa11yResults(results, outputDir) {
     await saveRawPa11yResult(results, outputDir);

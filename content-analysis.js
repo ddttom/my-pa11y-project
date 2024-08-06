@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { stringify } from "csv-stringify/sync";
+import { formatCsv } from './utils.js'
 
 const extractKeywords = (text, count = 5) => {
   const words = text.toLowerCase().match(/\b\w+\b/g) || [];
@@ -120,16 +120,6 @@ const formatContentAnalysisResult = (result) => {
   };
 };
 
-const formatCsv = (data, headers) =>
-  stringify([
-    headers,
-    ...data.map((row) =>
-      headers.map((header) => {
-        const value = row[header];
-        return value !== undefined && value !== null ? value : "";
-      })
-    ),
-  ]);
 
 async function saveContentAnalysis(results, outputDir) {
   const headers = [

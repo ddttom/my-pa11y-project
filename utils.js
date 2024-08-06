@@ -1,0 +1,43 @@
+// utils.js or utils.mjs
+
+export function formatCsv(data, headers) {
+    console.log('Formatting CSV data...');
+    console.log('Data type:', typeof data);
+    console.log('Data length:', Array.isArray(data) ? data.length : 'N/A');
+
+    if (!Array.isArray(data)) {
+        console.error('formatCsv received non-array data:', data);
+        return '';
+    }
+
+    let csvContent = '';
+
+    if (headers && Array.isArray(headers)) {
+        csvContent += headers.join(',') + '\n';
+    }
+
+    data.forEach((row, index) => {
+        if (Array.isArray(row)) {
+            csvContent += row.map(cell => {
+                if (cell === null || cell === undefined) {
+                    return '';
+                }
+                return typeof cell === 'string' ? `"${cell.replace(/"/g, '""')}"` : cell;
+            }).join(',') + '\n';
+        } else if (typeof row === 'object' && row !== null) {
+            // Handle object rows
+            const values = headers ? headers.map(header => row[header] || '') : Object.values(row);
+            csvContent += values.map(cell => {
+                if (cell === null || cell === undefined) {
+                    return '';
+                }
+                return typeof cell === 'string' ? `"${cell.replace(/"/g, '""')}"` : cell;
+            }).join(',') + '\n';
+        } else {
+            console.error(`Invalid row at index ${index} in CSV data:`, row);
+        }
+    });
+
+    console.log('CSV formatting completed.');
+    return csvContent;
+}
