@@ -483,7 +483,6 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
         
         try {
             await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, 'utf8');
-            console.log(`${imagesWithoutAlt.length} images without alt text found and saved`);
         } catch (error) {
             console.error('Error saving images without alt text:', error);
         }
@@ -945,7 +944,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
                 result = await operation.func(results, outputDir);
             }
             if (operation.name === 'Images without alt') {
-                console.log(`${operation.name}: ${result} images without alt text found and saved`);
+                console.log(`${operation.name}`);
             } else {
                 console.log(`${operation.name} saved successfully`);
             }
