@@ -450,7 +450,7 @@ function analyzeTables($) {
 }
 
   
-sync function saveImagesWithoutAlt(contentAnalysis, outputDir) {
+async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
     let imagesWithoutAlt = [];
     
     if (Array.isArray(contentAnalysis)) {
