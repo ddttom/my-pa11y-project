@@ -197,12 +197,24 @@ async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
 
 async function analyzeInternalLinks($, pageUrl, baseUrl) {
     const internalLinks = [];
+    const badLinks = [];
+
     $('a').each((i, elem) => {
         const href = $(elem).attr('href');
         if (href) {
             const absoluteUrl = new URL(href, pageUrl).href;
             if (absoluteUrl.startsWith(baseUrl)) {
                 internalLinks.push({ url: absoluteUrl, text: $(elem).text().trim() });
+                
+                // Check for "author" in the domain
+                const domain = new URL(absoluteUrl).hostname;
+                if (domain.includes('author')) {
+                    badLinks.push({
+                        link: absoluteUrl,
+                        domain: domain,
+                        containingPage: pageUrl
+                    });
+                }
             }
         }
     });
@@ -212,7 +224,7 @@ async function analyzeInternalLinks($, pageUrl, baseUrl) {
         return { ...link, statusCode };
     }));
 
-    return checkedLinks;
+    return { checkedLinks, badLinks };
 }
 
 async function checkInternalLink(url) {
@@ -225,17 +237,19 @@ async function checkInternalLink(url) {
     }
 }
 
-// Update the saveInternalLinks function
 async function saveInternalLinks(results, outputDir) {
     const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks), 
         ['source', 'target', 'anchorText', 'statusCode']);
     await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
     debug('Internal links results saved');
+
+    // Save bad links
+    await saveBadLinks(results.badLinks, outputDir);
 }
 
 function flattenInternalLinks(internalLinks) {
     return internalLinks.flatMap(result => 
-        result.internalLinks ? result.internalLinks.map(link => ({
+        result.checkedLinks ? result.checkedLinks.map(link => ({
             source: result.url,
             target: link.url,
             anchorText: link.text,
@@ -243,6 +257,16 @@ function flattenInternalLinks(internalLinks) {
         })) 
         : [{ source: result.url, error: result.error }]
     );
+}
+
+async function saveBadLinks(badLinks, outputDir) {
+    if (badLinks && badLinks.length > 0) {
+        const badLinksCsv = formatCsv(badLinks, ['link', 'domain', 'containingPage']);
+        await fs.writeFile(path.join(outputDir, 'author_links.csv'), badLinksCsv);
+        debug('Bad links saved to bad_links.csv');
+    } else {
+        debug('No author links found');
+    }
 }
 
 function extractBasicInfo($) {
@@ -783,13 +807,13 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
         if (statusCode === 200) {
             const $ = cheerio.load(html);
-            const internalLinks = await getInternalLinks(html, testUrl, baseUrl);
+            const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl);
             
-             // Merge pageData with additional data
-             const enhancedPageData = {
+            // Merge pageData with additional data
+            const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
-                internalLinks: internalLinks,
+                internalLinks: checkedLinks,
                 hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
                 openGraphTags: $('meta[property^="og:"]').length > 0,
                 twitterTags: $('meta[name^="twitter:"]').length > 0
@@ -797,6 +821,10 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
             await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData);
             
+            // Add badLinks to results
+            if (!results.badLinks) results.badLinks = [];
+            results.badLinks.push(...badLinks);
+
             const performanceMetrics = await analyzePerformance(testUrl);
             results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
 
@@ -807,7 +835,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             
             results.seoScores.push({
                 url: testUrl,
-                score: seoScore.score, // Make sure this is included
+                score: seoScore.score,
                 details: seoScore.details
             });
         }
