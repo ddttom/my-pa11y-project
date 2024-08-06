@@ -93,3 +93,60 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Pa11y](https://pa11y.org/) for providing the accessibility testing engine
 - [Cheerio](https://cheerio.js.org/) for HTML parsing
 - [Commander.js](https://github.com/tj/commander.js/) for command-line interface
+
+## parameters
+
+Sitemap URL (-s, --sitemap <url>)
+
+Required option
+Specifies the URL of the sitemap to process
+
+Output Directory (-o, --output <directory>)
+
+Required option
+Defines where the tool should save its results
+
+Limit (-l, --limit <number>)
+
+Optional, defaults to -1 (process all URLs)
+Restricts the number of URLs the tool will process
+
+No Puppeteer (--no-puppeteer)
+
+Optional flag
+Skips using Puppeteer for rendering pages
+Uses cached HTML if available
+Can speed up processing but may miss dynamic content
+
+Cache Only (--cache-only)
+
+Optional flag
+Uses only data from the cache
+Won't fetch any new data from the web
+Useful for quick re-analysis of previously crawled sites
+
+No Cache (--no-cache)
+
+Optional flag
+Disables caching entirely
+Always fetches fresh data from the web
+Ensures the most up-to-date information but may slow down processing
+
+Force Delete Cache (--force-delete-cache)
+
+Optional flag
+Deletes any existing cache before starting the crawl
+Ensures a completely fresh start
+Useful if you suspect the cache might be corrupted or outdated
+
+Debug Mode (--debug)
+
+Optional flag
+Enables more detailed logs about the tool's operations
+Particularly useful when troubleshooting issues
+
+Note: Multiple options can be combined in a single command to customize the tool's behavior for each crawl session.
+
+ ```js
+ npm start -- -s https://allabout.network/sitemap.xml -o results --force-delete-cache --debug  
+```

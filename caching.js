@@ -111,19 +111,30 @@ function generateCacheKey(url) {
   return key;
 }
 
-async function ensureCacheDir(forceDelete = false) {
+async function ensureCacheDir(options = {}) {  // Provide a default empty object
   try {
-    if (forceDelete) {
-      debug(`Forcing delete of cache directory: ${CACHE_DIR}`);
-      await fs.rm(CACHE_DIR, { recursive: true, force: true });
-      debug(`Cache directory deleted`);
-    }
-    
-    await fs.mkdir(CACHE_DIR, { recursive: true });
-    debug(`Cache directory ensured: ${CACHE_DIR}`);
+      if (options.forceDeleteCache) {
+          debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
+          try {
+              await fs.rm(CACHE_DIR, { recursive: true, force: true });
+              debug(`Cache directory deleted successfully`);
+          } catch (deleteError) {
+              console.error(`Error deleting cache directory: ${deleteError.message}`);
+              if (options.debug) {
+                  console.error('Delete error stack:', deleteError.stack);
+              }
+              // Attempt to proceed even if deletion fails
+          }
+      }
+      
+      await fs.mkdir(CACHE_DIR, { recursive: true });
+      debug(`Cache directory ensured: ${CACHE_DIR}`);
   } catch (error) {
-    console.error("Error managing cache directory:", error);
-    throw error;
+      console.error("Error managing cache directory:", error.message);
+      if (options.debug) {
+          console.error('Error stack:', error.stack);
+      }
+      throw error;
   }
 }
 async function getCachedData(url) {
@@ -499,4 +510,4 @@ function analyzeContentFreshness(data) {
   return freshness;
 }
 
-export { ensureCacheDir, getOrRenderData , displayCachingOptions, cachingOptions };
+export { ensureCacheDir, getOrRenderData , displayCachingOptions };

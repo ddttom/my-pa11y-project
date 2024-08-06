@@ -728,7 +728,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     let results = initializeResults();
 
     try {
-        await validateAndPrepare(sitemapUrl, outputDir);
+        await validateAndPrepare(sitemapUrl, outputDir, options);  // Pass options here
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
 
         // Extract the hostname and protocol from the sitemapUrl
@@ -746,7 +746,7 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     }
 }
 
-async function validateAndPrepare(sitemapUrl, outputDir) {
+async function validateAndPrepare(sitemapUrl, outputDir, options) {  // Add options parameter
     if (!sitemapUrl) {
         throw new Error('No sitemap URL or HTML file provided.');
     }
@@ -771,12 +771,13 @@ async function validateAndPrepare(sitemapUrl, outputDir) {
         throw new Error('Sitemap or HTML content is empty.');
     }
 
-    await createDirectories(outputDir);
+    await createDirectories(outputDir, options);  // Pass options here
 }
 
-async function createDirectories(outputDir) {
+
+async function createDirectories(outputDir, options) {  // Add options parameter
     await fs.mkdir(outputDir, { recursive: true });
-    await ensureCacheDir();
+    await ensureCacheDir(options);  // Pass options here
     debug(`Output and cache directories created`);
 }
 async function validateUrl(url) {
@@ -1764,6 +1765,7 @@ setupShutdownHandler(options.output);
 console.log('Welcome to the Pa11y Crawler\n');
 displayCachingOptions(options);
 console.log('Starting the crawl process...\n');
+
 runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     .then(() => {
         debug('Script completed successfully');
