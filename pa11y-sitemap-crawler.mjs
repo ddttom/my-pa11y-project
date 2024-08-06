@@ -670,7 +670,7 @@ async function runPa11yTest(testUrl, html, results) {
 }
 
 
-async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
+async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     console.log(`Starting process for sitemap or page: ${sitemapUrl}`);
     console.log(`Results will be saved to: ${outputDir}`);
 
@@ -685,11 +685,6 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         await validateAndPrepare(sitemapUrl, outputDir);
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
 
-        if (urls.length === 0) {
-            console.error('Error: No valid URLs found to process. Exiting process.');
-            process.exit(1);
-        }
-
         // Extract the hostname and protocol from the sitemapUrl
         const parsedUrl = new URL(isUrl(sitemapUrl) ? sitemapUrl : `file://${path.resolve(sitemapUrl)}`);
         const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
@@ -703,6 +698,22 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         handleError(error, outputDir, results);
         process.exit(1);
     }
+}
+
+async function processUrls(urls, baseUrl, results, options) {
+    const totalTests = urls.length;
+    console.info(`Processing ${totalTests} URL(s)`);
+
+    const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
+
+    for (let i = 0; i < urls.length; i++) {
+        if (isShuttingDown) break;
+        const testUrl = fixUrl(urls[i]);
+        console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
+        await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results, options);
+    }
+
+    return results;
 }
 
 
@@ -762,13 +773,30 @@ async function validateUrl(url) {
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
     const urls = await extractUrls(parsedContent);
-    console.info(`Found ${urls.length} URL(s)`);
+    console.info(`Found ${urls.length} URL(s) in the sitemap`);
 
     if (urls.length === 0) {
+        throw new Error('No URLs found in the sitemap');
+    }
+
+    const validUrls = urls.filter(url => isValidUrl(url));
+    console.info(`${validUrls.length} valid URL(s) will be processed`);
+
+    if (validUrls.length === 0) {
         throw new Error('No valid URLs found to process');
     }
 
-    return limit === -1 ? urls : urls.slice(0, limit);
+    return limit === -1 ? validUrls : validUrls.slice(0, limit);
+}
+
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch (error) {
+        console.warn(`Invalid URL found: ${url}`);
+        return false;
+    }
 }
 
 async function processUrls(urls, baseUrl, results, options) {
@@ -789,11 +817,21 @@ async function processUrls(urls, baseUrl, results, options) {
 
   
   
-async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, results) {
+async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, results, options) {
     debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
     
     try {
-        let { html, jsErrors, statusCode, headers, pageData } = await getOrRenderData(testUrl);
+        let { html, jsErrors, statusCode, headers, pageData } = await getOrRenderData(testUrl, {
+            noPuppeteer: options.noPuppeteer,
+            cacheOnly: options.cacheOnly,
+            noCache: options.noCache
+        });
+
+        if (!html || !statusCode) {
+            console.warn(`No data retrieved for ${testUrl}. Skipping.`);
+            return;
+        }
+
         updateUrlMetrics(testUrl, baseUrl, html, statusCode, results);
         updateResponseCodeMetrics(statusCode, results);
 
@@ -801,7 +839,6 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             const $ = cheerio.load(html);
             const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl);
             
-            // Merge pageData with additional data
             const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
@@ -813,16 +850,17 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
             await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData);
             
-            // Add badLinks to results
             if (!results.badLinks) results.badLinks = [];
             results.badLinks.push(...badLinks);
 
-            const performanceMetrics = await analyzePerformance(testUrl);
-            results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
+            if (!options.noPuppeteer) {
+                const performanceMetrics = await analyzePerformance(testUrl);
+                results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
+            }
 
             const seoScore = calculateSeoScore({
                 ...enhancedPageData,
-                performanceMetrics: performanceMetrics
+                performanceMetrics: options.noPuppeteer ? null : performanceMetrics
             });
             
             results.seoScores.push({
