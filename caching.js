@@ -49,7 +49,7 @@ async function getCachedData(url) {
   debug(`Attempting to read cache from: ${cachePath}`);
   try {
     const cachedData = await fs.readFile(cachePath, "utf8");
-    console.info(`Cache hit for ${url}`);
+    debug(`Cache hit for ${url}`);
     return JSON.parse(cachedData);
   } catch (error) {
     if (error.code !== "ENOENT") {
