@@ -503,9 +503,7 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
         } catch (error) {
             console.error('Error saving images without alt text:', error);
         }
-    } else {
-        console.log('No images without alt text found');
-    }
+    } 
 
     return imagesWithoutAlt.length;
 }

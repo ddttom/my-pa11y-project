@@ -9,52 +9,77 @@ import { debug } from './utils.js';
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 
-const cachingOptions = [
+const allOptions = [
   {
-    name: 'Default (Puppeteer + Caching)',
-    description: 'Uses Puppeteer to render pages and caches the results. Provides full JavaScript support and captures dynamic content.',
-    flag: null
+    name: 'Sitemap URL',
+    description: 'URL of the sitemap to process',
+    flag: '-s, --sitemap <url>',
+    required: true
+  },
+  {
+    name: 'Output Directory',
+    description: 'Output directory for results',
+    flag: '-o, --output <directory>',
+    required: true
+  },
+  {
+    name: 'Limit',
+    description: 'Limit the number of URLs to test. Use -1 to test all URLs.',
+    flag: '-l, --limit <number>',
+    default: '-1'
   },
   {
     name: 'No Puppeteer',
-    description: 'Fetches pages without using Puppeteer. Faster but may miss dynamically loaded content. Still uses caching.',
+    description: 'Bypass Puppeteer execution and use cached HTML',
     flag: '--no-puppeteer'
   },
   {
     name: 'Cache Only',
-    description: 'Only uses cached data. Will not fetch new data for uncached pages. Fastest option but may return stale or missing data.',
+    description: 'Use only cached data, do not fetch new data',
     flag: '--cache-only'
   },
   {
     name: 'No Cache',
-    description: 'Disables caching. Always fetches fresh data. Useful for getting the most up-to-date information, but slower and more resource-intensive.',
+    description: 'Disable caching, always fetch fresh data',
     flag: '--no-cache'
   },
   {
     name: 'Force Delete Cache',
-    description: 'Forces deletion of existing cache before starting. Ensures a fresh cache for the current run.',
+    description: 'Force delete existing cache before starting',
     flag: '--force-delete-cache'
   },
   {
     name: 'Debug Mode',
-    description: 'Enables verbose logging for troubleshooting.',
+    description: 'Enable debug mode for verbose logging',
     flag: '--debug'
   }
 ];
 
 function displayCachingOptions(currentOptions) {
-  console.log('Available Caching Options:');
-  console.log('-------------------------');
-  cachingOptions.forEach((option, index) => {
-    const isActive = option.flag ? currentOptions[option.flag.replace('--', '')] : !currentOptions.noPuppeteer && !currentOptions.cacheOnly && !currentOptions.noCache;
-    console.log(`${index + 1}. ${option.name} ${isActive ? '(ACTIVE)' : ''}`);
+  console.log('Available Options:');
+  console.log('------------------');
+  allOptions.forEach((option, index) => {
+    const isActive = option.flag.startsWith('--') ? 
+      currentOptions[option.flag.replace('--', '').replace('-', '')] :
+      currentOptions[option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')];
+    
+    console.log(`${index + 1}. ${option.name}${option.required ? ' (Required)' : ''}`);
     console.log(`   Description: ${option.description}`);
-    console.log(`   Flag: ${option.flag || 'No flag (default)'}`);
+    console.log(`   Flag: ${option.flag}`);
+    if (option.default) {
+      console.log(`   Default: ${option.default}`);
+    }
+    if (typeof isActive !== 'undefined') {
+      console.log(`   Current Setting: ${isActive === true ? 'Enabled' : (isActive === false ? 'Disabled' : isActive)}`);
+    }
     console.log();
   });
 
-  console.log('Current Settings:');
-  console.log('-----------------');
+  console.log('Current Settings Summary:');
+  console.log('-------------------------');
+  console.log(`Sitemap URL: ${currentOptions.sitemap}`);
+  console.log(`Output Directory: ${currentOptions.output}`);
+  console.log(`Limit: ${currentOptions.limit}`);
   console.log(`Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`);
   console.log(`Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`);
   console.log(`Cache: ${currentOptions.noCache ? 'Disabled' : 'Enabled'}`);
@@ -62,7 +87,6 @@ function displayCachingOptions(currentOptions) {
   console.log(`Debug Mode: ${currentOptions.debug ? 'Enabled' : 'Disabled'}`);
   console.log();
 }
-
 
 
 
