@@ -669,16 +669,27 @@ function updateContentAnalysis(contentAnalysis, results) {
 }
 
 // Check for orphaned URLs
-function checkOrphanedUrls(internalLinks, sitemapUrls, results) {
+function checkOrphanedUrls(internalLinks, sitemapUrls, results, baseUrl) {
     if (!results.orphanedUrls) {
         results.orphanedUrls = new Set();
     }
+
+    // Convert sitemapUrls to a Set of full URLs for efficient lookup
+    const sitemapUrlSet = new Set(Array.from(sitemapUrls).map(url => new URL(url, baseUrl).href));
+
     internalLinks.forEach(link => {
-        const strippedLink = new URL(link, 'http://example.com').pathname;  // Strip protocol, domain, and fragment identifier
-        if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
-            results.orphanedUrls.add(strippedLink);
+        const fullUrl = new URL(link, baseUrl).href;
+        // Remove trailing slash for consistency in comparison
+        const normalizedUrl = fullUrl.replace(/\/$/, '');
+        
+        if (!sitemapUrlSet.has(normalizedUrl) && !normalizedUrl.endsWith('.pdf')) {
+            results.orphanedUrls.add(normalizedUrl);
         }
     });
+
+    // Remove any URLs that are actually in the sitemap (shouldn't be necessary, but just in case)
+    results.orphanedUrls = new Set([...results.orphanedUrls].filter(url => !sitemapUrlSet.has(url)));
+
     debug(`Orphaned URLs found: ${results.orphanedUrls.size}`);
 }
 
@@ -844,22 +855,54 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             return;
         }
 
+        debug(`Retrieved data for ${testUrl}. Status code: ${statusCode}`);
+
         updateUrlMetrics(testUrl, baseUrl, html, statusCode, results);
         updateResponseCodeMetrics(statusCode, results);
 
         if (statusCode === 200) {
-            // ... existing code ...
+            const $ = cheerio.load(html);
+            const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl, options);
+            debug(`Analyzed ${checkedLinks.length} internal links for ${testUrl}`);
+            
+            const enhancedPageData = {
+                ...pageData,
+                url: testUrl,
+                internalLinks: checkedLinks,
+                hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
+                openGraphTags: $('meta[property^="og:"]').length > 0,
+                twitterTags: $('meta[name^="twitter:"]').length > 0
+            };
 
+            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData, options);
+            
+            if (!results.badLinks) results.badLinks = [];
+            results.badLinks.push(...badLinks);
+            debug(`Found ${badLinks.length} bad links for ${testUrl}`);
+
+            debug(`Starting performance analysis for ${testUrl}`);
             const performanceMetrics = await analyzePerformance(testUrl);
             if (!results.performanceAnalysis) {
                 results.performanceAnalysis = [];
             }
             results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
+            debug(`Completed performance analysis for ${testUrl}`);
 
-            // ... rest of the existing code ...
+            const seoScore = calculateSeoScore({
+                ...enhancedPageData,
+                performanceMetrics
+            });
+            
+            results.seoScores.push({
+                url: testUrl,
+                score: seoScore.score,
+                details: seoScore.details
+            });
+            debug(`Calculated SEO score for ${testUrl}: ${seoScore.score}`);
         }
         debug(`Completed testing: ${testUrl}`);
     } catch (error) {
+        console.error(`Error processing ${testUrl}:`, error);
         handleUrlProcessingError(testUrl, error, results);
     }
 }
