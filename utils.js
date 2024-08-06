@@ -1,7 +1,15 @@
 // utils.js or utils.mjs
 
-export function debug(message) {
-    //  console.log(`[DEBUG] ${message}`);
+let isDebugMode = false;
+
+export function setDebugMode(mode) {
+  isDebugMode = mode;
+}
+
+function debug(message) {
+  if (isDebugMode) {
+    console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
+  }
 }
 
 export function formatCsv(data, headers) {

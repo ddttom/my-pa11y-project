@@ -32,6 +32,16 @@ const cachingOptions = [
     name: 'No Cache',
     description: 'Disables caching. Always fetches fresh data. Useful for getting the most up-to-date information, but slower and more resource-intensive.',
     flag: '--no-cache'
+  },
+  {
+    name: 'Force Delete Cache',
+    description: 'Forces deletion of existing cache before starting. Ensures a fresh cache for the current run.',
+    flag: '--force-delete-cache'
+  },
+  {
+    name: 'Debug Mode',
+    description: 'Enables verbose logging for troubleshooting.',
+    flag: '--debug'
   }
 ];
 
@@ -51,6 +61,8 @@ function displayCachingOptions(currentOptions) {
   console.log(`Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`);
   console.log(`Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`);
   console.log(`Cache: ${currentOptions.noCache ? 'Disabled' : 'Enabled'}`);
+  console.log(`Force Delete Cache: ${currentOptions.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
+  console.log(`Debug Mode: ${currentOptions.debug ? 'Enabled' : 'Disabled'}`);
   console.log();
 }
 
@@ -78,16 +90,21 @@ function generateCacheKey(url) {
   return key;
 }
 
-async function ensureCacheDir() {
+async function ensureCacheDir(forceDelete = false) {
   try {
+    if (forceDelete) {
+      debug(`Forcing delete of cache directory: ${CACHE_DIR}`);
+      await fs.rm(CACHE_DIR, { recursive: true, force: true });
+      debug(`Cache directory deleted`);
+    }
+    
     await fs.mkdir(CACHE_DIR, { recursive: true });
     debug(`Cache directory ensured: ${CACHE_DIR}`);
   } catch (error) {
-    console.error("Error creating cache directory:", error);
+    console.error("Error managing cache directory:", error);
     throw error;
   }
 }
-
 async function getCachedData(url) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);

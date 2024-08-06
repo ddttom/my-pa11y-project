@@ -985,9 +985,9 @@ async function saveResults(results, outputDir, sitemapUrl) {
             }
             
             if (typeof result === 'number') {
-                console.log(`${operation.name}: ${result} items saved`);
+                debug(`${operation.name}: ${result} items saved`);
             } else {
-                console.log(`${operation.name} saved successfully`);
+                debug(`${operation.name} saved successfully`);
             }
         } catch (error) {
             console.error(`Error saving ${operation.name}:`, error.message);
@@ -995,7 +995,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
         }
     }
 
-    console.log(`All results saved to ${outputDir}`);
+    debug(`All results saved to ${outputDir}`);
 }
 
 
@@ -1752,9 +1752,13 @@ program
     .option('--cache-only', 'Use only cached data, do not fetch new data')
     .option('--no-cache', 'Disable caching, always fetch fresh data')
     .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
+    .option('--force-delete-cache', 'Force delete existing cache before starting')
+    .option('--debug', 'Enable debug mode for verbose logging')
     .parse(process.argv);
 
 const options = program.opts();
+
+setDebugMode(options.debug);
 // Set up the shutdown handler
 setupShutdownHandler(options.output);
 
