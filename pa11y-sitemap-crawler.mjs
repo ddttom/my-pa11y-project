@@ -450,13 +450,12 @@ function analyzeTables($) {
 }
 
   
-async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
+sync function saveImagesWithoutAlt(contentAnalysis, outputDir) {
     let imagesWithoutAlt = [];
     
     if (Array.isArray(contentAnalysis)) {
         imagesWithoutAlt = contentAnalysis.flatMap(page => page.imagesWithoutAlt || []);
     } else if (contentAnalysis && typeof contentAnalysis === 'object') {
-        // If contentAnalysis is an object, try to extract imagesWithoutAlt directly
         imagesWithoutAlt = contentAnalysis.imagesWithoutAlt || [];
     } else {
         console.warn('contentAnalysis is neither an array nor an object. No images without alt text will be saved.');
@@ -468,13 +467,15 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
         
         try {
             await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, 'utf8');
-            console.log('Images without alt text saved');
+            console.log(`${imagesWithoutAlt.length} images without alt text found and saved`);
         } catch (error) {
             console.error('Error saving images without alt text:', error);
         }
     } else {
         console.log('No images without alt text found');
     }
+
+    return imagesWithoutAlt.length;
 }
 // Update URL metrics
 function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results) {
@@ -917,14 +918,21 @@ async function saveResults(results, outputDir, sitemapUrl) {
     for (const operation of saveOperations) {
         try {
             debug(`Attempting to save ${operation.name}...`);
+            let result;
             if (operation.name === 'Orphaned URLs') {
-                await operation.func(results.contentAnalysis, outputDir);
+                result = await operation.func(results.contentAnalysis, outputDir);
             } else if (operation.name === 'SEO report') {
-                await operation.func(results, outputDir, sitemapUrl);
+                result = await operation.func(results, outputDir, sitemapUrl);
+            } else if (operation.name === 'Images without alt') {
+                result = await operation.func(results.contentAnalysis, outputDir);
             } else {
-                await operation.func(results, outputDir);
+                result = await operation.func(results, outputDir);
             }
-            console.log(`${operation.name} saved successfully`);
+            if (operation.name === 'Images without alt') {
+                console.log(`${operation.name}: ${result} images without alt text found and saved`);
+            } else {
+                console.log(`${operation.name} saved successfully`);
+            }
         } catch (error) {
             console.error(`Error saving ${operation.name}:`, error.message);
             console.error('Error stack:', error.stack);
