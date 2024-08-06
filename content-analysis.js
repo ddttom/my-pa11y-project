@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { formatCsv } from './utils.js'
+import { formatCsv, debug } from './utils.js'
 
 const extractKeywords = (text, count = 5) => {
   const words = text.toLowerCase().match(/\b\w+\b/g) || [];
