@@ -126,24 +126,39 @@ async function getInternalLinks(html, pageUrl, baseUrl) {
 }
 
 async function analyzePerformance(url) {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.goto(url, {waitUntil: 'networkidle0'});
+    let browser;
+    try {
+        browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        await page.goto(url, {waitUntil: 'networkidle0', timeout: 60000});
 
-    const performanceMetrics = await page.evaluate(() => {
-      const timing = performance.timing;
-      return {
-        loadTime: timing.loadEventEnd - timing.navigationStart,
-        domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
-        firstPaint: performance.getEntriesByType('paint')[0].startTime,
-        firstContentfulPaint: performance.getEntriesByType('paint')[1].startTime
-      };
-    });
+        const performanceMetrics = await page.evaluate(() => {
+            const timing = performance.timing;
+            const paint = performance.getEntriesByType('paint');
+            return {
+                loadTime: timing.loadEventEnd - timing.navigationStart,
+                domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+                firstPaint: paint[0] ? paint[0].startTime : null,
+                firstContentfulPaint: paint[1] ? paint[1].startTime : null
+            };
+        });
 
-    await browser.close();
-    return performanceMetrics;
-  }
-
+        debug(`Performance metrics collected for ${url}: ${JSON.stringify(performanceMetrics)}`);
+        return performanceMetrics;
+    } catch (error) {
+        console.error(`Error analyzing performance for ${url}:`, error.message);
+        return {
+            loadTime: null,
+            domContentLoaded: null,
+            firstPaint: null,
+            firstContentfulPaint: null
+        };
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
 
 
 async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
@@ -655,12 +670,16 @@ function updateContentAnalysis(contentAnalysis, results) {
 
 // Check for orphaned URLs
 function checkOrphanedUrls(internalLinks, sitemapUrls, results) {
+    if (!results.orphanedUrls) {
+        results.orphanedUrls = new Set();
+    }
     internalLinks.forEach(link => {
-        const strippedLink = link.split('#')[0];  // Remove fragment identifier
+        const strippedLink = new URL(link, 'http://example.com').pathname;  // Strip protocol, domain, and fragment identifier
         if (!sitemapUrls.has(strippedLink) && !strippedLink.endsWith('.pdf')) {
             results.orphanedUrls.add(strippedLink);
         }
     });
+    debug(`Orphaned URLs found: ${results.orphanedUrls.size}`);
 }
 
 // Handle URL processing error
@@ -829,39 +848,15 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
         updateResponseCodeMetrics(statusCode, results);
 
         if (statusCode === 200) {
-            const $ = cheerio.load(html);
-            const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl, options);
-            
-            const enhancedPageData = {
-                ...pageData,
-                url: testUrl,
-                internalLinks: checkedLinks,
-                hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
-                openGraphTags: $('meta[property^="og:"]').length > 0,
-                twitterTags: $('meta[name^="twitter:"]').length > 0
-            };
+            // ... existing code ...
 
-            await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData, options);
-            
-            if (!results.badLinks) results.badLinks = [];
-            results.badLinks.push(...badLinks);
-
-            let performanceMetrics = null;
-            if (!options.noPuppeteer) {
-                performanceMetrics = await analyzePerformance(testUrl);
-                results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
+            const performanceMetrics = await analyzePerformance(testUrl);
+            if (!results.performanceAnalysis) {
+                results.performanceAnalysis = [];
             }
+            results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
 
-            const seoScore = calculateSeoScore({
-                ...enhancedPageData,
-                performanceMetrics
-            });
-            
-            results.seoScores.push({
-                url: testUrl,
-                score: seoScore.score,
-                details: seoScore.details
-            });
+            // ... rest of the existing code ...
         }
         debug(`Completed testing: ${testUrl}`);
     } catch (error) {
@@ -933,7 +928,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
             debug(`Attempting to save ${operation.name}...`);
             let result;
             if (operation.name === 'Orphaned URLs') {
-                result = await operation.func(results.contentAnalysis, outputDir);
+                result = await operation.func(results, outputDir);
             } else if (operation.name === 'SEO report') {
                 result = await operation.func(results, outputDir, sitemapUrl);
             } else if (operation.name === 'Images without alt') {
@@ -941,9 +936,11 @@ async function saveResults(results, outputDir, sitemapUrl) {
             } else {
                 result = await operation.func(results, outputDir);
             }
-            
-            debug(`${operation.name} saved successfully`);
-            
+            if (typeof result === 'number') {
+                console.log(`${operation.name}: ${result} items saved`);
+            } else {
+                console.log(`${operation.name} saved successfully`);
+            }
         } catch (error) {
             console.error(`Error saving ${operation.name}:`, error.message);
             console.error('Error stack:', error.stack);
@@ -1095,12 +1092,13 @@ async function saveSeoScores(results, outputDir) {
 
 async function savePerformanceAnalysis(results, outputDir) {
     debug('Attempting to save performance analysis...');
-    if (!results.performanceAnalysis || !Array.isArray(results.performanceAnalysis)) {
-        console.error('Performance analysis data is missing or not an array');
-        return;
+    if (!results.performanceAnalysis || !Array.isArray(results.performanceAnalysis) || results.performanceAnalysis.length === 0) {
+        console.warn('Performance analysis data is missing or empty.');
+        return 0;
     }
 
     const getPerformanceComment = (metric, value) => {
+        if (value === null || value === undefined) return 'N/A';
         const thresholds = {
             loadTime: { excellent: 1000, good: 2000, fair: 3000 },
             domContentLoaded: { excellent: 500, good: 1000, fair: 2000 },
@@ -1116,13 +1114,13 @@ async function savePerformanceAnalysis(results, outputDir) {
 
     const roundedPerformanceAnalysis = results.performanceAnalysis.map(entry => ({
         url: entry.url,
-        loadTime: Number(entry.loadTime.toFixed(2)),
+        loadTime: entry.loadTime !== null && entry.loadTime !== undefined ? Number(entry.loadTime.toFixed(2)) : null,
         loadTimeComment: getPerformanceComment('loadTime', entry.loadTime),
-        domContentLoaded: Number(entry.domContentLoaded.toFixed(2)),
+        domContentLoaded: entry.domContentLoaded !== null && entry.domContentLoaded !== undefined ? Number(entry.domContentLoaded.toFixed(2)) : null,
         domContentLoadedComment: getPerformanceComment('domContentLoaded', entry.domContentLoaded),
-        firstPaint: Number(entry.firstPaint.toFixed(2)),
+        firstPaint: entry.firstPaint !== null && entry.firstPaint !== undefined ? Number(entry.firstPaint.toFixed(2)) : null,
         firstPaintComment: getPerformanceComment('firstPaint', entry.firstPaint),
-        firstContentfulPaint: Number(entry.firstContentfulPaint.toFixed(2)),
+        firstContentfulPaint: entry.firstContentfulPaint !== null && entry.firstContentfulPaint !== undefined ? Number(entry.firstContentfulPaint.toFixed(2)) : null,
         firstContentfulPaintComment: getPerformanceComment('firstContentfulPaint', entry.firstContentfulPaint)
     }));
 
@@ -1203,11 +1201,19 @@ function flattenPa11yResults(pa11yResults) {
 
 async function saveOrphanedUrls(results, outputDir) {
     if (results.orphanedUrls && results.orphanedUrls instanceof Set && results.orphanedUrls.size > 0) {
-        const orphanedUrlsCsv = formatCsv([...results.orphanedUrls].map(url => ({ url })), ['url']);
-        await fs.writeFile(path.join(outputDir, 'orphaned_urls.csv'), orphanedUrlsCsv);
-        debug('Orphaned URLs saved');
+        const orphanedUrlsArray = Array.from(results.orphanedUrls).map(url => ({ url }));
+        const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url']);
+        const filePath = path.join(outputDir, 'orphaned_urls.csv');
+        try {
+            await fs.writeFile(filePath, orphanedUrlsCsv, 'utf8');
+            console.log(`${results.orphanedUrls.size} orphaned URLs saved to ${filePath}`);
+            return results.orphanedUrls.size;
+        } catch (error) {
+            console.error('Error saving orphaned URLs:', error);
+        }
     } else {
-        debug('No orphaned URLs to save');
+        console.log('No orphaned URLs found');
+        return 0;
     }
 }
 
