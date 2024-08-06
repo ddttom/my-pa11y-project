@@ -5,12 +5,9 @@ import puppeteer from "puppeteer";
 import axios from "axios";
 import cheerio from "cheerio";
 import { calculateSeoScore } from "./seo-scoring.js";
+import { debug } from './utils.js';
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
-
-function debug(message) {
-  //  console.log(`[DEBUG] ${message}`);
-}
 
 const cachingOptions = [
   {

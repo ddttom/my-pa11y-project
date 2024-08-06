@@ -6,7 +6,7 @@ export function setDebugMode(mode) {
   isDebugMode = mode;
 }
 
-function debug(message) {
+export function debug(message) {
   if (isDebugMode) {
     console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
   }

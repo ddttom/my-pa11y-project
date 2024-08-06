@@ -17,7 +17,7 @@ import { calculateSeoScore } from './seo-scoring.js';
 import { saveContentAnalysis } from './content-analysis.js';
 import { generateSitemap } from './sitemap-generator.js';
 import pa11yOptions  from './pa11y-options.js';
-import { formatCsv, debug } from './utils.js'
+import { formatCsv, debug , setDebugMode } from './utils.js'
 
 
 let isShuttingDown = false;
