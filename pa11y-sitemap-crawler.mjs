@@ -773,7 +773,7 @@ function handleError(error, outputDir) {
 }
 async function saveResults(results, outputDir, sitemapUrl) {
     console.info(`Saving results to: ${outputDir}`);
-    console.log('Results object keys:', Object.keys(results));
+    debug('Results object keys:', Object.keys(results));
 
     const saveOperations = [
         { name: 'Pa11y results', func: savePa11yResults },
@@ -789,7 +789,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
 
     for (const operation of saveOperations) {
         try {
-            console.log(`Attempting to save ${operation.name}...`);
+            debug(`Attempting to save ${operation.name}...`);
             if (operation.name === 'Orphaned URLs') {
                 await operation.func(results.contentAnalysis, outputDir);
             } else if (operation.name === 'SEO report') {
@@ -810,7 +810,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
 
 async function saveSeoScoresSummary(results, outputDir) {
     console.log('Attempting to save SEO scores summary...');
-    console.log('Results object keys:', Object.keys(results));
+    debug('Results object keys:', Object.keys(results));
 
     if (!results.seoScores || !Array.isArray(results.seoScores) || results.seoScores.length === 0) {
         console.warn('seoScores is missing, not an array, or empty.');
