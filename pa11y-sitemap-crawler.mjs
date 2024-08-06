@@ -1760,7 +1760,7 @@ setupShutdownHandler(options.output);
 
 // Run the main function
 console.log('Welcome to the Pa11y Crawler\n');
-displayCachingOptions();
+displayCachingOptions(options);
 console.log('Starting the crawl process...\n');
 runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     .then(() => {

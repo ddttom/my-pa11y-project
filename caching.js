@@ -35,16 +35,27 @@ const cachingOptions = [
   }
 ];
 
-function displayCachingOptions() {
+function displayCachingOptions(currentOptions) {
   console.log('Available Caching Options:');
   console.log('-------------------------');
   cachingOptions.forEach((option, index) => {
-    console.log(`${index + 1}. ${option.name}`);
+    const isActive = option.flag ? currentOptions[option.flag.replace('--', '')] : !currentOptions.noPuppeteer && !currentOptions.cacheOnly && !currentOptions.noCache;
+    console.log(`${index + 1}. ${option.name} ${isActive ? '(ACTIVE)' : ''}`);
     console.log(`   Description: ${option.description}`);
     console.log(`   Flag: ${option.flag || 'No flag (default)'}`);
     console.log();
   });
+
+  console.log('Current Settings:');
+  console.log('-----------------');
+  console.log(`Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`);
+  console.log(`Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`);
+  console.log(`Cache: ${currentOptions.noCache ? 'Disabled' : 'Enabled'}`);
+  console.log();
 }
+
+// Make sure to export the function
+export { displayCachingOptions, cachingOptions };
 
 
 
