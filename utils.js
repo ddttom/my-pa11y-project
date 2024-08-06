@@ -1,5 +1,9 @@
 // utils.js or utils.mjs
 
+export function debug(message) {
+    //  console.log(`[DEBUG] ${message}`);
+}
+
 export function formatCsv(data, headers) {
     debug('Formatting CSV data...');
     debug('Data type:', typeof data);
