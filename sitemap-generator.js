@@ -16,10 +16,18 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
 
     const maxUrlsPerFile = options.maxUrlsPerFile || 50000;
 
-    // Split content analysis into chunks if necessary
+    // Combine contentAnalysis and orphanedUrls
+    let allUrls = [...results.contentAnalysis];
+
+    // Add orphaned URLs if they exist
+    if (results.orphanedUrls && results.orphanedUrls instanceof Set) {
+        allUrls = allUrls.concat([...results.orphanedUrls].map(url => ({ url })));
+    }
+
+    // Split all URLs into chunks if necessary
     const chunks = [];
-    for (let i = 0; i < results.contentAnalysis.length; i += maxUrlsPerFile) {
-        chunks.push(results.contentAnalysis.slice(i, i + maxUrlsPerFile));
+    for (let i = 0; i < allUrls.length; i += maxUrlsPerFile) {
+        chunks.push(allUrls.slice(i, i + maxUrlsPerFile));
     }
 
     // Create a CSV writer for image data
@@ -36,7 +44,10 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
 
     for (let i = 0; i < chunks.length; i++) {
         const root = create({ version: '1.0', encoding: 'UTF-8' })
-            .ele('urlset', { xmlns: 'http://www.sitemaps.org/schemas/sitemap/0.9' });
+            .ele('urlset', { 
+                xmlns: 'http://www.sitemaps.org/schemas/sitemap/0.9',
+                'xmlns:image': 'http://www.google.com/schemas/sitemap-image/1.1'
+            });
 
         chunks[i].forEach(page => {
             const url = root.ele('url');
@@ -46,12 +57,25 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
                 url.ele('lastmod').txt(new Date(page.lastModifiedDate).toISOString());
             }
 
-            // Add image information to CSV
+            // Add changefreq if available, or set a default
+            const changefreq = page.changeFrequency || determineChangeFrequency(page);
+            url.ele('changefreq').txt(changefreq);
+
+            // Add priority if available, or calculate based on page type
+            const priority = page.priority || calculatePriority(page);
+            url.ele('priority').txt(priority.toFixed(1));
+
+            // Add image information to sitemap and CSV
             if (page.images && page.images.length > 0) {
                 page.images.forEach(image => {
+                    const imageUrl = new URL(image.src, page.url).href;
+                    url.ele('image:image')
+                       .ele('image:loc').txt(imageUrl).up()
+                       .ele('image:title').txt(image.alt || '').up();
+                    
                     imageData.push({
                         pageUrl: page.url,
-                        imageUrl: new URL(image.src, page.url).href,
+                        imageUrl: imageUrl,
                         altText: image.alt || ''
                     });
                 });
@@ -99,4 +123,25 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
     }
 }
 
+function determineChangeFrequency(page) {
+    // This is a simple example. You might want to implement more sophisticated logic.
+    if (page.url.includes('/blog/') || page.url.includes('/news/')) {
+        return 'daily';
+    } else if (page.url.includes('/product/')) {
+        return 'weekly';
+    } else {
+        return 'monthly';
+    }
+}
+
+function calculatePriority(page) {
+    // This is a simple example. You might want to implement more sophisticated logic.
+    if (page.url === '/') {
+        return 1.0;
+    } else if (page.url.split('/').length === 2) {
+        return 0.8;
+    } else {
+        return 0.6;
+    }
+}
 export { generateSitemap };

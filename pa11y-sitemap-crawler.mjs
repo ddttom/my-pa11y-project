@@ -41,26 +41,42 @@ function fixUrl(url) {
     if (!url) return '';
     return url.replace(/([^:]\/)\/+/g, "$1");
 }
-async function fetchAndParseSitemap(url) {
-    debug(`Fetching content from: ${url}`);
+async function fetchAndParseSitemap(sitemapPath) {
+    debug(`Fetching content from: ${sitemapPath}`);
     try {
-        const response = await axiosInstance.get(url);
+        let content;
+        if (isUrl(sitemapPath)) {
+            const response = await axios.get(sitemapPath);
+            content = response.data;
+        } else {
+            content = await fs.readFile(sitemapPath, 'utf8');
+        }
+        
         debug('Content fetched successfully');
         
         // Check if the content is XML or HTML
-        if (response.headers['content-type'].includes('text/html')) {
+        if (content.trim().startsWith('<!DOCTYPE html>') || content.trim().startsWith('<html')) {
             debug('Found HTML content instead of sitemap');
-            return { html: response.data, url };
+            return { html: content, url: sitemapPath };
         } else {
             debug('Parsing sitemap XML');
             const parser = new xml2js.Parser();
-            const result = await parser.parseStringPromise(response.data);
+            const result = await parser.parseStringPromise(content);
             debug('Sitemap parsed successfully');
             return { xml: result };
         }
     } catch (error) {
-        console.error(`Error fetching or parsing content from ${url}:`, error.message);
+        console.error(`Error fetching or parsing content from ${sitemapPath}:`, error.message);
         throw error;
+    }
+}
+
+function isUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
     }
 }
 async function extractUrls(parsedContent) {
@@ -585,6 +601,7 @@ async function runPa11yTest(testUrl, html, results) {
 
 
 async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
+    let results = initializeResults();
     debug(`Starting process for sitemap or page: ${sitemapUrl}`);
     debug(`Results will be saved to: ${outputDir}`);
 
@@ -593,30 +610,23 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
 
         // Extract the hostname and protocol from the sitemapUrl
-        const parsedUrl = new URL(sitemapUrl);
+        const parsedUrl = new URL(isUrl(sitemapUrl) ? sitemapUrl : `file://${path.resolve(sitemapUrl)}`);
         const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 
-        const results = await processUrls(urls, baseUrl);
+        results = await processUrls(urls, baseUrl, results);
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
         await generateSitemap(results, outputDir, baseUrl);
         return results;
     } catch (error) {
-        handleError(error, outputDir);
+        handleError(error, outputDir, results);
     }
 }
+
 
 async function validateAndPrepare(sitemapUrl, outputDir) {
-    validateUrl(sitemapUrl);
+    await validateUrl(sitemapUrl);
     await createDirectories(outputDir);
-}
-
-function validateUrl(url) {
-    try {
-        new URL(url);
-    } catch (error) {
-        throw new Error(`Invalid sitemap URL: ${url}`);
-    }
 }
 
 async function createDirectories(outputDir) {
@@ -624,7 +634,26 @@ async function createDirectories(outputDir) {
     await ensureCacheDir();
     debug(`Output and cache directories created`);
 }
-
+async function validateUrl(url) {
+    console.log(`Validating URL: ${url}`);
+    if (!isUrl(url)) {
+        const absolutePath = path.resolve(process.cwd(), url);
+        console.log(`Resolved absolute path: ${absolutePath}`);
+        try {
+            const stats = await fs.stat(absolutePath);
+            if (stats.isFile()) {
+                console.log(`File found at: ${absolutePath}`);
+                return absolutePath;
+            } else {
+                throw new Error('Path exists but is not a file');
+            }
+        } catch (error) {
+            console.error(`Error accessing file: ${error.message}`);
+            throw new Error(`Invalid sitemap URL or file path: ${url}. Error: ${error.message}`);
+        }
+    }
+    return url;
+} 
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
     const urls = await extractUrls(parsedContent);
@@ -755,6 +784,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
         await saveOrphanedUrls(results.contentAnalysis, outputDir);
         await saveSeoReport(results, outputDir, sitemapUrl);
         await saveSeoScores(results, outputDir);
+        await saveSeoScoresSummary(results, outputDir);  
         await savePerformanceAnalysis(results, outputDir);
         debug(`All results saved to ${outputDir}`);
     } catch (error) {
@@ -809,13 +839,100 @@ async function saveSeoScores(results, outputDir) {
     debug('SEO scores saved');
 }
 
-async function savePerformanceAnalysis(results, outputDir) {
-    const performanceAnalysisCsv = formatCsv(results.performanceAnalysis, 
-        ['url', 'loadTime', 'domContentLoaded', 'firstPaint', 'firstContentfulPaint']);
-    await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
-    debug('Performance analysis saved');
+async function saveSeoScoresSummary(results, outputDir) {
+    const getScoreComment = (score) => {
+        if (score >= 80) return 'Good';
+        if (score >= 60) return 'Medium';
+        return 'Needs Improvement';
+    };
+
+    const sumScores = results.seoScores.reduce((sum, score) => {
+        sum.totalScore += score.score;
+        for (const [key, value] of Object.entries(score.details)) {
+            sum.details[key] = (sum.details[key] || 0) + value;
+        }
+        return sum;
+    }, { totalScore: 0, details: {} });
+
+    const urlCount = results.seoScores.length;
+    const averageScores = {
+        overallScore: sumScores.totalScore / urlCount,
+        details: {}
+    };
+
+    for (const [key, value] of Object.entries(sumScores.details)) {
+        averageScores.details[key] = value / urlCount;
+    }
+
+    const summaryData = [
+        ['Metric', 'Average Score', 'Comment'],
+        ['Overall SEO Score', averageScores.overallScore.toFixed(2), getScoreComment(averageScores.overallScore)],
+        ['Title Optimization', averageScores.details.titleOptimization.toFixed(2), getScoreComment(averageScores.details.titleOptimization)],
+        ['Meta Description Optimization', averageScores.details.metaDescriptionOptimization.toFixed(2), getScoreComment(averageScores.details.metaDescriptionOptimization)],
+        ['URL Structure', averageScores.details.urlStructure.toFixed(2), getScoreComment(averageScores.details.urlStructure)],
+        ['H1 Optimization', averageScores.details.h1Optimization.toFixed(2), getScoreComment(averageScores.details.h1Optimization)],
+        ['Content Length', averageScores.details.contentLength.toFixed(2), getScoreComment(averageScores.details.contentLength)],
+        ['Internal Linking', averageScores.details.internalLinking.toFixed(2), getScoreComment(averageScores.details.internalLinking)],
+        ['Image Optimization', averageScores.details.imageOptimization.toFixed(2), getScoreComment(averageScores.details.imageOptimization)],
+        ['Page Speed', averageScores.details.pageSpeed.toFixed(2), getScoreComment(averageScores.details.pageSpeed)],
+        ['Mobile Optimization', averageScores.details.mobileOptimization.toFixed(2), getScoreComment(averageScores.details.mobileOptimization)],
+        ['Security Factors', averageScores.details.securityFactors.toFixed(2), getScoreComment(averageScores.details.securityFactors)],
+        ['Structured Data', averageScores.details.structuredData.toFixed(2), getScoreComment(averageScores.details.structuredData)],
+        ['Social Media Tags', averageScores.details.socialMediaTags.toFixed(2), getScoreComment(averageScores.details.socialMediaTags)]
+    ];
+
+    const seoScoresSummaryCsv = formatCsv(summaryData);
+    await fs.writeFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv);
+    debug('SEO scores summary saved');
 }
 
+async function savePerformanceAnalysis(results, outputDir) {
+    const roundedPerformanceAnalysis = results.performanceAnalysis.map(entry => {
+        const loadTime = Number(entry.loadTime.toFixed(2));
+        const domContentLoaded = Number(entry.domContentLoaded.toFixed(2));
+        const firstPaint = Number(entry.firstPaint.toFixed(2));
+        const firstContentfulPaint = Number(entry.firstContentfulPaint.toFixed(2));
+
+        // Function to determine performance comment
+        const getPerformanceComment = (metric, thresholds) => {
+            if (metric <= thresholds.good) return 'Good';
+            if (metric <= thresholds.medium) return 'Medium';
+            return 'Improvement required';
+        };
+
+        // Thresholds for each metric (in milliseconds)
+        const thresholds = {
+            loadTime: { good: 2000, medium: 3000 },
+            domContentLoaded: { good: 1000, medium: 2000 },
+            firstPaint: { good: 1000, medium: 2000 },
+            firstContentfulPaint: { good: 1500, medium: 2500 }
+        };
+
+        // Generate comments
+        const loadTimeComment = getPerformanceComment(loadTime, thresholds.loadTime);
+        const domContentLoadedComment = getPerformanceComment(domContentLoaded, thresholds.domContentLoaded);
+        const firstPaintComment = getPerformanceComment(firstPaint, thresholds.firstPaint);
+        const firstContentfulPaintComment = getPerformanceComment(firstContentfulPaint, thresholds.firstContentfulPaint);
+
+        return {
+            url: entry.url,
+            loadTime,
+            loadTimeComment,
+            domContentLoaded,
+            domContentLoadedComment,
+            firstPaint,
+            firstPaintComment,
+            firstContentfulPaint,
+            firstContentfulPaintComment
+        };
+    });
+
+    const performanceAnalysisCsv = formatCsv(roundedPerformanceAnalysis, 
+        ['url', 'loadTime', 'loadTimeComment', 'domContentLoaded', 'domContentLoadedComment', 
+         'firstPaint', 'firstPaintComment', 'firstContentfulPaint', 'firstContentfulPaintComment']);
+    await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
+    debug('Performance analysis saved with comments');
+}
 async function savePa11yResults(results, outputDir) {
     await saveRawPa11yResult(results, outputDir);
     const pa11yCsv = formatCsv(flattenPa11yResults(results.pa11y), 
