@@ -54,8 +54,6 @@ function displayCachingOptions(currentOptions) {
   console.log();
 }
 
-// Make sure to export the function
-export { displayCachingOptions, cachingOptions };
 
 
 
