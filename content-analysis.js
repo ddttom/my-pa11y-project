@@ -189,7 +189,7 @@ async function saveContentAnalysis(results, outputDir) {
       imagesWithoutAltCsv,
       "utf8"
     );
-    console.log("Images without alt text saved");
+    debug("Images without alt text saved");
   } catch (error) {
     console.error("Error saving images without alt text:", error);
   }
@@ -200,7 +200,7 @@ async function saveContentAnalysis(results, outputDir) {
       contentAnalysisCsv,
       "utf8"
     );
-    console.log("Content analysis results saved");
+    debug("Content analysis results saved");
   } catch (error) {
     console.error("Error saving content analysis results:", error);
   }

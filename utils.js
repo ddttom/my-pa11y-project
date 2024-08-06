@@ -1,9 +1,9 @@
 // utils.js or utils.mjs
 
 export function formatCsv(data, headers) {
-    console.log('Formatting CSV data...');
-    console.log('Data type:', typeof data);
-    console.log('Data length:', Array.isArray(data) ? data.length : 'N/A');
+    debug('Formatting CSV data...');
+    debug('Data type:', typeof data);
+    debug('Data length:', Array.isArray(data) ? data.length : 'N/A');
 
     if (!Array.isArray(data)) {
         console.error('formatCsv received non-array data:', data);

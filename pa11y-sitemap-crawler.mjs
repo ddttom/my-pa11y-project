@@ -150,7 +150,8 @@ async function analyzePerformance(url) {
   }
 
 
-  async function analyzeContent(html, pageUrl, jsErrors = []) {
+
+async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
     debug(`Analyzing content of: ${pageUrl}`);
     try {
         const $ = cheerio.load(html);
@@ -166,6 +167,9 @@ async function analyzePerformance(url) {
         const formAnalysis = analyzeForms($);
         const tableAnalysis = analyzeTables($);
 
+        // Analyze internal links
+        const internalLinksAnalysis = await analyzeInternalLinks($, pageUrl, baseUrl);
+
         const result = {
             url: pageUrl,
             ...basicInfo,
@@ -179,16 +183,66 @@ async function analyzePerformance(url) {
             ...structuredDataAnalysis,
             forms: formAnalysis,
             tables: tableAnalysis,
+            internalLinks: internalLinksAnalysis,
             jsErrors: jsErrors.length > 0 ? jsErrors : undefined
         };
 
-        // console.log('Content analysis result:', JSON.stringify(result, null, 2));
         debug(`Content analysis completed for: ${pageUrl}`);
         return result;
     } catch (error) {
         console.error(`Error analyzing content of ${pageUrl}:`, error.message);
         return null;
     }
+}
+
+async function analyzeInternalLinks($, pageUrl, baseUrl) {
+    const internalLinks = [];
+    $('a').each((i, elem) => {
+        const href = $(elem).attr('href');
+        if (href) {
+            const absoluteUrl = new URL(href, pageUrl).href;
+            if (absoluteUrl.startsWith(baseUrl)) {
+                internalLinks.push({ url: absoluteUrl, text: $(elem).text().trim() });
+            }
+        }
+    });
+
+    const checkedLinks = await Promise.all(internalLinks.map(async (link) => {
+        const { statusCode } = await checkInternalLink(link.url);
+        return { ...link, statusCode };
+    }));
+
+    return checkedLinks;
+}
+
+async function checkInternalLink(url) {
+    try {
+        const { statusCode } = await getOrRenderData(url);
+        return { statusCode };
+    } catch (error) {
+        console.error(`Error checking internal link ${url}:`, error.message);
+        return { statusCode: 'Error' };
+    }
+}
+
+// Update the saveInternalLinks function
+async function saveInternalLinks(results, outputDir) {
+    const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks), 
+        ['source', 'target', 'anchorText', 'statusCode']);
+    await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
+    debug('Internal links results saved');
+}
+
+function flattenInternalLinks(internalLinks) {
+    return internalLinks.flatMap(result => 
+        result.internalLinks ? result.internalLinks.map(link => ({
+            source: result.url,
+            target: link.url,
+            anchorText: link.text,
+            statusCode: link.statusCode
+        })) 
+        : [{ source: result.url, error: result.error }]
+    );
 }
 
 function extractBasicInfo($) {
@@ -598,13 +652,24 @@ async function runPa11yTest(testUrl, html, results) {
 
 
 async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
+    console.log(`Starting process for sitemap or page: ${sitemapUrl}`);
+    console.log(`Results will be saved to: ${outputDir}`);
+
+    if (!sitemapUrl) {
+        console.error('Error: No sitemap URL or HTML file provided. Exiting process.');
+        process.exit(1);
+    }
+
     let results = initializeResults();
-    debug(`Starting process for sitemap or page: ${sitemapUrl}`);
-    debug(`Results will be saved to: ${outputDir}`);
 
     try {
         await validateAndPrepare(sitemapUrl, outputDir);
         const urls = await getUrlsFromSitemap(sitemapUrl, limit);
+
+        if (urls.length === 0) {
+            console.error('Error: No valid URLs found to process. Exiting process.');
+            process.exit(1);
+        }
 
         // Extract the hostname and protocol from the sitemapUrl
         const parsedUrl = new URL(isUrl(sitemapUrl) ? sitemapUrl : `file://${path.resolve(sitemapUrl)}`);
@@ -617,12 +682,36 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, limit = -1) {
         return results;
     } catch (error) {
         handleError(error, outputDir, results);
+        process.exit(1);
     }
 }
 
 
 async function validateAndPrepare(sitemapUrl, outputDir) {
-    await validateUrl(sitemapUrl);
+    if (!sitemapUrl) {
+        throw new Error('No sitemap URL or HTML file provided.');
+    }
+
+    let content;
+    if (isUrl(sitemapUrl)) {
+        try {
+            const response = await axios.get(sitemapUrl);
+            content = response.data;
+        } catch (error) {
+            throw new Error(`Failed to fetch sitemap from URL: ${error.message}`);
+        }
+    } else {
+        try {
+            content = await fs.readFile(sitemapUrl, 'utf8');
+        } catch (error) {
+            throw new Error(`Failed to read sitemap file: ${error.message}`);
+        }
+    }
+
+    if (!content || content.trim().length === 0) {
+        throw new Error('Sitemap or HTML content is empty.');
+    }
+
     await createDirectories(outputDir);
 }
 
@@ -632,14 +721,14 @@ async function createDirectories(outputDir) {
     debug(`Output and cache directories created`);
 }
 async function validateUrl(url) {
-    console.log(`Validating URL: ${url}`);
+    debug(`Validating URL: ${url}`);
     if (!isUrl(url)) {
         const absolutePath = path.resolve(process.cwd(), url);
-        console.log(`Resolved absolute path: ${absolutePath}`);
+        debug(`Resolved absolute path: ${absolutePath}`);
         try {
             const stats = await fs.stat(absolutePath);
             if (stats.isFile()) {
-                console.log(`File found at: ${absolutePath}`);
+                debug(`File found at: ${absolutePath}`);
                 return absolutePath;
             } else {
                 throw new Error('Path exists but is not a file');
@@ -809,7 +898,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
 
 
 async function saveSeoScoresSummary(results, outputDir) {
-    console.log('Attempting to save SEO scores summary...');
+    debug('Attempting to save SEO scores summary...');
     debug('Results object keys:', Object.keys(results));
 
     if (!results.seoScores || !Array.isArray(results.seoScores) || results.seoScores.length === 0) {
@@ -818,12 +907,12 @@ async function saveSeoScoresSummary(results, outputDir) {
         // Save diagnostic information
         const diagnosticInfo = JSON.stringify(results, null, 2);
         await fs.writeFile(path.join(outputDir, 'seo_scores_diagnostic.json'), diagnosticInfo);
-        console.log('Diagnostic information saved to seo_scores_diagnostic.json');
+        debug('Diagnostic information saved to seo_scores_diagnostic.json');
         
         return;
     }
 
-    console.log(`Found ${results.seoScores.length} SEO scores to process.`);
+    debug(`Found ${results.seoScores.length} SEO scores to process.`);
 
     const getScoreComment = (score) => {
         if (score >= 90) return 'Excellent';
@@ -847,7 +936,7 @@ async function saveSeoScoresSummary(results, outputDir) {
         return sum;
     }, { totalScore: 0, details: {} });
 
-    console.log('Score summation completed.');
+    debug('Score summation completed.');
 
     const urlCount = results.seoScores.length;
     const averageScores = {
@@ -859,7 +948,7 @@ async function saveSeoScoresSummary(results, outputDir) {
         averageScores.details[key] = value / urlCount;
     }
 
-    console.log('Average scores calculated.');
+    debug('Average scores calculated.');
 
     const summaryData = [
         ['Metric', 'Average Score', 'Comment']
@@ -893,13 +982,13 @@ async function saveSeoScoresSummary(results, outputDir) {
         }
     }
 
-    console.log('Summary data prepared.');
-    console.log('Summary data:', summaryData);
+    debug('Summary data prepared.');
+    debug('Summary data:', summaryData);
 
     try {
         const seoScoresSummaryCsv = formatCsv(summaryData);
         await fs.writeFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv);
-        console.log('SEO scores summary saved successfully');
+        debug('SEO scores summary saved successfully');
     } catch (error) {
         console.error('Error while formatting or saving SEO scores summary:', error);
         console.error('Error stack:', error.stack);
@@ -907,7 +996,7 @@ async function saveSeoScoresSummary(results, outputDir) {
 }
 
 async function saveSeoScores(results, outputDir) {
-    console.log('Attempting to save SEO scores...');
+    debug('Attempting to save SEO scores...');
     if (!results.seoScores || !Array.isArray(results.seoScores)) {
         console.error('SEO scores are missing or not an array:', results.seoScores);
         return;
@@ -942,13 +1031,13 @@ async function saveSeoScores(results, outputDir) {
 
     const seoScoresCsv = formatCsv(seoScoresFormatted, headers);
     await fs.writeFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv);
-    console.log('SEO scores saved successfully');
+    debug('SEO scores saved successfully');
 }
 
 
 
 async function savePerformanceAnalysis(results, outputDir) {
-    console.log('Attempting to save performance analysis...');
+    debug('Attempting to save performance analysis...');
     if (!results.performanceAnalysis || !Array.isArray(results.performanceAnalysis)) {
         console.error('Performance analysis data is missing or not an array');
         return;
@@ -1028,7 +1117,7 @@ async function savePerformanceAnalysis(results, outputDir) {
     try {
         const performanceAnalysisCsv = formatCsv(csvData);
         await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
-        console.log('Performance analysis saved with comments and summary statistics');
+        debug('Performance analysis saved with comments and summary statistics');
     } catch (error) {
         console.error('Error saving performance analysis:', error);
     }
@@ -1051,20 +1140,6 @@ function flattenPa11yResults(pa11yResults) {
             context: issue.context,
             selector: issue.selector
         })) : [{ url: result.url, error: result.error }]
-    );
-}
-
-async function saveInternalLinks(results, outputDir) {
-    const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks), 
-        ['source', 'target', 'error']);
-    await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
-    debug('Internal links results saved');
-}
-
-function flattenInternalLinks(internalLinks) {
-    return internalLinks.flatMap(result => 
-        result.links ? result.links.map(link => ({ source: result.url, target: link })) 
-                     : [{ source: result.url, error: result.error }]
     );
 }
 
