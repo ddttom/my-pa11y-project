@@ -486,9 +486,7 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
         } catch (error) {
             console.error('Error saving images without alt text:', error);
         }
-    } else {
-        console.log('No images without alt text found');
-    }
+    } 
 
     return imagesWithoutAlt.length;
 }
@@ -944,7 +942,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
                 result = await operation.func(results, outputDir);
             }
             if (operation.name === 'Images without alt') {
-                console.log(`${operation.name}`);
+                
             } else {
                 console.log(`${operation.name} saved successfully`);
             }
