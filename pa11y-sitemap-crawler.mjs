@@ -497,11 +497,15 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
         const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers);
         
         try {
-            await fs.writeFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, 'utf8');
+            const filePath = path.join(outputDir, 'images_without_alt.csv');
+            await fs.writeFile(filePath, imagesWithoutAltCsv, 'utf8');
+            console.log(`${imagesWithoutAlt.length} images without alt text saved to ${filePath}`);
         } catch (error) {
             console.error('Error saving images without alt text:', error);
         }
-    } 
+    } else {
+        console.log('No images without alt text found');
+    }
 
     return imagesWithoutAlt.length;
 }
@@ -979,6 +983,7 @@ async function saveResults(results, outputDir, sitemapUrl) {
             } else {
                 result = await operation.func(results, outputDir);
             }
+            
             if (typeof result === 'number') {
                 console.log(`${operation.name}: ${result} items saved`);
             } else {
