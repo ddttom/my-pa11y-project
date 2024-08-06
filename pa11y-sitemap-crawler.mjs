@@ -776,21 +776,34 @@ function handleError(error, outputDir) {
 }
 async function saveResults(results, outputDir, sitemapUrl) {
     console.info(`Saving results to: ${outputDir}`);
-    try {
-        await savePa11yResults(results, outputDir);
-        await saveInternalLinks(results, outputDir);
-        await saveImagesWithoutAlt(results, outputDir);
-        await saveContentAnalysis(results, outputDir);
-        await saveOrphanedUrls(results.contentAnalysis, outputDir);
-        await saveSeoReport(results, outputDir, sitemapUrl);
-        await saveSeoScores(results, outputDir);
-        await saveSeoScoresSummary(results, outputDir);  
-        await savePerformanceAnalysis(results, outputDir);
-        debug(`All results saved to ${outputDir}`);
-    } catch (error) {
-        console.error(`Error writing results to ${outputDir}:`, error);
-        console.error('Error details:', error.stack);
+    const saveOperations = [
+        { name: 'Pa11y results', func: savePa11yResults },
+        { name: 'Internal links', func: saveInternalLinks },
+        { name: 'Images without alt', func: saveImagesWithoutAlt },
+        { name: 'Content analysis', func: saveContentAnalysis },
+        { name: 'Orphaned URLs', func: saveOrphanedUrls },
+        { name: 'SEO report', func: saveSeoReport },
+        { name: 'SEO scores', func: saveSeoScores },
+        { name: 'Performance analysis', func: savePerformanceAnalysis },
+        { name: 'SEO scores summary', func: saveSeoScoresSummary }
+    ];
+
+    for (const operation of saveOperations) {
+        try {
+            if (operation.name === 'Orphaned URLs') {
+                await operation.func(results.contentAnalysis, outputDir);
+            } else if (operation.name === 'SEO report') {
+                await operation.func(results, outputDir, sitemapUrl);
+            } else {
+                await operation.func(results, outputDir);
+            }
+            debug(`${operation.name} saved successfully`);
+        } catch (error) {
+            console.error(`Error saving ${operation.name}:`, error.message);
+        }
     }
+
+    debug(`All results saved to ${outputDir}`);
 }
 
 async function saveSeoScores(results, outputDir) {
@@ -840,6 +853,12 @@ async function saveSeoScores(results, outputDir) {
 }
 
 async function saveSeoScoresSummary(results, outputDir) {
+    // Check if seoScores exist and have data
+    if (!results.seoScores || results.seoScores.length === 0) {
+        console.warn('No SEO scores available to summarize.');
+        return; // Exit the function early if there are no scores
+    }
+
     const getScoreComment = (score) => {
         if (score >= 80) return 'Good';
         if (score >= 60) return 'Medium';
@@ -847,9 +866,11 @@ async function saveSeoScoresSummary(results, outputDir) {
     };
 
     const sumScores = results.seoScores.reduce((sum, score) => {
-        sum.totalScore += score.score;
-        for (const [key, value] of Object.entries(score.details)) {
-            sum.details[key] = (sum.details[key] || 0) + value;
+        sum.totalScore += score.score || 0;
+        if (score.details) {
+            for (const [key, value] of Object.entries(score.details)) {
+                sum.details[key] = (sum.details[key] || 0) + (value || 0);
+            }
         }
         return sum;
     }, { totalScore: 0, details: {} });
@@ -866,20 +887,26 @@ async function saveSeoScoresSummary(results, outputDir) {
 
     const summaryData = [
         ['Metric', 'Average Score', 'Comment'],
-        ['Overall SEO Score', averageScores.overallScore.toFixed(2), getScoreComment(averageScores.overallScore)],
-        ['Title Optimization', averageScores.details.titleOptimization.toFixed(2), getScoreComment(averageScores.details.titleOptimization)],
-        ['Meta Description Optimization', averageScores.details.metaDescriptionOptimization.toFixed(2), getScoreComment(averageScores.details.metaDescriptionOptimization)],
-        ['URL Structure', averageScores.details.urlStructure.toFixed(2), getScoreComment(averageScores.details.urlStructure)],
-        ['H1 Optimization', averageScores.details.h1Optimization.toFixed(2), getScoreComment(averageScores.details.h1Optimization)],
-        ['Content Length', averageScores.details.contentLength.toFixed(2), getScoreComment(averageScores.details.contentLength)],
-        ['Internal Linking', averageScores.details.internalLinking.toFixed(2), getScoreComment(averageScores.details.internalLinking)],
-        ['Image Optimization', averageScores.details.imageOptimization.toFixed(2), getScoreComment(averageScores.details.imageOptimization)],
-        ['Page Speed', averageScores.details.pageSpeed.toFixed(2), getScoreComment(averageScores.details.pageSpeed)],
-        ['Mobile Optimization', averageScores.details.mobileOptimization.toFixed(2), getScoreComment(averageScores.details.mobileOptimization)],
-        ['Security Factors', averageScores.details.securityFactors.toFixed(2), getScoreComment(averageScores.details.securityFactors)],
-        ['Structured Data', averageScores.details.structuredData.toFixed(2), getScoreComment(averageScores.details.structuredData)],
-        ['Social Media Tags', averageScores.details.socialMediaTags.toFixed(2), getScoreComment(averageScores.details.socialMediaTags)]
+        ['Overall SEO Score', averageScores.overallScore.toFixed(2), getScoreComment(averageScores.overallScore)]
     ];
+
+    // Add detailed scores only if they exist
+    const detailKeys = [
+        'titleOptimization', 'metaDescriptionOptimization', 'urlStructure', 'h1Optimization',
+        'contentLength', 'internalLinking', 'imageOptimization', 'pageSpeed', 'mobileOptimization',
+        'securityFactors', 'structuredData', 'socialMediaTags'
+    ];
+
+    for (const key of detailKeys) {
+        if (averageScores.details[key] !== undefined) {
+            const score = averageScores.details[key];
+            summaryData.push([
+                key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()), // Convert camelCase to Title Case
+                score.toFixed(2),
+                getScoreComment(score)
+            ]);
+        }
+    }
 
     const seoScoresSummaryCsv = formatCsv(summaryData);
     await fs.writeFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv);
