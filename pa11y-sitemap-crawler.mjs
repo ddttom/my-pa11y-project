@@ -721,6 +721,13 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
             if (isShuttingDown) break;
             const testUrl = fixUrl(validUrls[i].url);
             const lastmod = validUrls[i].lastmod;
+            
+            if (!isValidUrl(testUrl)) {
+                console.warn(`Invalid URL: ${testUrl}. Skipping.`);
+                await logInvalidUrl(testUrl, new Error("Invalid URL"), outputDir, i + 1, totalTests);
+                continue;
+            }
+            
             console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
             await processUrl(testUrl, lastmod, i, totalTests, baseUrl, sitemapUrls, results, { ...options, output: outputDir });
         }
@@ -750,6 +757,25 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     } catch (error) {
         handleError(error, outputDir, results);
         process.exit(1);
+    }
+}
+
+
+
+async function logInvalidUrl(url, error, outputDir, index, totalTests) {
+    const invalidUrlData = [{
+        url: url,
+        error: error.message,
+        location: `${index} of ${totalTests}`
+    }];
+    const csvData = formatCsv(invalidUrlData, ['url', 'error', 'location']);
+    const filePath = path.join(outputDir, 'invalid_urls.csv');
+    
+    try {
+        await appendFile(filePath, csvData, { flag: 'a' });
+        console.log(`Logged invalid URL: ${url}`);
+    } catch (appendError) {
+        console.error(`Error logging invalid URL ${url}:`, appendError);
     }
 }
 
@@ -842,15 +868,6 @@ async function getUrlsFromSitemap(sitemapUrl, limit) {
     };
 }
 
-function isValidUrl(url) {
-    try {
-        new URL(url);
-        return true;
-    } catch (error) {
-        console.warn(`Invalid URL found: ${url}`);
-        return false;
-    }
-}
 
 async function processUrls(urls, baseUrl, results, options) {
     const totalTests = urls.length;
@@ -872,12 +889,18 @@ async function processUrls(urls, baseUrl, results, options) {
 async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapUrls, results, options) {
     debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
     
+    if (!isValidUrl(testUrl)) {
+        console.warn(`Invalid URL: ${testUrl}. Skipping.`);
+        await logInvalidUrl(testUrl, new Error("Invalid URL"), options.output, index + 1, totalTests);
+        return;
+    }
+
     try {
         let data = await getOrRenderData(testUrl, { ...options, outputDir: options.output });
         
         if (data.error) {
             console.warn(`Error retrieving data for ${testUrl}: ${data.error}`);
-            await logInvalidUrl(testUrl, new Error(data.error), options.output);
+            await logInvalidUrl(testUrl, new Error(data.error), options.output, index + 1, totalTests);
             return;
         }
 
@@ -885,7 +908,7 @@ async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapU
 
         if (!html || !statusCode) {
             console.warn(`No data retrieved for ${testUrl}. Skipping.`);
-            await logInvalidUrl(testUrl, new Error("No data retrieved"), options.output);
+            await logInvalidUrl(testUrl, new Error("No data retrieved"), options.output, index + 1, totalTests);
             return;
         }
 
@@ -930,14 +953,14 @@ async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapU
                 debug(`Calculated SEO score for ${testUrl}: ${seoScore.score}`);
             } catch (performanceError) {
                 console.error(`Error analyzing performance for ${testUrl}:`, performanceError);
-                await logInvalidUrl(testUrl, performanceError, options.output);
+                await logInvalidUrl(testUrl, performanceError, options.output, index + 1, totalTests);
             }
         }
 
         debug(`Completed testing: ${testUrl}`);
     } catch (error) {
         console.error(`Error processing ${testUrl}:`, error);
-        await logInvalidUrl(testUrl, error, options.output);
+        await logInvalidUrl(testUrl, error, options.output, index + 1, totalTests);
     }
 }
 
@@ -984,50 +1007,59 @@ function handleError(error, outputDir, results) {
         console.error('Error saving partial results:', saveError.message);
     }
 }
-async function saveResults(results, outputDir, sitemapUrl) {
-    console.info(`Saving results to: ${outputDir}`);
-    debug('Results object keys:', Object.keys(results));
 
-    const saveOperations = [
-        { name: 'Pa11y results', func: savePa11yResults },
-        { name: 'Internal links', func: saveInternalLinks },
-        { name: 'Images without alt', func: saveImagesWithoutAlt },
-        { name: 'Content analysis', func: saveContentAnalysis },
-        { name: 'Orphaned URLs', func: saveOrphanedUrls },
-        { name: 'SEO report', func: saveSeoReport },
-        { name: 'SEO scores', func: saveSeoScores },
-        { name: 'Performance analysis', func: savePerformanceAnalysis },
-        { name: 'SEO scores summary', func: saveSeoScoresSummary }
-    ];
-
-    for (const operation of saveOperations) {
-        try {
-            debug(`Attempting to save ${operation.name}...`);
-            let result;
-            if (operation.name === 'Orphaned URLs') {
-                result = await operation.func(results, outputDir);
-            } else if (operation.name === 'SEO report') {
-                result = await operation.func(results, outputDir, sitemapUrl);
-            } else if (operation.name === 'Images without alt') {
-                result = await operation.func(results.contentAnalysis, outputDir);
-            } else {
-                result = await operation.func(results, outputDir);
-            }
-            
-            if (typeof result === 'number') {
-                debug(`${operation.name}: ${result} items saved`);
-            } else {
-                debug(`${operation.name} saved successfully`);
-            }
-        } catch (error) {
-            console.error(`Error saving ${operation.name}:`, error.message);
-            console.error('Error stack:', error.stack);
-        }
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch (error) {
+        return false;
     }
 
-    debug(`All results saved to ${outputDir}`);
+    async function saveResults(results, outputDir, sitemapUrl) {
+        console.info(`Saving results to: ${outputDir}`);
+        debug('Results object keys:', Object.keys(results));
+    
+        const saveOperations = [
+            { name: 'Pa11y results', func: savePa11yResults },
+            { name: 'Internal links', func: saveInternalLinks },
+            { name: 'Images without alt', func: saveImagesWithoutAlt },
+            { name: 'Content analysis', func: saveContentAnalysis },
+            { name: 'Orphaned URLs', func: saveOrphanedUrls },
+            { name: 'SEO report', func: saveSeoReport },
+            { name: 'SEO scores', func: saveSeoScores },
+            { name: 'Performance analysis', func: savePerformanceAnalysis },
+            { name: 'SEO scores summary', func: saveSeoScoresSummary }
+        ];
+    
+        for (const operation of saveOperations) {
+            try {
+                debug(`Attempting to save ${operation.name}...`);
+                let result;
+                if (operation.name === 'Orphaned URLs') {
+                    result = await operation.func(results, outputDir);
+                } else if (operation.name === 'SEO report') {
+                    result = await operation.func(results, outputDir, sitemapUrl);
+                } else if (operation.name === 'Images without alt') {
+                    result = await operation.func(results.contentAnalysis, outputDir);
+                } else {
+                    result = await operation.func(results, outputDir);
+                }
+                
+                if (typeof result === 'number') {
+                    debug(`${operation.name}: ${result} items saved`);
+                } else {
+                    debug(`${operation.name} saved successfully`);
+                }
+            } catch (error) {
+                console.error(`Error saving ${operation.name}:`, error.message);
+                console.error('Error stack:', error.stack);
+            }
+        }
+    
+        debug(`All results saved to ${outputDir}`);
+    }
 }
-
 
 async function saveSeoScoresSummary(results, outputDir) {
     debug('Attempting to save SEO scores summary...');
@@ -1856,7 +1888,6 @@ function safeCount(obj, prop) {
 }
 
 
-
 // Set up command-line interface
 
 program
@@ -1881,6 +1912,9 @@ console.log('Welcome to the Pa11y Crawler\n');
 displayCachingOptions(options);
 console.log('Starting the crawl process...\n');
 
+console.log('Welcome to the Pa11y Crawler\n');
+displayCachingOptions(options);
+console.log('Starting the crawl process...\n');
 runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     .then(() => {
         debug('Script completed successfully');
@@ -1888,3 +1922,4 @@ runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     .catch((error) => {
         console.error('Script failed with error:', error);
     });
+
