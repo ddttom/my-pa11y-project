@@ -871,7 +871,6 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
-                internalLinks: checkedLinks,
                 hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
                 openGraphTags: $('meta[property^="og:"]').length > 0,
                 twitterTags: $('meta[name^="twitter:"]').length > 0
@@ -879,10 +878,7 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
             await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData, options);
             
-            if (!results.badLinks) results.badLinks = [];
-            results.badLinks.push(...badLinks);
-            debug(`Found ${badLinks.length} bad links for ${testUrl}`);
-
+        
             debug(`Starting performance analysis for ${testUrl}`);
             const performanceMetrics = await analyzePerformance(testUrl);
             if (!results.performanceAnalysis) {
