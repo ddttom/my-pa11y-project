@@ -178,7 +178,7 @@ async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
         const tableAnalysis = analyzeTables($);
 
         // Analyze internal links
-        const internalLinksAnalysis = await analyzeInternalLinks($, pageUrl, baseUrl);
+        // const internalLinksAnalysis = await analyzeInternalLinks($, pageUrl, baseUrl);
 
         const result = {
             url: pageUrl,
@@ -865,8 +865,8 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
         if (statusCode === 200) {
             const $ = cheerio.load(html);
-            const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl, options);
-            debug(`Analyzed ${checkedLinks.length} internal links for ${testUrl}`);
+      //      const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl, options);
+      //      debug(`Analyzed ${checkedLinks.length} internal links for ${testUrl}`);
             
             const enhancedPageData = {
                 ...pageData,

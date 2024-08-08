@@ -96,17 +96,17 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## parameters
 
-Sitemap URL (-s, --sitemap <url>)
+Sitemap URL (-s, --sitemap url)
 
 Required option
 Specifies the URL of the sitemap to process
 
-Output Directory (-o, --output <directory>)
+Output Directory (-o, --output directory)
 
 Required option
 Defines where the tool should save its results
 
-Limit (-l, --limit <number>)
+Limit (-l, --limit number)
 
 Optional, defaults to -1 (process all URLs)
 Restricts the number of URLs the tool will process
