@@ -1,4 +1,3 @@
-
 const pa11yOptions = {
     timeout: 60000,
     wait: 2000,
@@ -25,4 +24,17 @@ const pa11yOptions = {
     }
 };
 
-export default pa11yOptions;
+const sitemapOptions = {
+    maxUrlsPerFile: 50000,
+    excludePatterns: [],
+    compress: true,
+    customChangeFreq: null,
+    customPriority: null,
+    includeLastmod: true,
+    includeChangefreq: true,
+    includePriority: true,
+    addStylesheet: false,
+    robotsTxtPath: null,
+};
+
+export { pa11yOptions, sitemapOptions };
