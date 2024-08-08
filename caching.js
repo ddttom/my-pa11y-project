@@ -9,6 +9,52 @@ import { debug, formatCsv } from './utils.js';
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 
+const allOptions = [
+  {
+    name: 'Sitemap URL',
+    description: 'URL of the sitemap to process',
+    flag: '-s, --sitemap <url>',
+    required: true
+  },
+  {
+    name: 'Output Directory',
+    description: 'Output directory for results',
+    flag: '-o, --output <directory>',
+    required: true
+  },
+  {
+    name: 'Limit',
+    description: 'Limit the number of URLs to test. Use -1 to test all URLs.',
+    flag: '-l, --limit <number>',
+    default: '-1'
+  },
+  {
+    name: 'No Puppeteer',
+    description: 'Bypass Puppeteer execution and use cached HTML',
+    flag: '--no-puppeteer'
+  },
+  {
+    name: 'Cache Only',
+    description: 'Use only cached data, do not fetch new data',
+    flag: '--cache-only'
+  },
+  {
+    name: 'No Cache',
+    description: 'Disable caching, always fetch fresh data',
+    flag: '--no-cache'
+  },
+  {
+    name: 'Force Delete Cache',
+    description: 'Force delete existing cache before starting',
+    flag: '--force-delete-cache'
+  },
+  {
+    name: 'Debug Mode',
+    description: 'Enable debug mode for verbose logging',
+    flag: '--debug'
+  }
+];
+
 async function launchBrowserWithRetry(maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {

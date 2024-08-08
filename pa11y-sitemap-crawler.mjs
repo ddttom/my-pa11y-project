@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'fs/promises';
+import { appendFile } from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
 import xml2js from 'xml2js';
@@ -16,8 +17,9 @@ import { ensureCacheDir, getOrRenderData, displayCachingOptions } from './cachin
 import { calculateSeoScore } from './seo-scoring.js';
 import { saveContentAnalysis } from './content-analysis.js';
 import { generateSitemap } from './sitemap-generator.js';
-import pa11yOptions  from './pa11y-options.js';
+import { pa11yOptions, sitemapOptions }  from './pa11y-options.js';
 import { formatCsv, debug , setDebugMode } from './utils.js'
+
 
 
 let isShuttingDown = false;
@@ -111,6 +113,22 @@ async function extractUrls(parsedContent) {
         }
     } else {
         throw new Error('Invalid parsed content');
+    }
+}
+
+async function logInvalidUrl(url, error, outputDir) {
+    const invalidUrlData = [{
+        url: url,
+        error: error.message
+    }];
+    const csvData = formatCsv(invalidUrlData, ['url', 'error']);
+    const filePath = path.join(outputDir, 'invalid_urls.csv');
+    
+    try {
+        await appendFile(filePath, csvData, { flag: 'a' });
+        console.log(`Logged invalid URL: ${url}`);
+    } catch (appendError) {
+        console.error(`Error logging invalid URL ${url}:`, appendError);
     }
 }
 
@@ -233,15 +251,7 @@ function flattenInternalLinks(internalLinks) {
     );
 }
 
-async function saveBadLinks(badLinks, outputDir) {
-    if (badLinks && badLinks.length > 0) {
-        const badLinksCsv = formatCsv(badLinks, ['link', 'domain', 'containingPage']);
-        await fs.writeFile(path.join(outputDir, 'author_links.csv'), badLinksCsv);
-        debug('Bad links saved to bad_links.csv');
-    } else {
-        debug('No author links found');
-    }
-}
+
 
 function extractBasicInfo($) {
     return {
@@ -660,12 +670,12 @@ function checkOrphanedUrls(internalLinks, sitemapUrls, results, baseUrl) {
 }
 
 // Handle URL processing error
-function handleUrlProcessingError(testUrl, lastmod, error, results) {
+async function handleUrlProcessingError(testUrl, lastmod, error, results, outputDir) {
     console.error(`Error processing ${testUrl}:`, error.message);
-    console.error('Error stack:', error.stack);
     ['pa11y', 'internalLinks', 'contentAnalysis'].forEach(report => {
         results[report].push({ url: testUrl, lastmod: lastmod, error: error.message });
     });
+    await logInvalidUrl(testUrl, error, outputDir);
 }
 
 // Run pa11y test
@@ -695,22 +705,46 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
         await validateAndPrepare(sitemapUrl, outputDir, options);
         const { validUrls, invalidUrls } = await getUrlsFromSitemap(sitemapUrl, limit);
 
-        // Save invalid URLs
+        // Save invalid URLs from sitemap parsing
         await saveInvalidUrls(invalidUrls, outputDir);
 
         // Extract the hostname and protocol from the sitemapUrl
         const parsedUrl = new URL(isUrl(sitemapUrl) ? sitemapUrl : `file://${path.resolve(sitemapUrl)}`);
         const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 
-        results = await processUrls(validUrls, baseUrl, results, options);
+        const totalTests = validUrls.length;
+        console.info(`Processing ${totalTests} URL(s)`);
+
+        const sitemapUrls = new Set(validUrls.map(item => item.url.split('#')[0])); // Strip fragment identifiers
+
+        for (let i = 0; i < validUrls.length; i++) {
+            if (isShuttingDown) break;
+            const testUrl = fixUrl(validUrls[i].url);
+            const lastmod = validUrls[i].lastmod;
+            console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
+            await processUrl(testUrl, lastmod, i, totalTests, baseUrl, sitemapUrls, results, { ...options, output: outputDir });
+        }
+
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
-        await generateSitemap(results, outputDir, baseUrl);
 
-        // Generate and log the summary report
-        const summaryReport = await generateSummaryReport(results, outputDir);
-        console.log("\nSummary Report:");
-        console.log(summaryReport);
+        // Generate sitemap
+        const customSitemapOptions = {
+            ...sitemapOptions,
+            maxUrlsPerFile: options.maxUrlsPerSitemap || sitemapOptions.maxUrlsPerFile,
+            compress: options.compressSitemap || sitemapOptions.compress,
+            includeLastmod: options.sitemapLastmod !== false,
+            includeChangefreq: options.sitemapChangefreq !== false,
+            includePriority: options.sitemapPriority !== false,
+            robotsTxtPath: path.join(outputDir, 'robots.txt'),
+        };
+
+        try {
+            const sitemapSummary = await generateSitemap(results, outputDir, baseUrl, customSitemapOptions);
+            console.log('Sitemap generation summary:', sitemapSummary);
+        } catch (error) {
+            console.error('Error generating sitemap:', error);
+        }
 
         return results;
     } catch (error) {
@@ -718,6 +752,11 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
         process.exit(1);
     }
 }
+
+
+
+
+
 
 async function validateAndPrepare(sitemapUrl, outputDir, options) {  // Add options parameter
     if (!sitemapUrl) {
@@ -830,8 +869,6 @@ async function processUrls(urls, baseUrl, results, options) {
     return results;
 }
 
-  
-  
 async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapUrls, results, options) {
     debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
     
@@ -840,7 +877,7 @@ async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapU
         
         if (data.error) {
             console.warn(`Error retrieving data for ${testUrl}: ${data.error}`);
-            handleUrlProcessingError(testUrl, lastmod, new Error(data.error), results);
+            await logInvalidUrl(testUrl, new Error(data.error), options.output);
             return;
         }
 
@@ -848,6 +885,7 @@ async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapU
 
         if (!html || !statusCode) {
             console.warn(`No data retrieved for ${testUrl}. Skipping.`);
+            await logInvalidUrl(testUrl, new Error("No data retrieved"), options.output);
             return;
         }
 
@@ -870,31 +908,36 @@ async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapU
             await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData, options);
             
             debug(`Starting performance analysis for ${testUrl}`);
-            const performanceMetrics = await analyzePerformance(testUrl);
-            if (!results.performanceAnalysis) {
-                results.performanceAnalysis = [];
-            }
-            results.performanceAnalysis.push({ url: testUrl, lastmod: enhancedPageData.lastmod, ...performanceMetrics });
-            debug(`Completed performance analysis for ${testUrl}`);
+            try {
+                const performanceMetrics = await analyzePerformance(testUrl);
+                if (!results.performanceAnalysis) {
+                    results.performanceAnalysis = [];
+                }
+                results.performanceAnalysis.push({ url: testUrl, lastmod: enhancedPageData.lastmod, ...performanceMetrics });
+                debug(`Completed performance analysis for ${testUrl}`);
 
-            const seoScore = calculateSeoScore({
-                ...enhancedPageData,
-                performanceMetrics
-            });
-            
-            results.seoScores.push({
-                url: testUrl,
-                lastmod: enhancedPageData.lastmod,
-                score: seoScore.score,
-                details: seoScore.details
-            });
-            debug(`Calculated SEO score for ${testUrl}: ${seoScore.score}`);
+                const seoScore = calculateSeoScore({
+                    ...enhancedPageData,
+                    performanceMetrics
+                });
+                
+                results.seoScores.push({
+                    url: testUrl,
+                    lastmod: enhancedPageData.lastmod,
+                    score: seoScore.score,
+                    details: seoScore.details
+                });
+                debug(`Calculated SEO score for ${testUrl}: ${seoScore.score}`);
+            } catch (performanceError) {
+                console.error(`Error analyzing performance for ${testUrl}:`, performanceError);
+                await logInvalidUrl(testUrl, performanceError, options.output);
+            }
         }
 
         debug(`Completed testing: ${testUrl}`);
     } catch (error) {
         console.error(`Error processing ${testUrl}:`, error);
-        handleUrlProcessingError(testUrl, lastmod, error, results);
+        await logInvalidUrl(testUrl, error, options.output);
     }
 }
 
@@ -931,7 +974,7 @@ async function postProcessResults(results, outputDir) {
     results.pa11y = filterRepeatedPa11yIssues(results.pa11y, commonPa11yIssues);
 }
 
-function handleError(error, outputDir) {
+function handleError(error, outputDir, results) {
     console.error('Error in runTestsOnSitemap:', error.message);
     console.error('Error stack:', error.stack);
     try {
