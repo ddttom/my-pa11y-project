@@ -5,90 +5,9 @@ import puppeteer from "puppeteer";
 import axios from "axios";
 import cheerio from "cheerio";
 import { calculateSeoScore } from "./seo-scoring.js";
-import { debug } from './utils.js';
+import { debug, formatCsv } from './utils.js';
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
-
-const allOptions = [
-  {
-    name: 'Sitemap URL',
-    description: 'URL of the sitemap to process',
-    flag: '-s, --sitemap <url>',
-    required: true
-  },
-  {
-    name: 'Output Directory',
-    description: 'Output directory for results',
-    flag: '-o, --output <directory>',
-    required: true
-  },
-  {
-    name: 'Limit',
-    description: 'Limit the number of URLs to test. Use -1 to test all URLs.',
-    flag: '-l, --limit <number>',
-    default: '-1'
-  },
-  {
-    name: 'No Puppeteer',
-    description: 'Bypass Puppeteer execution and use cached HTML',
-    flag: '--no-puppeteer'
-  },
-  {
-    name: 'Cache Only',
-    description: 'Use only cached data, do not fetch new data',
-    flag: '--cache-only'
-  },
-  {
-    name: 'No Cache',
-    description: 'Disable caching, always fetch fresh data',
-    flag: '--no-cache'
-  },
-  {
-    name: 'Force Delete Cache',
-    description: 'Force delete existing cache before starting',
-    flag: '--force-delete-cache'
-  },
-  {
-    name: 'Debug Mode',
-    description: 'Enable debug mode for verbose logging',
-    flag: '--debug'
-  }
-];
-
-function displayCachingOptions(currentOptions) {
-  console.log('Available Options:');
-  console.log('------------------');
-  allOptions.forEach((option, index) => {
-    const isActive = option.flag.startsWith('--') ? 
-      currentOptions[option.flag.replace('--', '').replace('-', '')] :
-      currentOptions[option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')];
-    
-    console.log(`${index + 1}. ${option.name}${option.required ? ' (Required)' : ''}`);
-    console.log(`   Description: ${option.description}`);
-    console.log(`   Flag: ${option.flag}`);
-    if (option.default) {
-      console.log(`   Default: ${option.default}`);
-    }
-    if (typeof isActive !== 'undefined') {
-      console.log(`   Current Setting: ${isActive === true ? 'Enabled' : (isActive === false ? 'Disabled' : isActive)}`);
-    }
-    console.log();
-  });
-
-  console.log('Current Settings Summary:');
-  console.log('-------------------------');
-  console.log(`Sitemap URL: ${currentOptions.sitemap}`);
-  console.log(`Output Directory: ${currentOptions.output}`);
-  console.log(`Limit: ${currentOptions.limit}`);
-  console.log(`Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`);
-  console.log(`Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`);
-  console.log(`Cache: ${currentOptions.noCache ? 'Disabled' : 'Enabled'}`);
-  console.log(`Force Delete Cache: ${currentOptions.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
-  console.log(`Debug Mode: ${currentOptions.debug ? 'Enabled' : 'Disabled'}`);
-  console.log();
-}
-
-
 
 async function launchBrowserWithRetry(maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
@@ -111,32 +30,32 @@ function generateCacheKey(url) {
   return key;
 }
 
-async function ensureCacheDir(options = {}) {  // Provide a default empty object
+async function ensureCacheDir(options = {}) {
   try {
-      if (options.forceDeleteCache) {
-          debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
-          try {
-              await fs.rm(CACHE_DIR, { recursive: true, force: true });
-              debug(`Cache directory deleted successfully`);
-          } catch (deleteError) {
-              console.error(`Error deleting cache directory: ${deleteError.message}`);
-              if (options.debug) {
-                  console.error('Delete error stack:', deleteError.stack);
-              }
-              // Attempt to proceed even if deletion fails
-          }
+    if (options.forceDeleteCache) {
+      debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
+      try {
+        await fs.rm(CACHE_DIR, { recursive: true, force: true });
+        debug(`Cache directory deleted successfully`);
+      } catch (deleteError) {
+        console.error(`Error deleting cache directory: ${deleteError.message}`);
+        if (options.debug) {
+          console.error('Delete error stack:', deleteError.stack);
+        }
       }
-      
-      await fs.mkdir(CACHE_DIR, { recursive: true });
-      debug(`Cache directory ensured: ${CACHE_DIR}`);
+    }
+    
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    debug(`Cache directory ensured: ${CACHE_DIR}`);
   } catch (error) {
-      console.error("Error managing cache directory:", error.message);
-      if (options.debug) {
-          console.error('Error stack:', error.stack);
-      }
-      throw error;
+    console.error("Error managing cache directory:", error.message);
+    if (options.debug) {
+      console.error('Error stack:', error.stack);
+    }
+    throw error;
   }
 }
+
 async function getCachedData(url) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
@@ -155,7 +74,32 @@ async function getCachedData(url) {
   }
 }
 
-async function renderAndCacheData(url) {
+async function logErrorToCsv(url, error, outputDir) {
+  const errorData = [{
+    url: url,
+    errorType: error.name,
+    errorMessage: error.message,
+    errorStack: error.stack
+  }];
+
+  const headers = ['url', 'errorType', 'errorMessage', 'errorStack'];
+  const errorCsv = formatCsv(errorData, headers);
+
+  const errorLogPath = path.join(outputDir, 'error_log.csv');
+  try {
+    // Check if file exists, if not, write headers
+    if (!fs.existsSync(errorLogPath)) {
+      await fs.writeFile(errorLogPath, formatCsv([], headers), 'utf8');
+    }
+    // Append error data
+    await fs.appendFile(errorLogPath, errorCsv, 'utf8');
+    debug(`Error logged for ${url}`);
+  } catch (logError) {
+    console.error(`Failed to log error for ${url}:`, logError);
+  }
+}
+
+async function renderAndCacheData(url, outputDir) {
   let browser;
   try {
     debug(`Starting to render ${url}`);
@@ -223,7 +167,6 @@ async function renderAndCacheData(url) {
         return doc.documentElement.textContent;
       };
 
-      // Function to extract date from meta tags or parse date strings
       const extractDate = (selector) => {
         const element = document.querySelector(selector);
         if (element) {
@@ -235,7 +178,6 @@ async function renderAndCacheData(url) {
         return null;
       };
 
-      // Try to find last modified date
       const lastModified =
         extractDate('meta[property="article:modified_time"]') ||
         extractDate('meta[property="og:updated_time"]') ||
@@ -341,6 +283,7 @@ async function renderAndCacheData(url) {
     return data;
   } catch (error) {
     console.error(`Error rendering and caching ${url}:`, error);
+    await logErrorToCsv(url, error, outputDir);
     throw error;
   } finally {
     if (browser) {
@@ -374,34 +317,41 @@ async function setCachedData(url, data) {
 }
 
 async function getOrRenderData(url, options = {}) {
-  const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
+  const { noPuppeteer = false, cacheOnly = false, noCache = false, outputDir } = options;
   debug(`getOrRenderData called for ${url}`);
 
   if (!noCache) {
-      let cachedData = await getCachedData(url);
-      if (cachedData) {
-          cachedData.contentFreshness = analyzeContentFreshness(cachedData);
-          debug(`Returning cached data for ${url}`);
-          return cachedData;
-      }
+    let cachedData = await getCachedData(url);
+    if (cachedData) {
+      cachedData.contentFreshness = analyzeContentFreshness(cachedData);
+      debug(`Returning cached data for ${url}`);
+      return cachedData;
+    }
   }
 
   if (cacheOnly) {
-      console.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
-      return { html: null, statusCode: null };
+    console.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
+    return { html: null, statusCode: null };
   }
 
   debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
-  const newData = noPuppeteer ? await fetchDataWithoutPuppeteer(url) : await renderAndCacheData(url);
+  let newData;
+  try {
+    newData = noPuppeteer ? await fetchDataWithoutPuppeteer(url) : await renderAndCacheData(url, outputDir);
+  } catch (error) {
+    console.error(`Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`, error);
+    await logErrorToCsv(url, error, outputDir);
+    return { html: null, statusCode: null, error: error.message };
+  }
+
   newData.contentFreshness = analyzeContentFreshness(newData);
 
   if (!noCache) {
-      await setCachedData(url, newData);
+    await setCachedData(url, newData);
   }
 
   return newData;
 }
-
 
 async function fetchDataWithoutPuppeteer(url) {
   try {
@@ -410,6 +360,23 @@ async function fetchDataWithoutPuppeteer(url) {
     const html = response.data;
     const $ = cheerio.load(html);
     
+    const extractDate = (selector) => {
+      const element = $(selector);
+      if (element.length) {
+        const dateString = element.attr('content') || element.text();
+        const parsedDate = new Date(dateString);
+        return isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString();
+      }
+      return null;
+    };
+
+    const lastModified =
+      extractDate('meta[property="article:modified_time"]') ||
+      extractDate('meta[property="og:updated_time"]') ||
+      extractDate('time[itemprop="dateModified"]') ||
+      response.headers['last-modified'] ||
+      null;
+
     const pageData = {
       title: $('title').text(),
       metaDescription: $('meta[name="description"]').attr('content') || '',
@@ -441,7 +408,7 @@ async function fetchDataWithoutPuppeteer(url) {
       formsCount: $('form').length,
       tablesCount: $('table').length,
       pageSize: html.length,
-      lastModified: response.headers['last-modified'] || null,
+      lastModified: lastModified,
     };
 
     const data = {
@@ -510,4 +477,37 @@ function analyzeContentFreshness(data) {
   return freshness;
 }
 
-export { ensureCacheDir, getOrRenderData , displayCachingOptions };
+function displayCachingOptions(currentOptions) {
+  console.log('Available Options:');
+  console.log('------------------');
+  allOptions.forEach((option, index) => {
+    const isActive = option.flag.startsWith('--') ? 
+      currentOptions[option.flag.replace('--', '').replace('-', '')] :
+      currentOptions[option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')];
+    
+    console.log(`${index + 1}. ${option.name}${option.required ? ' (Required)' : ''}`);
+    console.log(`   Description: ${option.description}`);
+    console.log(`   Flag: ${option.flag}`);
+    if (option.default) {
+      console.log(`   Default: ${option.default}`);
+    }
+    if (typeof isActive !== 'undefined') {
+      console.log(`   Current Setting: ${isActive === true ? 'Enabled' : (isActive === false ? 'Disabled' : isActive)}`);
+    }
+    console.log();
+  });
+
+  console.log('Current Settings Summary:');
+  console.log('-------------------------');
+  console.log(`Sitemap URL: ${currentOptions.sitemap}`);
+  console.log(`Output Directory: ${currentOptions.output}`);
+  console.log(`Limit: ${currentOptions.limit}`);
+  console.log(`Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`);
+  console.log(`Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`);
+  console.log(`Cache: ${currentOptions.noCache ? 'Disabled' : 'Enabled'}`);
+  console.log(`Force Delete Cache: ${currentOptions.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
+  console.log(`Debug Mode: ${currentOptions.debug ? 'Enabled' : 'Disabled'}`);
+  console.log();
+}
+
+export { ensureCacheDir, getOrRenderData, displayCachingOptions };

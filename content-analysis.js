@@ -70,7 +70,7 @@ const formatContentAnalysisResult = (result) => {
         .map((img) => ({
           url: result.url,
           src: img.src,
-          location: "", // We'll need to modify the scraping process to get this
+          location: img.location || "", // Assuming we've added location to the image data
         }))
     : [];
 
@@ -109,7 +109,8 @@ const formatContentAnalysisResult = (result) => {
       result.structuredData && result.structuredData.length > 0 ? "Yes" : "No",
     formsCount: result.formsCount || 0,
     tablesCount: result.tablesCount || 0,
-    lastModifiedDate: result.contentFreshness?.lastModifiedDate || "Unknown",
+    lastModified: normalizeString(result.pageData?.lastModified) || "Unknown",
+    lastModifiedDate: normalizeString(result.contentFreshness?.lastModifiedDate) || "Unknown",
     daysSinceLastModified:
       result.contentFreshness?.daysSinceLastModified || "Unknown",
     lastCrawledDate: result.contentFreshness?.lastCrawledDate || "Unknown",
@@ -151,6 +152,7 @@ async function saveContentAnalysis(results, outputDir) {
     "structuredData",
     "formsCount",
     "tablesCount",
+    "lastModified",
     "lastModifiedDate",
     "daysSinceLastModified",
     "lastCrawledDate",

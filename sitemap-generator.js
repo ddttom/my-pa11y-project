@@ -53,15 +53,15 @@ async function generateSitemap(results, outputDir, baseUrl, options = {}) {
             const url = root.ele('url');
             url.ele('loc').txt(page.url);
             
-            if (page.lastModifiedDate && page.lastModifiedDate !== 'Unknown') {
-                url.ele('lastmod').txt(new Date(page.lastModifiedDate).toISOString());
+            // Use lastModified if available, fallback to lastModifiedDate
+            const lastmod = page.lastModified || page.lastModifiedDate;
+            if (lastmod && lastmod !== 'Unknown') {
+                url.ele('lastmod').txt(new Date(lastmod).toISOString());
             }
 
-            // Add changefreq if available, or set a default
             const changefreq = page.changeFrequency || determineChangeFrequency(page);
             url.ele('changefreq').txt(changefreq);
 
-            // Add priority if available, or calculate based on page type
             const priority = page.priority || calculatePriority(page);
             url.ele('priority').txt(priority.toFixed(1));
 
@@ -144,4 +144,5 @@ function calculatePriority(page) {
         return 0.6;
     }
 }
+
 export { generateSitemap };

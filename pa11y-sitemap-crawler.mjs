@@ -78,28 +78,34 @@ function isUrl(string) {
 async function extractUrls(parsedContent) {
     if (parsedContent.html) {
         debug('Extracting URL from HTML content');
-        return [fixUrl(parsedContent.url)];
+        return [{ url: fixUrl(parsedContent.url), lastmod: null }];
     } else if (parsedContent.xml) {
         if (parsedContent.xml.sitemapindex) {
             debug('Found a sitemap index. Processing nested sitemaps...');
-            const sitemapUrls = parsedContent.xml.sitemapindex.sitemap.map(sitemap => fixUrl(sitemap.loc?.[0] || ''));
+            const sitemapUrls = parsedContent.xml.sitemapindex.sitemap.map(sitemap => ({
+                url: fixUrl(sitemap.loc?.[0] || ''),
+                lastmod: sitemap.lastmod?.[0] || null
+            }));
             let allUrls = [];
             for (const sitemapUrl of sitemapUrls) {
                 if (isShuttingDown) break;
-                if (!sitemapUrl) continue;
-                debug(`Processing nested sitemap: ${sitemapUrl}`);
+                if (!sitemapUrl.url) continue;
+                debug(`Processing nested sitemap: ${sitemapUrl.url}`);
                 try {
-                    const nestedParsedContent = await fetchAndParseSitemap(sitemapUrl);
+                    const nestedParsedContent = await fetchAndParseSitemap(sitemapUrl.url);
                     const nestedUrls = await extractUrls(nestedParsedContent);
                     allUrls = allUrls.concat(nestedUrls);
                 } catch (error) {
-                    console.error(`Error processing nested sitemap ${sitemapUrl}:`, error.message);
+                    console.error(`Error processing nested sitemap ${sitemapUrl.url}:`, error.message);
                 }
             }
             return allUrls;
         } else if (parsedContent.xml.urlset) {
             debug('Extracting URLs from sitemap');
-            return parsedContent.xml.urlset.url.map(url => fixUrl(url.loc?.[0] || '')).filter(url => url);
+            return parsedContent.xml.urlset.url.map(url => ({
+                url: fixUrl(url.loc?.[0] || ''),
+                lastmod: url.lastmod?.[0] || null
+            })).filter(item => item.url);
         } else {
             throw new Error('Unknown sitemap format');
         }
@@ -177,8 +183,7 @@ async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
         const formAnalysis = analyzeForms($);
         const tableAnalysis = analyzeTables($);
 
-        // Analyze internal links
-        // const internalLinksAnalysis = await analyzeInternalLinks($, pageUrl, baseUrl);
+
 
         const result = {
             url: pageUrl,
@@ -205,47 +210,6 @@ async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
     }
 }
 
-async function analyzeInternalLinks($, pageUrl, baseUrl, options) {
-    const internalLinks = [];
-    const badLinks = [];
-
-    $('a').each((i, elem) => {
-        const href = $(elem).attr('href');
-        if (href) {
-            const absoluteUrl = new URL(href, pageUrl).href;
-            if (absoluteUrl.startsWith(baseUrl)) {
-                internalLinks.push({ url: absoluteUrl, text: $(elem).text().trim() });
-                
-                // Check for "author" in the domain
-                const domain = new URL(absoluteUrl).hostname;
-                if (domain.includes('author')) {
-                    badLinks.push({
-                        link: absoluteUrl,
-                        domain: domain,
-                        containingPage: pageUrl
-                    });
-                }
-            }
-        }
-    });
-
-    const checkedLinks = await Promise.all(internalLinks.map(async (link) => {
-        const { statusCode } = await checkInternalLink(link.url, options);
-        return { ...link, statusCode };
-    }));
-
-    return { checkedLinks, badLinks };
-}
-
-async function checkInternalLink(url, options) {
-    try {
-        const { statusCode } = await getOrRenderData(url, options);
-        return { statusCode };
-    } catch (error) {
-        console.error(`Error checking internal link ${url}:`, error.message);
-        return { statusCode: 'Error' };
-    }
-}
 
 async function saveInternalLinks(results, outputDir) {
     const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks), 
@@ -696,11 +660,11 @@ function checkOrphanedUrls(internalLinks, sitemapUrls, results, baseUrl) {
 }
 
 // Handle URL processing error
-function handleUrlProcessingError(testUrl, error, results) {
+function handleUrlProcessingError(testUrl, lastmod, error, results) {
     console.error(`Error processing ${testUrl}:`, error.message);
     console.error('Error stack:', error.stack);
     ['pa11y', 'internalLinks', 'contentAnalysis'].forEach(report => {
-        results[report].push({ url: testUrl, error: error.message });
+        results[report].push({ url: testUrl, lastmod: lastmod, error: error.message });
     });
 }
 
@@ -728,17 +692,26 @@ async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     let results = initializeResults();
 
     try {
-        await validateAndPrepare(sitemapUrl, outputDir, options);  // Pass options here
-        const urls = await getUrlsFromSitemap(sitemapUrl, limit);
+        await validateAndPrepare(sitemapUrl, outputDir, options);
+        const { validUrls, invalidUrls } = await getUrlsFromSitemap(sitemapUrl, limit);
+
+        // Save invalid URLs
+        await saveInvalidUrls(invalidUrls, outputDir);
 
         // Extract the hostname and protocol from the sitemapUrl
         const parsedUrl = new URL(isUrl(sitemapUrl) ? sitemapUrl : `file://${path.resolve(sitemapUrl)}`);
         const baseUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}`;
 
-        results = await processUrls(urls, baseUrl, results, options);
+        results = await processUrls(validUrls, baseUrl, results, options);
         await postProcessResults(results, outputDir);
         await saveResults(results, outputDir, sitemapUrl);
         await generateSitemap(results, outputDir, baseUrl);
+
+        // Generate and log the summary report
+        const summaryReport = await generateSummaryReport(results, outputDir);
+        console.log("\nSummary Report:");
+        console.log(summaryReport);
+
         return results;
     } catch (error) {
         handleError(error, outputDir, results);
@@ -802,21 +775,32 @@ async function validateUrl(url) {
 } 
 async function getUrlsFromSitemap(sitemapUrl, limit) {
     const parsedContent = await fetchAndParseSitemap(sitemapUrl);
-    const urls = await extractUrls(parsedContent);
-    console.info(`Found ${urls.length} URL(s) in the sitemap`);
+    const urlsWithDates = await extractUrls(parsedContent);
+    console.info(`Found ${urlsWithDates.length} URL(s) in the sitemap`);
 
-    if (urls.length === 0) {
-        throw new Error('No URLs found in the sitemap');
-    }
+    const validUrls = [];
+    const invalidUrls = [];
 
-    const validUrls = urls.filter(url => isValidUrl(url));
+    urlsWithDates.forEach(item => {
+        if (isValidUrl(item.url)) {
+            validUrls.push(item);
+        } else {
+            invalidUrls.push(item);
+        }
+    });
+
     console.info(`${validUrls.length} valid URL(s) will be processed`);
+    console.info(`${invalidUrls.length} invalid URL(s) found`);
 
     if (validUrls.length === 0) {
         throw new Error('No valid URLs found to process');
     }
 
-    return limit === -1 ? validUrls : validUrls.slice(0, limit);
+    // Return both valid and invalid URLs
+    return {
+        validUrls: limit === -1 ? validUrls : validUrls.slice(0, limit),
+        invalidUrls
+    };
 }
 
 function isValidUrl(url) {
@@ -833,13 +817,14 @@ async function processUrls(urls, baseUrl, results, options) {
     const totalTests = urls.length;
     console.info(`Processing ${totalTests} URL(s)`);
 
-    const sitemapUrls = new Set(urls.map(url => url.split('#')[0])); // Strip fragment identifiers
+    const sitemapUrls = new Set(urls.map(item => item.url.split('#')[0])); // Strip fragment identifiers
 
     for (let i = 0; i < urls.length; i++) {
         if (isShuttingDown) break;
-        const testUrl = fixUrl(urls[i]);
+        const testUrl = fixUrl(urls[i].url);
+        const lastmod = urls[i].lastmod;
         console.info(`Processing ${i + 1} of ${totalTests}: ${testUrl}`);
-        await processUrl(testUrl, i, totalTests, baseUrl, sitemapUrls, results, options);
+        await processUrl(testUrl, lastmod, i, totalTests, baseUrl, sitemapUrls, results, options);
     }
 
     return results;
@@ -847,11 +832,19 @@ async function processUrls(urls, baseUrl, results, options) {
 
   
   
-async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, results, options) {
+async function processUrl(testUrl, lastmod, index, totalTests, baseUrl, sitemapUrls, results, options) {
     debug(`Testing: ${testUrl} (${index + 1}/${totalTests})`);
     
     try {
-        let { html, jsErrors, statusCode, headers, pageData } = await getOrRenderData(testUrl, options);
+        let data = await getOrRenderData(testUrl, { ...options, outputDir: options.output });
+        
+        if (data.error) {
+            console.warn(`Error retrieving data for ${testUrl}: ${data.error}`);
+            handleUrlProcessingError(testUrl, lastmod, new Error(data.error), results);
+            return;
+        }
+
+        const { html, jsErrors, statusCode, headers, pageData } = data;
 
         if (!html || !statusCode) {
             console.warn(`No data retrieved for ${testUrl}. Skipping.`);
@@ -859,18 +852,16 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
         }
 
         debug(`Retrieved data for ${testUrl}. Status code: ${statusCode}`);
-
         updateUrlMetrics(testUrl, baseUrl, html, statusCode, results);
         updateResponseCodeMetrics(statusCode, results);
 
         if (statusCode === 200) {
             const $ = cheerio.load(html);
-      //      const { checkedLinks, badLinks } = await analyzeInternalLinks($, testUrl, baseUrl, options);
-      //      debug(`Analyzed ${checkedLinks.length} internal links for ${testUrl}`);
             
             const enhancedPageData = {
                 ...pageData,
                 url: testUrl,
+                lastmod: lastmod || pageData.lastModified,
                 hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
                 openGraphTags: $('meta[property^="og:"]').length > 0,
                 twitterTags: $('meta[name^="twitter:"]').length > 0
@@ -878,13 +869,12 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
 
             await analyzePageContent(testUrl, html, jsErrors, baseUrl, sitemapUrls, results, headers, enhancedPageData, options);
             
-        
             debug(`Starting performance analysis for ${testUrl}`);
             const performanceMetrics = await analyzePerformance(testUrl);
             if (!results.performanceAnalysis) {
                 results.performanceAnalysis = [];
             }
-            results.performanceAnalysis.push({ url: testUrl, ...performanceMetrics });
+            results.performanceAnalysis.push({ url: testUrl, lastmod: enhancedPageData.lastmod, ...performanceMetrics });
             debug(`Completed performance analysis for ${testUrl}`);
 
             const seoScore = calculateSeoScore({
@@ -894,15 +884,17 @@ async function processUrl(testUrl, index, totalTests, baseUrl, sitemapUrls, resu
             
             results.seoScores.push({
                 url: testUrl,
+                lastmod: enhancedPageData.lastmod,
                 score: seoScore.score,
                 details: seoScore.details
             });
             debug(`Calculated SEO score for ${testUrl}: ${seoScore.score}`);
         }
+
         debug(`Completed testing: ${testUrl}`);
     } catch (error) {
         console.error(`Error processing ${testUrl}:`, error);
-        handleUrlProcessingError(testUrl, error, results);
+        handleUrlProcessingError(testUrl, lastmod, error, results);
     }
 }
 
@@ -1368,6 +1360,25 @@ async function saveRawPa11yResult(results, outputDir) {
       debug('No common Pa11y issues found');
     }
   }
+
+  async function saveInvalidUrls(invalidUrls, outputDir) {
+    if (invalidUrls.length > 0) {
+        const invalidUrlsArray = invalidUrls.map(item => ({
+            url: item.url,
+            lastmod: item.lastmod || 'N/A'
+        }));
+        const invalidUrlsCsv = formatCsv(invalidUrlsArray, ['url', 'lastmod']);
+        const filePath = path.join(outputDir, 'invalid_urls.csv');
+        try {
+            await fs.writeFile(filePath, invalidUrlsCsv, 'utf8');
+            console.log(`${invalidUrls.length} invalid URLs saved to ${filePath}`);
+        } catch (error) {
+            console.error('Error saving invalid URLs:', error);
+        }
+    } else {
+        console.log('No invalid URLs found');
+    }
+}
   
   function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
     const commonIssueKeys = new Set(commonIssues.map(issue => `${issue.code}-${issue.message}`));
@@ -1502,6 +1513,71 @@ function generateReport(results, sitemapUrl) {
 
     return stringify(roundedReportData)
 
+}
+
+async function generateSummaryReport(results, outputDir) {
+    let summaryText = "SEO Analysis Summary Report\n";
+    summaryText += "===========================\n\n";
+
+    // General statistics
+    summaryText += "General Statistics:\n";
+    summaryText += `-----------------\n`;
+    summaryText += `Total URLs analyzed: ${results.urlMetrics.total}\n`;
+    summaryText += `Internal URLs: ${results.urlMetrics.internal}\n`;
+    summaryText += `External URLs: ${results.urlMetrics.external}\n`;
+    summaryText += `Indexable URLs: ${results.urlMetrics.internalIndexable}\n`;
+    summaryText += `Non-indexable URLs: ${results.urlMetrics.internalNonIndexable}\n\n`;
+
+    // Response code summary
+    summaryText += "Response Code Summary:\n";
+    summaryText += "----------------------\n";
+    for (const [code, count] of Object.entries(results.responseCodeMetrics)) {
+        summaryText += `${code}: ${count}\n`;
+    }
+    summaryText += "\n";
+
+    // Content analysis summary
+    if (results.contentAnalysis && results.contentAnalysis.length > 0) {
+        summaryText += "Content Analysis Summary:\n";
+        summaryText += "--------------------------\n";
+        const totalWords = results.contentAnalysis.reduce((sum, page) => sum + page.wordCount, 0);
+        const avgWords = totalWords / results.contentAnalysis.length;
+        summaryText += `Average word count: ${avgWords.toFixed(2)}\n`;
+        summaryText += `Pages with missing H1: ${results.contentAnalysis.filter(page => page.h1Count === 0).length}\n`;
+        summaryText += `Pages with multiple H1: ${results.contentAnalysis.filter(page => page.h1Count > 1).length}\n`;
+        summaryText += `Total images without alt text: ${results.contentAnalysis.reduce((sum, page) => sum + page.imagesWithoutAlt, 0)}\n\n`;
+    }
+
+    // SEO score summary
+    if (results.seoScores && results.seoScores.length > 0) {
+        summaryText += "SEO Score Summary:\n";
+        summaryText += "------------------\n";
+        const avgScore = results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length;
+        summaryText += `Average SEO score: ${avgScore.toFixed(2)}\n\n`;
+    }
+
+    // Performance analysis summary
+    if (results.performanceAnalysis && results.performanceAnalysis.length > 0) {
+        summaryText += "Performance Analysis Summary:\n";
+        summaryText += "------------------------------\n";
+        const avgLoadTime = results.performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / results.performanceAnalysis.length;
+        summaryText += `Average load time: ${avgLoadTime.toFixed(2)}ms\n\n`;
+    }
+
+    // Accessibility issues summary
+    if (results.pa11y && results.pa11y.length > 0) {
+        summaryText += "Accessibility Issues Summary:\n";
+        summaryText += "------------------------------\n";
+        const totalIssues = results.pa11y.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
+        summaryText += `Total accessibility issues: ${totalIssues}\n\n`;
+    }
+
+    // Write the summary to a file
+    const summaryPath = path.join(outputDir, 'summary_report.txt');
+    await fs.writeFile(summaryPath, summaryText, 'utf8');
+    console.log(`Summary report saved to ${summaryPath}`);
+
+    return summaryText;
 }
 function generateSeoScoreAnalysis(results) {
     const averageScore = results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length;
