@@ -15,9 +15,9 @@ const { launch } = pkg;
 import puppeteer from 'puppeteer';
 import { ensureCacheDir, getOrRenderData, displayCachingOptions } from './caching.js';
 import { calculateSeoScore } from './seo-scoring.js';
-import { saveContentAnalysis } from './content-analysis.js';
-import { generateSitemap } from './sitemap-generator.js';
-import { pa11yOptions, sitemapOptions }  from './pa11y-options.js';
+import { saveContentAnalysis } from './src/utils/content-analysis.js';
+import { generateSitemap } from './src/utils/sitemap-generator.js';
+import { pa11yOptions, sitemapOptions }  from './src/config/pa11y-options.js';
 import { formatCsv, debug , setDebugMode } from './utils.js'
 
 
@@ -234,9 +234,6 @@ async function saveInternalLinks(results, outputDir) {
         ['source', 'target', 'anchorText', 'statusCode']);
     await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
     debug('Internal links results saved');
-
-    // Save bad links
-    await saveBadLinks(results.badLinks, outputDir);
 }
 
 function flattenInternalLinks(internalLinks) {

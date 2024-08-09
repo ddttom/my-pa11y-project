@@ -1,3 +1,5 @@
+// pa11y-options.js
+
 const pa11yOptions = {
     timeout: 60000,
     wait: 2000,

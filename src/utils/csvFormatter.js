@@ -1,16 +1,4 @@
-// utils.js or utils.mjs
-
-let isDebugMode = false;
-
-export function setDebugMode(mode) {
-  isDebugMode = mode;
-}
-
-export function debug(message) {
-  if (isDebugMode) {
-    console.log(`[DEBUG] ${new Date().toISOString()}: ${message}`);
-  }
-}
+// csvFormatter.js 
 
 export function formatCsv(data, headers) {
     debug('Formatting CSV data...');
