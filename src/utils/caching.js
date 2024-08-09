@@ -6,8 +6,8 @@ import crypto from "crypto";
 import puppeteer from "puppeteer";
 import axios from "axios";
 import cheerio from "cheerio";
-import { calculateSeoScore } from "./seo-scoring.js";
-import { debug, formatCsv } from './utils.js';
+import { calculateSeoScore } from "./seoScoring.js";
+import { debug } from './debug.js';
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 

@@ -6,6 +6,7 @@ import { processUrl } from './utils/urlProcessor.js';
 import { postProcessResults, saveResults } from './utils/results.js';
 import { generateSitemap } from './utils/sitemapGenerator.js';
 import { debug } from './utils/debug.js';
+import { isShuttingDown } from './utils/shutdownHandler.js';
 
 export async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     console.log(`Starting process for sitemap or page: ${sitemapUrl}`);
@@ -19,7 +20,7 @@ export async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = 
 
         // Process URLs
         for (let i = 0; i < validUrls.length; i++) {
-            if (isShuttingDown) break;
+            if (isShuttingDown()) break;
             const testUrl = fixUrl(validUrls[i].url);
             const lastmod = validUrls[i].lastmod;
             

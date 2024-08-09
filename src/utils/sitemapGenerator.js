@@ -176,5 +176,3 @@ async function updateRobotsTxt(robotsTxtPath, sitemapFiles, baseUrl) {
         console.error('Error updating robots.txt:', error);
     }
 }
-
-export { generateSitemap };

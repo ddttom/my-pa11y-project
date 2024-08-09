@@ -1,5 +1,6 @@
 // csvFormatter.js 
 
+import { debug } from './debug.js';
 export function formatCsv(data, headers) {
     debug('Formatting CSV data...');
     debug('Data type:', typeof data);

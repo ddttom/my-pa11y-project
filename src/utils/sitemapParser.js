@@ -94,5 +94,3 @@ function fixUrl(url) {
     if (!url) return '';
     return url.replace(/([^:]\/)\/+/g, "$1");
 }
-
-export { fetchAndParseSitemap, extractUrls };

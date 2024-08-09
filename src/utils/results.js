@@ -409,5 +409,3 @@ function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
         return result;
     });
 }
-
-export { saveResults, postProcessResults };

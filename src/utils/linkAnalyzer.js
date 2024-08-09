@@ -1,6 +1,6 @@
 // linkAnalyzer.toJSON()
 
-async function getInternalLinks(html, pageUrl, baseUrl) {
+export async function getInternalLinks(html, pageUrl, baseUrl) {
     const $ = cheerio.load(html);
     const links = new Set();
 
