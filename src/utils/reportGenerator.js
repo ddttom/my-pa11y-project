@@ -26,6 +26,8 @@ export function generateReport(results, sitemapUrl) {
         ...generatePerformanceAnalysis(results)
     ];
 
+    
+
     // Round all numeric values in the report to 2 decimal places
     const roundedReportData = reportData.map(row => 
         row.map(cell => 
