@@ -1,5 +1,5 @@
+/* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
-/* eslint-disable no-plusplus */
 /* eslint-disable import/extensions */
 // caching.js
 
@@ -60,23 +60,6 @@ const allOptions = [
   },
 ];
 
-async function launchBrowserWithRetry(maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        defaultViewport: null,
-        timeout: 60000,
-      });
-    } catch (error) {
-      console.error(`Browser launch attempt ${i + 1} failed:`, error);
-      if (i === maxRetries - 1) {
-        // Return a rejected promise when all retries fail
-        return Promise.reject(error);
-    }
-  }
-}
-
 function generateCacheKey(url) {
   const key = crypto.createHash('md5').update(url).digest('hex');
   debug(`Generated cache key for ${url}: ${key}`);
@@ -86,7 +69,9 @@ function generateCacheKey(url) {
 async function ensureCacheDir(options = {}) {
   try {
     if (options.forceDeleteCache) {
-      debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
+      debug(
+        `Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`,
+      );
       try {
         await fs.rm(CACHE_DIR, { recursive: true, force: true });
         debug('Cache directory deleted successfully');
@@ -128,12 +113,14 @@ async function getCachedData(url) {
 }
 
 async function logErrorToCsv(url, error, outputDir) {
-  const errorData = [{
-    url,
-    errorType: error.name,
-    errorMessage: error.message,
-    errorStack: error.stack,
-  }];
+  const errorData = [
+    {
+      url,
+      errorType: error.name,
+      errorMessage: error.message,
+      errorStack: error.stack,
+    },
+  ];
 
   const headers = ['url', 'errorType', 'errorMessage', 'errorStack'];
   const errorCsv = formatCsv(errorData, headers);
@@ -369,7 +356,10 @@ async function setCachedData(url, data) {
 
 async function getOrRenderData(url, options = {}) {
   const {
-    noPuppeteer = false, cacheOnly = false, noCache = false, outputDir,
+    noPuppeteer = false,
+    cacheOnly = false,
+    noCache = false,
+    outputDir,
   } = options;
   debug(`getOrRenderData called for ${url}`);
 
@@ -383,16 +373,25 @@ async function getOrRenderData(url, options = {}) {
   }
 
   if (cacheOnly) {
-    console.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
+    console.warn(
+      `No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`,
+    );
     return { html: null, statusCode: null };
   }
 
-  debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
+  debug(
+    `No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`,
+  );
   let newData;
   try {
-    newData = noPuppeteer ? await fetchDataWithoutPuppeteer(url) : await renderAndCacheData(url, outputDir);
+    newData = noPuppeteer
+      ? await fetchDataWithoutPuppeteer(url)
+      : await renderAndCacheData(url, outputDir);
   } catch (error) {
-    console.error(`Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`, error);
+    console.error(
+      `Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`,
+      error,
+    );
     await logErrorToCsv(url, error, outputDir);
     return { html: null, statusCode: null, error: error.message };
   }
@@ -435,18 +434,26 @@ async function fetchDataWithoutPuppeteer(url) {
       h1: $('h1').first().text(),
       wordCount: $('body').text().trim().split(/\s+/).length,
       hasResponsiveMetaTag: $('meta[name="viewport"]').length > 0,
-      images: $('img').map((i, el) => ({
-        src: $(el).attr('src'),
-        alt: $(el).attr('alt') || '',
-      })).get(),
+      images: $('img')
+        .map((i, el) => ({
+          src: $(el).attr('src'),
+          alt: $(el).attr('alt') || '',
+        }))
+        .get(),
       internalLinks: $(`a[href^="/"], a[href^="${url}"]`).length,
-      structuredData: $('script[type="application/ld+json"]').map((i, el) => $(el).html()).get(),
-      openGraphTags: $('meta[property^="og:"]').map((i, el) => ({
-        [$(el).attr('property')]: $(el).attr('content'),
-      })).get(),
-      twitterTags: $('meta[name^="twitter:"]').map((i, el) => ({
-        [$(el).attr('name')]: $(el).attr('content'),
-      })).get(),
+      structuredData: $('script[type="application/ld+json"]')
+        .map((i, el) => $(el).html())
+        .get(),
+      openGraphTags: $('meta[property^="og:"]')
+        .map((i, el) => ({
+          [$(el).attr('property')]: $(el).attr('content'),
+        }))
+        .get(),
+      twitterTags: $('meta[name^="twitter:"]')
+        .map((i, el) => ({
+          [$(el).attr('name')]: $(el).attr('content'),
+        }))
+        .get(),
       h1Count: $('h1').length,
       h2Count: $('h2').length,
       h3Count: $('h3').length,
@@ -517,6 +524,7 @@ function analyzeContentFreshness(data) {
     }
   } else {
     // If we can't determine the last modified date, use the last crawled date
+    // eslint-disable-next-line no-lonely-if
     if (freshness.daysSinceLastCrawled <= 7) {
       freshness.freshnessStatus = 'Potentially Fresh';
     } else if (freshness.daysSinceLastCrawled <= 30) {
@@ -535,16 +543,23 @@ function displayCachingOptions(currentOptions) {
   allOptions.forEach((option, index) => {
     const isActive = option.flag.startsWith('--')
       ? currentOptions[option.flag.replace('--', '').replace('-', '')]
-      : currentOptions[option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')];
+      : currentOptions[
+        option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')
+      ];
 
-    console.log(`${index + 1}. ${option.name}${option.required ? ' (Required)' : ''}`);
+    console.log(
+      `${index + 1}. ${option.name}${option.required ? ' (Required)' : ''}`,
+    );
     console.log(`   Description: ${option.description}`);
     console.log(`   Flag: ${option.flag}`);
     if (option.default) {
       console.log(`   Default: ${option.default}`);
     }
     if (typeof isActive !== 'undefined') {
-      console.log(`   Current Setting: ${isActive === true ? 'Enabled' : (isActive === false ? 'Disabled' : isActive)}`);
+      console.log(
+        // eslint-disable-next-line no-nested-ternary
+        `   Current Setting: ${isActive === true ? 'Enabled' : isActive === false ? 'Disabled' : isActive}`,
+      );
     }
     console.log();
   });
@@ -554,12 +569,16 @@ function displayCachingOptions(currentOptions) {
   console.log(`Sitemap URL: ${currentOptions.sitemap}`);
   console.log(`Output Directory: ${currentOptions.output}`);
   console.log(`Limit: ${currentOptions.limit}`);
-  console.log(`Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`);
-  console.log(`Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`);
+  console.log(
+    `Puppeteer: ${currentOptions.noPuppeteer ? 'Disabled' : 'Enabled'}`,
+  );
+  console.log(
+    `Cache Only: ${currentOptions.cacheOnly ? 'Enabled' : 'Disabled'}`,
+  );
   console.log(`Cache: ${currentOptions.noCache ? 'Disabled' : 'Enabled'}`);
-  console.log(`Force Delete Cache: ${currentOptions.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
+  console.log(
+    `Force Delete Cache: ${currentOptions.forceDeleteCache ? 'Enabled' : 'Disabled'}`,
+  );
   console.log(`Debug Mode: ${currentOptions.debug ? 'Enabled' : 'Disabled'}`);
   console.log();
 }
-
-export { ensureCacheDir, getOrRenderData, displayCachingOptions };
