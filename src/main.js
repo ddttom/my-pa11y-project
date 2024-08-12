@@ -6,21 +6,28 @@ import { processUrl } from './utils/urlProcessor.js';
 import { postProcessResults, saveResults } from './utils/results.js';
 import { generateSitemap } from './utils/sitemapGenerator.js';
 import { debug } from './utils/debug.js';
-import { isShuttingDown } from './utils/shutdownHandler.js';
+import { checkIsShuttingDown, setupShutdownHandler } from './utils/shutdownHandler.js';
+import { fixUrl } from './utils/urlUtils.js';
 
 export async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = -1) {
     console.log(`Starting process for sitemap or page: ${sitemapUrl}`);
     console.log(`Results will be saved to: ${outputDir}`);
-
+    
     let results = initializeResults();
+    setupShutdownHandler(outputDir, results);
 
     try {
         await validateAndPrepare(sitemapUrl, outputDir, options);
         const { validUrls, invalidUrls } = await getUrlsFromSitemap(sitemapUrl, limit);
 
+        console.info(`Found ${validUrls.length} valid URL(s) and ${invalidUrls.length} invalid URL(s)`);
+
         // Process URLs
         for (let i = 0; i < validUrls.length; i++) {
-            if (isShuttingDown()) break;
+            if (checkIsShuttingDown()) {
+                console.log('Shutdown requested, stopping URL processing...');
+                break;
+            }
             const testUrl = fixUrl(validUrls[i].url);
             const lastmod = validUrls[i].lastmod;
             
@@ -28,12 +35,23 @@ export async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = 
             await processUrl(testUrl, lastmod, i, validUrls.length, results, options);
         }
 
-        await postProcessResults(results, outputDir);
-        await saveResults(results, outputDir, sitemapUrl);
+        if (!checkIsShuttingDown()) {
+            await postProcessResults(results, outputDir);
+        }
+
+        if (!checkIsShuttingDown()) {
+            await saveResults(results, outputDir, sitemapUrl);
+        }
 
         // Generate sitemap
-        const sitemapSummary = await generateSitemap(results, outputDir, options);
-        console.log('Sitemap generation summary:', sitemapSummary);
+        if (!checkIsShuttingDown()) {
+            const sitemapPath = await generateSitemap(results, outputDir, options);
+            if (sitemapPath) {
+                console.log('Sitemap generation summary:', sitemapPath);
+            } else {
+                console.log('No sitemap was generated due to lack of valid URLs.');
+            }
+        }
 
         return results;
     } catch (error) {
@@ -42,7 +60,7 @@ export async function runTestsOnSitemap(sitemapUrl, outputDir, options, limit = 
     }
 }
 
-function initializeResults() {
+export function initializeResults() {
     return {
         pa11y: [],
         internalLinks: [],

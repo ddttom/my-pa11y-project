@@ -1,5 +1,7 @@
 // linkAnalyzer.toJSON()
 
+import cheerio from 'cheerio';
+
 export async function getInternalLinks(html, pageUrl, baseUrl) {
     const $ = cheerio.load(html);
     const links = new Set();

@@ -623,7 +623,7 @@ function updateCanonicalMetrics($, testUrl, results) {
 }
 
 // Update internal links
-function updateInternalLinks(testUrl, internalLinks, results) {
+export function updateInternalLinks(testUrl, internalLinks, results) {
     results.internalLinks.push({ url: testUrl, links: internalLinks });
 }
 

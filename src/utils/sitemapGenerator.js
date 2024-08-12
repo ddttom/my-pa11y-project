@@ -2,79 +2,57 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { SitemapStream, streamToPromise } from 'sitemap';
-import { Readable } from 'stream';
-import { gzip } from 'zlib';
+import { createGzip } from 'zlib';
 import { promisify } from 'util';
 import { debug } from './debug.js';
 
-const gzipPromise = promisify(gzip);
+const gzip = promisify(createGzip);
 
-// Default sitemap options
-const defaultSitemapOptions = {
-    hostname: '',
-    maxUrlsPerFile: 50000,
-    compress: true,
-    includeLastmod: true,
-    includeChangefreq: true,
-    includePriority: true,
-    robotsTxtPath: 'robots.txt',
-};
-
-export async function generateSitemap(results, outputDir, baseUrl, customOptions = {}) {
-    const options = { ...defaultSitemapOptions, ...customOptions, hostname: baseUrl };
-    debug('Generating sitemap with options:', options);
+export async function generateSitemap(results, outputDir, options) {
+    const baseUrl = typeof options.baseUrl === 'string' ? options.baseUrl : '';
+    debug(`Generating sitemap with base URL: ${baseUrl}`);
 
     const urls = extractUrlsFromResults(results);
-    debug(`Extracted ${urls.length} URLs for sitemap generation`);
 
-    const sitemapFiles = [];
-    for (let i = 0; i < urls.length; i += options.maxUrlsPerFile) {
-        const batch = urls.slice(i, i + options.maxUrlsPerFile);
-        const sitemapStream = new SitemapStream({ hostname: options.hostname });
-        
-        batch.forEach(url => {
-            const sitemapEntry = {
-                url: url.loc,
-                changefreq: url.changefreq,
-                priority: url.priority,
-            };
-            if (options.includeLastmod && url.lastmod) {
-                sitemapEntry.lastmod = new Date(url.lastmod).toISOString();
-            }
-            sitemapStream.write(sitemapEntry);
-        });
+    let sitemapXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    sitemapXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 
-        sitemapStream.end();
-
-        let sitemapData = await streamToPromise(sitemapStream);
-        
-        if (options.compress) {
-            sitemapData = await gzipPromise(sitemapData);
+    let urlAdded = false;
+    for (const url of urls) {
+        try {
+            const fullUrl = url.loc.startsWith('http') ? url.loc : new URL(url.loc, baseUrl).href;
+            sitemapXml += '  <url>\n';
+            sitemapXml += `    <loc>${escapeXml(fullUrl)}</loc>\n`;
+            if (url.lastmod) sitemapXml += `    <lastmod>${url.lastmod}</lastmod>\n`;
+            if (url.changefreq) sitemapXml += `    <changefreq>${url.changefreq}</changefreq>\n`;
+            if (url.priority) sitemapXml += `    <priority>${url.priority}</priority>\n`;
+            sitemapXml += '  </url>\n';
+            urlAdded = true;
+        } catch (error) {
+            console.warn(`Failed to add URL to sitemap: ${url.loc}`, error);
         }
-
-        const fileName = `sitemap${sitemapFiles.length + 1}${options.compress ? '.xml.gz' : '.xml'}`;
-        const filePath = path.join(outputDir, fileName);
-        await fs.writeFile(filePath, sitemapData);
-        sitemapFiles.push(fileName);
-
-        debug(`Generated sitemap file: ${fileName}`);
     }
 
-    if (sitemapFiles.length > 1) {
-        await generateSitemapIndex(sitemapFiles, options, outputDir);
+    sitemapXml += '</urlset>';
+
+    if (!urlAdded) {
+        console.warn('No valid URLs were added to the sitemap.');
+        return null;
     }
 
-    await updateRobotsTxt(options.robotsTxtPath, sitemapFiles, baseUrl);
+    // Compress the sitemap
+    const compressedSitemap = await gzip(Buffer.from(sitemapXml, 'utf-8'));
 
-    return {
-        sitemapFiles,
-        totalUrls: urls.length,
-    };
+    // Save the sitemap
+    const sitemapPath = path.join(outputDir, 'sitemap.xml.gz');
+    await fs.writeFile(sitemapPath, compressedSitemap);
+
+    console.log(`Sitemap generated and saved to ${sitemapPath}`);
+
+    return sitemapPath;
 }
 
 function extractUrlsFromResults(results) {
-    // Extract URLs from various parts of the results object
     const urls = new Set();
 
     // Extract from internalLinks
@@ -101,7 +79,7 @@ function extractUrlsFromResults(results) {
         results.seoScores.forEach(score => {
             if (score.url) urls.add({ 
                 loc: score.url,
-                priority: score.score / 100 // Use SEO score as priority
+                priority: (score.score / 100).toFixed(1)
             });
         });
     }
@@ -110,69 +88,23 @@ function extractUrlsFromResults(results) {
 }
 
 function calculateChangeFreq(page) {
-    // Logic to determine change frequency based on content type or update frequency
-    // This is a placeholder implementation
-    if (page.contentType === 'blog' || page.contentType === 'news') {
-        return 'daily';
-    } else if (page.contentType === 'product') {
-        return 'weekly';
-    }
-    return 'monthly';
+    // Implement logic to determine change frequency
+    return 'weekly'; // Default value
 }
 
 function calculatePriority(page) {
-    // Logic to determine priority based on page importance
-    // This is a placeholder implementation
-    if (page.isHomepage) {
-        return 1.0;
-    } else if (page.depth === 1) {
-        return 0.8;
-    } else if (page.depth === 2) {
-        return 0.6;
-    }
-    return 0.5;
+    // Implement logic to determine priority
+    return '0.5'; // Default value
 }
 
-async function generateSitemapIndex(sitemapFiles, options, outputDir) {
-    const sitemapIndex = new SitemapStream({ hostname: options.hostname });
-    
-    sitemapFiles.forEach(file => {
-        sitemapIndex.write({ url: `${options.hostname}/${file}` });
-    });
-
-    sitemapIndex.end();
-
-    const sitemapIndexData = await streamToPromise(sitemapIndex);
-    const indexFileName = options.compress ? 'sitemap-index.xml.gz' : 'sitemap-index.xml';
-    const indexFilePath = path.join(outputDir, indexFileName);
-
-    if (options.compress) {
-        const compressedData = await gzipPromise(sitemapIndexData);
-        await fs.writeFile(indexFilePath, compressedData);
-    } else {
-        await fs.writeFile(indexFilePath, sitemapIndexData);
-    }
-
-    debug(`Generated sitemap index: ${indexFileName}`);
-}
-
-async function updateRobotsTxt(robotsTxtPath, sitemapFiles, baseUrl) {
-    try {
-        let robotsTxtContent = await fs.readFile(robotsTxtPath, 'utf-8');
-        
-        // Remove existing Sitemap directives
-        robotsTxtContent = robotsTxtContent.replace(/^Sitemap:.*$/gm, '');
-
-        // Add new Sitemap directives
-        if (sitemapFiles.length === 1) {
-            robotsTxtContent += `\nSitemap: ${baseUrl}/${sitemapFiles[0]}`;
-        } else {
-            robotsTxtContent += `\nSitemap: ${baseUrl}/sitemap-index.xml`;
+function escapeXml(unsafe) {
+    return unsafe.replace(/[<>&'"]/g, function (c) {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
         }
-
-        await fs.writeFile(robotsTxtPath, robotsTxtContent.trim() + '\n');
-        debug('Updated robots.txt with sitemap information');
-    } catch (error) {
-        console.error('Error updating robots.txt:', error);
-    }
+    });
 }

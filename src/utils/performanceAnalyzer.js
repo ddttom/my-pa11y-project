@@ -1,5 +1,8 @@
 // performanceAnalyzer.js
 
+import puppeteer from 'puppeteer';
+import { debug } from './debug.js';
+
 export async function analyzePerformance(url) {
     let browser;
     try {

@@ -22,6 +22,11 @@ const SEO_WEIGHTS = {
  * @returns {Object} The SEO score and detailed breakdown
  */
 export function calculateSeoScore(pageData) {
+  if (!pageData) {
+    console.warn('pageData is undefined or null in calculateSeoScore');
+    return { score: 0, details: {} };
+  }
+
   let totalScore = 0;
   let maxPossibleScore = 0;
 
@@ -120,15 +125,24 @@ function scoreMetaDescription(metaDescription) {
 }
 
 function scoreUrlStructure(url) {
-  return url.includes('_') ? 0 : 1;
+  if (!url) return 0;
+  let score = 1;
+  if (url.includes('_')) score -= 0.2;
+  if (url.toLowerCase() !== url) score -= 0.2;
+  if (/\d/.test(url)) score -= 0.1;
+  const segments = url.split('/');
+  if (segments.some(segment => segment.length > 20)) score -= 0.2;
+  return Math.max(0, score);
 }
 
 function scoreH1Optimization(h1) {
-  return h1 ? 1 : 0;
+  if (!h1) return 0;
+  return h1.length > 0 && h1.length <= 70 ? 1 : 0.5;
 }
 
 function scoreContentLength(wordCount) {
-  return scoreRange(wordCount || 0, 300, 1500);
+  if (!wordCount) return 0;
+  return scoreRange(wordCount, 300, 1500);
 }
 
 function scoreInternalLinking(internalLinksCount) {
@@ -146,6 +160,7 @@ function scoreMobileOptimization(hasResponsiveMetaTag) {
 }
 
 function scoreSecurityFactors(url) {
+  if (!url) return 0;
   return url.startsWith('https') ? 1 : 0;
 }
 

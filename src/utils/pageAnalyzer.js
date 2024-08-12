@@ -2,7 +2,7 @@
 import cheerio from 'cheerio';
 import { runPa11yTest } from './pa11yRunner.js';
 import { getInternalLinks } from './linkAnalyzer.js';
-import { updateTitleMetrics, updateMetaDescriptionMetrics, updateHeadingMetrics, updateImageMetrics, updateLinkMetrics, updateSecurityMetrics, updateHreflangMetrics, updateCanonicalMetrics } from './metricsUpdater.js';
+import {updateContentAnalysis, updateInternalLinks, updateTitleMetrics, updateMetaDescriptionMetrics, updateHeadingMetrics, updateImageMetrics, updateLinkMetrics, updateSecurityMetrics, updateHreflangMetrics, updateCanonicalMetrics } from './metricsUpdater.js';
 
 export async function analyzePageContent(testUrl, html, jsErrors, baseUrl, results, headers, pageData) {
     const $ = cheerio.load(html);

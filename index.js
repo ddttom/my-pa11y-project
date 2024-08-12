@@ -4,8 +4,6 @@ import { program } from 'commander';
 import { runTestsOnSitemap } from './src/main.js';
 import { setDebugMode } from './src/utils/debug.js';
 import { displayCachingOptions } from './src/utils/caching.js';
-import { setupShutdownHandler } from './utils/shutdownHandler.js';
-
 
 program
     .requiredOption('-s, --sitemap <url>', 'URL of the sitemap to process')
@@ -38,7 +36,7 @@ console.log(`Debug Mode: ${options.debug ? 'Enabled' : 'Disabled'}`);
 
 console.log('\nStarting the crawl process...\n');
 
-setupShutdownHandler(options.output, results);
+displayCachingOptions(options);
 
 runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     .then(() => {
@@ -46,4 +44,5 @@ runTestsOnSitemap(options.sitemap, options.output, options, options.limit)
     })
     .catch((error) => {
         console.error('Script failed with error:', error);
+        process.exit(1);
     });

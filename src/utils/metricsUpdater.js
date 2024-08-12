@@ -147,6 +147,29 @@ export function updateCanonicalMetrics($, testUrl, results) {
     debug('Updated canonical metrics');
 }
 
+
+// Update content analysis
+export function updateContentAnalysis(contentAnalysis, results) {
+    if (contentAnalysis) {
+        results.contentAnalysis.push(contentAnalysis);
+        
+        // Update content metrics
+        const wordCount = contentAnalysis.wordCount || 0;
+        if (wordCount < 300) {  // This threshold can be adjusted
+            results.contentMetrics.lowContent++;
+        }
+        // Duplicate content check would require more complex analysis
+    }
+}
+
+// Check for orphaned URLs
+
+
+// Update internal links
+export function updateInternalLinks(testUrl, internalLinks, results) {
+    results.internalLinks.push({ url: testUrl, links: internalLinks });
+}
+
 function estimatePixelWidth(text) {
     // This is a rough estimate. Actual pixel width can vary based on font, browser, etc.
     const averageCharWidth = 6; // Assuming an average character width of 6 pixels
