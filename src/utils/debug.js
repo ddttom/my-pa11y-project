@@ -1,4 +1,5 @@
-// debug.js 
+/* eslint-disable no-console */
+// debug.js
 
 let isDebugMode = false;
 

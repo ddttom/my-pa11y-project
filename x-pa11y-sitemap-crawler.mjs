@@ -15,7 +15,7 @@ const { launch } = pkg;
 import puppeteer from 'puppeteer';
 import { ensureCacheDir, getOrRenderData, displayCachingOptions } from './caching.js';
 import { calculateSeoScore } from './seo-scoring.js';
-import { saveContentAnalysis } from './src/utils/content-analysis.js';
+import { saveContentAnalysis } from './src/utils/x-content-analysi.js';
 import { generateSitemap } from './src/utils/sitemap-generator.js';
 import { pa11yOptions, sitemapOptions }  from './src/config/pa11y-options.js';
 import { formatCsv, debug , setDebugMode } from './utils.js'

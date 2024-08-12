@@ -1,79 +1,84 @@
-//caching.js
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-plusplus */
+/* eslint-disable import/extensions */
+// caching.js
 
-import fs from "fs/promises";
-import path from "path";
-import crypto from "crypto";
-import puppeteer from "puppeteer";
-import axios from "axios";
-import cheerio from "cheerio";
-import { calculateSeoScore } from "./seoScoring.js";
+import fs from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
+import puppeteer from 'puppeteer';
+import axios from 'axios';
+import cheerio from 'cheerio';
+import { calculateSeoScore } from './seoScoring.js';
 import { debug } from './debug.js';
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = path.join(process.cwd(), '.cache');
 
 const allOptions = [
   {
     name: 'Sitemap URL',
     description: 'URL of the sitemap to process',
     flag: '-s, --sitemap <url>',
-    required: true
+    required: true,
   },
   {
     name: 'Output Directory',
     description: 'Output directory for results',
     flag: '-o, --output <directory>',
-    required: true
+    required: true,
   },
   {
     name: 'Limit',
     description: 'Limit the number of URLs to test. Use -1 to test all URLs.',
     flag: '-l, --limit <number>',
-    default: '-1'
+    default: '-1',
   },
   {
     name: 'No Puppeteer',
     description: 'Bypass Puppeteer execution and use cached HTML',
-    flag: '--no-puppeteer'
+    flag: '--no-puppeteer',
   },
   {
     name: 'Cache Only',
     description: 'Use only cached data, do not fetch new data',
-    flag: '--cache-only'
+    flag: '--cache-only',
   },
   {
     name: 'No Cache',
     description: 'Disable caching, always fetch fresh data',
-    flag: '--no-cache'
+    flag: '--no-cache',
   },
   {
     name: 'Force Delete Cache',
     description: 'Force delete existing cache before starting',
-    flag: '--force-delete-cache'
+    flag: '--force-delete-cache',
   },
   {
     name: 'Debug Mode',
     description: 'Enable debug mode for verbose logging',
-    flag: '--debug'
-  }
+    flag: '--debug',
+  },
 ];
 
 async function launchBrowserWithRetry(maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
         defaultViewport: null,
-        timeout: 60000
+        timeout: 60000,
       });
     } catch (error) {
       console.error(`Browser launch attempt ${i + 1} failed:`, error);
-      if (i === maxRetries - 1) throw error;
+      if (i === maxRetries - 1) {
+        // Return a rejected promise when all retries fail
+        return Promise.reject(error);
     }
   }
 }
 
 function generateCacheKey(url) {
-  const key = crypto.createHash("md5").update(url).digest("hex");
+  const key = crypto.createHash('md5').update(url).digest('hex');
   debug(`Generated cache key for ${url}: ${key}`);
   return key;
 }
@@ -84,7 +89,7 @@ async function ensureCacheDir(options = {}) {
       debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
       try {
         await fs.rm(CACHE_DIR, { recursive: true, force: true });
-        debug(`Cache directory deleted successfully`);
+        debug('Cache directory deleted successfully');
       } catch (deleteError) {
         console.error(`Error deleting cache directory: ${deleteError.message}`);
         if (options.debug) {
@@ -92,11 +97,11 @@ async function ensureCacheDir(options = {}) {
         }
       }
     }
-    
+
     await fs.mkdir(CACHE_DIR, { recursive: true });
     debug(`Cache directory ensured: ${CACHE_DIR}`);
   } catch (error) {
-    console.error("Error managing cache directory:", error.message);
+    console.error('Error managing cache directory:', error.message);
     if (options.debug) {
       console.error('Error stack:', error.stack);
     }
@@ -109,11 +114,11 @@ async function getCachedData(url) {
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
   debug(`Attempting to read cache from: ${cachePath}`);
   try {
-    const cachedData = await fs.readFile(cachePath, "utf8");
+    const cachedData = await fs.readFile(cachePath, 'utf8');
     debug(`Cache hit for ${url}`);
     return JSON.parse(cachedData);
   } catch (error) {
-    if (error.code !== "ENOENT") {
+    if (error.code !== 'ENOENT') {
       console.error(`Error reading cache for ${url}:`, error);
     } else {
       console.info(`Cache miss for ${url}`);
@@ -124,10 +129,10 @@ async function getCachedData(url) {
 
 async function logErrorToCsv(url, error, outputDir) {
   const errorData = [{
-    url: url,
+    url,
     errorType: error.name,
     errorMessage: error.message,
-    errorStack: error.stack
+    errorStack: error.stack,
   }];
 
   const headers = ['url', 'errorType', 'errorMessage', 'errorStack'];
@@ -156,23 +161,23 @@ async function renderAndCacheData(url, outputDir) {
     await page.setDefaultNavigationTimeout(60000);
     await page.setViewport({ width: 1280, height: 800 });
     await page.setExtraHTTPHeaders({
-      "Accept-Language": "en-US,en;q=0.9",
+      'Accept-Language': 'en-US,en;q=0.9',
     });
     await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, "language", {
-        get: function () {
-          return "en-US";
+      Object.defineProperty(navigator, 'language', {
+        get() {
+          return 'en-US';
         },
       });
-      Object.defineProperty(navigator, "languages", {
-        get: function () {
-          return ["en-US", "en"];
+      Object.defineProperty(navigator, 'languages', {
+        get() {
+          return ['en-US', 'en'];
         },
       });
     });
 
     const jsErrors = [];
-    page.on("pageerror", (error) => {
+    page.on('pageerror', (error) => {
       const errorDetails = {
         message: error.message,
         stack: error.stack,
@@ -181,11 +186,11 @@ async function renderAndCacheData(url, outputDir) {
       jsErrors.push(JSON.stringify(errorDetails));
     });
 
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
         const errorDetails = {
           message: msg.text(),
-          type: "ConsoleError",
+          type: 'ConsoleError',
           location: msg.location(),
         };
         jsErrors.push(JSON.stringify(errorDetails));
@@ -193,7 +198,7 @@ async function renderAndCacheData(url, outputDir) {
     });
 
     debug(`Navigating to ${url}`);
-    const response = await page.goto(url, { waitUntil: "networkidle0" });
+    const response = await page.goto(url, { waitUntil: 'networkidle0' });
     debug(`Waited for network idle on ${url}`);
 
     const statusCode = response.status();
@@ -202,7 +207,7 @@ async function renderAndCacheData(url, outputDir) {
 
     debug(`Waiting for 3 seconds to allow for JS execution on ${url}`);
     await page.evaluate(
-      () => new Promise((resolve) => setTimeout(resolve, 3000))
+      () => new Promise((resolve) => setTimeout(resolve, 3000)),
     );
     debug(`3 second wait completed for ${url}`);
 
@@ -211,42 +216,40 @@ async function renderAndCacheData(url, outputDir) {
 
     const pageData = await page.evaluate(() => {
       const decodeHtmlEntities = (text) => {
-        const doc = new DOMParser().parseFromString(text, "text/html");
+        const doc = new DOMParser().parseFromString(text, 'text/html');
         return doc.documentElement.textContent;
       };
 
       const extractDate = (selector) => {
         const element = document.querySelector(selector);
         if (element) {
-          const dateString =
-            element.getAttribute("content") || element.textContent;
+          const dateString = element.getAttribute('content') || element.textContent;
           const parsedDate = new Date(dateString);
           return isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString();
         }
         return null;
       };
 
-      const lastModified =
-        extractDate('meta[property="article:modified_time"]') ||
-        extractDate('meta[property="og:updated_time"]') ||
-        extractDate('time[itemprop="dateModified"]') ||
-        document.lastModified;
+      const lastModified = extractDate('meta[property="article:modified_time"]')
+        || extractDate('meta[property="og:updated_time"]')
+        || extractDate('time[itemprop="dateModified"]')
+        || document.lastModified;
 
       const images = Array.from(document.images).map((img) => {
-        let location = "";
+        let location = '';
         let element = img;
         while (element && element !== document.body) {
           if (element.id) {
             location = `#${element.id} > ${location}`;
             break;
           } else if (element.className) {
-            location = `.${element.className.split(" ")[0]} > ${location}`;
+            location = `.${element.className.split(' ')[0]} > ${location}`;
             break;
           }
           element = element.parentElement;
         }
-        location = location || "body > ";
-        location += "img";
+        location = location || 'body > ';
+        location += 'img';
 
         return {
           src: img.src,
@@ -256,15 +259,15 @@ async function renderAndCacheData(url, outputDir) {
       });
 
       return {
-        images: images,
+        images,
         title: decodeHtmlEntities(document.title),
         metaDescription: decodeHtmlEntities(
-          document.querySelector('meta[name="description"]')?.content || ""
+          document.querySelector('meta[name="description"]')?.content || '',
         ),
         h1: decodeHtmlEntities(
-          Array.from(document.querySelectorAll("h1"))
+          Array.from(document.querySelectorAll('h1'))
             .map((h1) => h1.textContent.trim())
-            .join("; ")
+            .join('; '),
         ),
         wordCount: document.body.innerText.trim().split(/\s+/).length,
         hasResponsiveMetaTag: !!document.querySelector('meta[name="viewport"]'),
@@ -273,55 +276,55 @@ async function renderAndCacheData(url, outputDir) {
           alt: decodeHtmlEntities(img.alt),
         })),
         internalLinks: Array.from(document.links).filter(
-          (link) => link.hostname === window.location.hostname
+          (link) => link.hostname === window.location.hostname,
         ).length,
         structuredData: Array.from(
-          document.querySelectorAll('script[type="application/ld+json"]')
+          document.querySelectorAll('script[type="application/ld+json"]'),
         ).map((script) => script.textContent),
         openGraphTags: Object.fromEntries(
           Array.from(document.querySelectorAll('meta[property^="og:"]')).map(
             (tag) => [
-              tag.getAttribute("property"),
+              tag.getAttribute('property'),
               decodeHtmlEntities(tag.content),
-            ]
-          )
+            ],
+          ),
         ),
         twitterTags: Object.fromEntries(
           Array.from(document.querySelectorAll('meta[name^="twitter:"]')).map(
-            (tag) => [tag.getAttribute("name"), decodeHtmlEntities(tag.content)]
-          )
+            (tag) => [tag.getAttribute('name'), decodeHtmlEntities(tag.content)],
+          ),
         ),
-        h1Count: document.querySelectorAll("h1").length,
-        h2Count: document.querySelectorAll("h2").length,
-        h3Count: document.querySelectorAll("h3").length,
-        h4Count: document.querySelectorAll("h4").length,
-        h5Count: document.querySelectorAll("h5").length,
-        h6Count: document.querySelectorAll("h6").length,
-        scriptsCount: document.querySelectorAll("script").length,
+        h1Count: document.querySelectorAll('h1').length,
+        h2Count: document.querySelectorAll('h2').length,
+        h3Count: document.querySelectorAll('h3').length,
+        h4Count: document.querySelectorAll('h4').length,
+        h5Count: document.querySelectorAll('h5').length,
+        h6Count: document.querySelectorAll('h6').length,
+        scriptsCount: document.querySelectorAll('script').length,
         stylesheetsCount: document.querySelectorAll('link[rel="stylesheet"]')
           .length,
         htmlLang: document.documentElement.lang,
         canonicalUrl: document.querySelector('link[rel="canonical"]')?.href,
-        formsCount: document.querySelectorAll("form").length,
-        tablesCount: document.querySelectorAll("table").length,
+        formsCount: document.querySelectorAll('form').length,
+        tablesCount: document.querySelectorAll('table').length,
         pageSize: document.documentElement.outerHTML.length,
-        lastModified: lastModified,
+        lastModified,
       };
     });
 
     const seoScore = calculateSeoScore({
       ...pageData,
-      url: url,
-      jsErrors: jsErrors,
+      url,
+      jsErrors,
     });
 
     const data = {
       html: renderedHtml,
-      jsErrors: jsErrors,
-      statusCode: statusCode,
-      headers: headers,
-      pageData: pageData,
-      seoScore: seoScore,
+      jsErrors,
+      statusCode,
+      headers,
+      pageData,
+      seoScore,
       lastCrawled: new Date().toISOString(),
     };
 
@@ -349,14 +352,14 @@ async function setCachedData(url, data) {
     const jsonString = JSON.stringify(
       data,
       (key, value) => {
-        if (typeof value === "string") {
-          return value.normalize("NFC");
+        if (typeof value === 'string') {
+          return value.normalize('NFC');
         }
         return value;
       },
-      2
+      2,
     );
-    await fs.writeFile(cachePath, jsonString, "utf8");
+    await fs.writeFile(cachePath, jsonString, 'utf8');
     debug(`Cache written for ${url}`);
   } catch (error) {
     console.error(`Error writing cache for ${url}:`, error);
@@ -365,11 +368,13 @@ async function setCachedData(url, data) {
 }
 
 async function getOrRenderData(url, options = {}) {
-  const { noPuppeteer = false, cacheOnly = false, noCache = false, outputDir } = options;
+  const {
+    noPuppeteer = false, cacheOnly = false, noCache = false, outputDir,
+  } = options;
   debug(`getOrRenderData called for ${url}`);
 
   if (!noCache) {
-    let cachedData = await getCachedData(url);
+    const cachedData = await getCachedData(url);
     if (cachedData) {
       cachedData.contentFreshness = analyzeContentFreshness(cachedData);
       debug(`Returning cached data for ${url}`);
@@ -407,7 +412,7 @@ async function fetchDataWithoutPuppeteer(url) {
     const response = await axios.get(url);
     const html = response.data;
     const $ = cheerio.load(html);
-    
+
     const extractDate = (selector) => {
       const element = $(selector);
       if (element.length) {
@@ -418,12 +423,11 @@ async function fetchDataWithoutPuppeteer(url) {
       return null;
     };
 
-    const lastModified =
-      extractDate('meta[property="article:modified_time"]') ||
-      extractDate('meta[property="og:updated_time"]') ||
-      extractDate('time[itemprop="dateModified"]') ||
-      response.headers['last-modified'] ||
-      null;
+    const lastModified = extractDate('meta[property="article:modified_time"]')
+      || extractDate('meta[property="og:updated_time"]')
+      || extractDate('time[itemprop="dateModified"]')
+      || response.headers['last-modified']
+      || null;
 
     const pageData = {
       title: $('title').text(),
@@ -435,7 +439,7 @@ async function fetchDataWithoutPuppeteer(url) {
         src: $(el).attr('src'),
         alt: $(el).attr('alt') || '',
       })).get(),
-      internalLinks: $('a[href^="/"], a[href^="' + url + '"]').length,
+      internalLinks: $(`a[href^="/"], a[href^="${url}"]`).length,
       structuredData: $('script[type="application/ld+json"]').map((i, el) => $(el).html()).get(),
       openGraphTags: $('meta[property^="og:"]').map((i, el) => ({
         [$(el).attr('property')]: $(el).attr('content'),
@@ -456,18 +460,18 @@ async function fetchDataWithoutPuppeteer(url) {
       formsCount: $('form').length,
       tablesCount: $('table').length,
       pageSize: html.length,
-      lastModified: lastModified,
+      lastModified,
     };
 
     const data = {
-      html: html,
-      jsErrors: [],  // We can't capture JS errors without Puppeteer
+      html,
+      jsErrors: [], // We can't capture JS errors without Puppeteer
       statusCode: response.status,
       headers: response.headers,
-      pageData: pageData,
+      pageData,
       seoScore: calculateSeoScore({
         ...pageData,
-        url: url,
+        url,
         jsErrors: [],
       }),
       lastCrawled: new Date().toISOString(),
@@ -489,36 +493,36 @@ function analyzeContentFreshness(data) {
     : null;
   const lastCrawled = new Date(data.lastCrawled);
 
-  let freshness = {
-    lastModifiedDate: lastModified ? lastModified.toISOString() : "Unknown",
+  const freshness = {
+    lastModifiedDate: lastModified ? lastModified.toISOString() : 'Unknown',
     daysSinceLastModified: lastModified
       ? Math.floor((now - lastModified) / (1000 * 60 * 60 * 24))
       : null,
     lastCrawledDate: lastCrawled.toISOString(),
     daysSinceLastCrawled: Math.floor(
-      (now - lastCrawled) / (1000 * 60 * 60 * 24)
+      (now - lastCrawled) / (1000 * 60 * 60 * 24),
     ),
-    freshnessStatus: "Unknown",
+    freshnessStatus: 'Unknown',
   };
 
   if (freshness.daysSinceLastModified !== null) {
     if (freshness.daysSinceLastModified <= 7) {
-      freshness.freshnessStatus = "Very Fresh";
+      freshness.freshnessStatus = 'Very Fresh';
     } else if (freshness.daysSinceLastModified <= 30) {
-      freshness.freshnessStatus = "Fresh";
+      freshness.freshnessStatus = 'Fresh';
     } else if (freshness.daysSinceLastModified <= 90) {
-      freshness.freshnessStatus = "Moderately Fresh";
+      freshness.freshnessStatus = 'Moderately Fresh';
     } else {
-      freshness.freshnessStatus = "Stale";
+      freshness.freshnessStatus = 'Stale';
     }
   } else {
     // If we can't determine the last modified date, use the last crawled date
     if (freshness.daysSinceLastCrawled <= 7) {
-      freshness.freshnessStatus = "Potentially Fresh";
+      freshness.freshnessStatus = 'Potentially Fresh';
     } else if (freshness.daysSinceLastCrawled <= 30) {
-      freshness.freshnessStatus = "Potentially Moderately Fresh";
+      freshness.freshnessStatus = 'Potentially Moderately Fresh';
     } else {
-      freshness.freshnessStatus = "Potentially Stale";
+      freshness.freshnessStatus = 'Potentially Stale';
     }
   }
 
@@ -529,10 +533,10 @@ function displayCachingOptions(currentOptions) {
   console.log('Available Options:');
   console.log('------------------');
   allOptions.forEach((option, index) => {
-    const isActive = option.flag.startsWith('--') ? 
-      currentOptions[option.flag.replace('--', '').replace('-', '')] :
-      currentOptions[option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')];
-    
+    const isActive = option.flag.startsWith('--')
+      ? currentOptions[option.flag.replace('--', '').replace('-', '')]
+      : currentOptions[option.flag.split(',')[1].trim().split(' ')[0].replace('--', '')];
+
     console.log(`${index + 1}. ${option.name}${option.required ? ' (Required)' : ''}`);
     console.log(`   Description: ${option.description}`);
     console.log(`   Flag: ${option.flag}`);

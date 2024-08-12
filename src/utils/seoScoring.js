@@ -1,3 +1,7 @@
+/* eslint-disable no-console */
+/* eslint-disable no-nested-ternary */
+/* eslint-disable max-len */
+/* eslint-disable no-use-before-define */
 // seo-scoring.js
 
 // Define weights for different SEO factors
@@ -13,7 +17,7 @@ const SEO_WEIGHTS = {
   mobileOptimization: 8,
   securityFactors: 7,
   structuredData: 6,
-  socialMediaTags: 5
+  socialMediaTags: 5,
 };
 
 /**
@@ -107,8 +111,8 @@ export function calculateSeoScore(pageData) {
       mobileOptimization: mobileScore,
       securityFactors: securityScore,
       structuredData: structuredDataScore,
-      socialMediaTags: socialScore
-    }
+      socialMediaTags: socialScore,
+    },
   };
 }
 
@@ -131,7 +135,7 @@ function scoreUrlStructure(url) {
   if (url.toLowerCase() !== url) score -= 0.2;
   if (/\d/.test(url)) score -= 0.1;
   const segments = url.split('/');
-  if (segments.some(segment => segment.length > 20)) score -= 0.2;
+  if (segments.some((segment) => segment.length > 20)) score -= 0.2;
   return Math.max(0, score);
 }
 
@@ -151,7 +155,7 @@ function scoreInternalLinking(internalLinksCount) {
 
 function scoreImageOptimization(images) {
   if (!images || images.length === 0) return 0;
-  const imagesWithAlt = images.filter(img => img.alt).length;
+  const imagesWithAlt = images.filter((img) => img.alt).length;
   return imagesWithAlt / images.length;
 }
 
@@ -178,7 +182,6 @@ function scoreSocialMediaTags(openGraphTags, twitterTags) {
 export function scoreRange(value, min, max, inverse = false) {
   if (inverse) {
     return value <= min ? 1 : value >= max ? 0 : (max - value) / (max - min);
-  } else {
-    return value >= max ? 1 : value <= min ? 0 : (value - min) / (max - min);
   }
+  return value >= max ? 1 : value <= min ? 0 : (value - min) / (max - min);
 }
