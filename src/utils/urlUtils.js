@@ -1,7 +1,9 @@
-// src/utils/urlUtils.js
+/* eslint-disable import/extensions */
+// urlUtils.js
 
 export function isValidUrl(url) {
   try {
+    // eslint-disable-next-line no-new
     new URL(url);
     return true;
   } catch (error) {

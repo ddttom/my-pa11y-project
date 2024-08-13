@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
-/* eslint-disable no-console */
 /* eslint-disable import/extensions */
-// src/main.js
+// main.js
 
 import { validateAndPrepare } from './utils/setup.js';
 import { getUrlsFromSitemap } from './utils/sitemap.js';
@@ -103,59 +102,60 @@ export async function runTestsOnSitemap(
   outputDir,
   options,
   limit = -1,
+  logger,
 ) {
-  console.log(`Starting process for sitemap or page: ${sitemapUrl}`);
-  console.log(`Results will be saved to: ${outputDir}`);
+  logger.info(`Starting process for sitemap or page: ${sitemapUrl}`);
+  logger.info(`Results will be saved to: ${outputDir}`);
 
   const results = initializeResults();
-  setupShutdownHandler(outputDir, results);
+  setupShutdownHandler(outputDir, results, logger);
 
   try {
-    await validateAndPrepare(sitemapUrl, outputDir, options);
+    await validateAndPrepare(sitemapUrl, outputDir, options, logger);
     const { validUrls, invalidUrls } = await getUrlsFromSitemap(
       sitemapUrl,
       limit,
+      logger,
     );
 
-    console.info(
+    logger.info(
       `Found ${validUrls.length} valid URL(s) and ${invalidUrls.length} invalid URL(s)`,
     );
 
     // Process URLs
-    // eslint-disable-next-line no-plusplus
-    for (let i = 0; i < validUrls.length; i++) {
+    for (let i = 0; i < validUrls.length; i += 1) {
       if (checkIsShuttingDown()) {
-        console.log('Shutdown requested, stopping URL processing...');
+        logger.warn('Shutdown requested, stopping URL processing...');
         break;
       }
       const testUrl = fixUrl(validUrls[i].url);
       const { lastmod } = validUrls[i];
 
-      console.info(`Processing ${i + 1} of ${validUrls.length}: ${testUrl}`);
-      await processUrl(testUrl, lastmod, i, validUrls.length, results, options);
+      logger.info(`Processing ${i + 1} of ${validUrls.length}: ${testUrl}`);
+      await processUrl(testUrl, lastmod, i, validUrls.length, results, options, logger);
     }
 
     if (!checkIsShuttingDown()) {
-      await postProcessResults(results, outputDir);
+      await postProcessResults(results, outputDir, logger);
     }
 
     if (!checkIsShuttingDown()) {
-      await saveResults(results, outputDir, sitemapUrl);
+      await saveResults(results, outputDir, sitemapUrl, logger);
     }
 
     // Generate sitemap
     if (!checkIsShuttingDown()) {
-      const sitemapPath = await generateSitemap(results, outputDir, options);
+      const sitemapPath = await generateSitemap(results, outputDir, options, logger);
       if (sitemapPath) {
-        console.log('Sitemap generation summary:', sitemapPath);
+        logger.info('Sitemap generation summary:', sitemapPath);
       } else {
-        console.log('No sitemap was generated due to lack of valid URLs.');
+        logger.warn('No sitemap was generated due to lack of valid URLs.');
       }
     }
 
     return results;
   } catch (error) {
-    console.error('Error in runTestsOnSitemap:', error);
+    logger.error('Error in runTestsOnSitemap:', error);
     throw error;
   }
 }

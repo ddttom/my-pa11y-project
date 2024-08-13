@@ -1,40 +1,115 @@
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable max-len */
-/* eslint-disable import/prefer-default-export */
 /* eslint-disable no-use-before-define */
 /* eslint-disable import/extensions */
-// src/utils/reportGenerator.js
+// reportGenerator.js
 
 import { formatCsv } from './csvFormatter.js';
-import { debug } from './debug.js';
 
-export function generateReport(results, sitemapUrl) {
-  debug('Generating SEO report');
-  const responseCategories = categorizeResponseCodes(results.responseCodeMetrics);
-  const reportData = [
-    ...generateHeader(sitemapUrl),
-    ...generateSummary(results, responseCategories),
-    ...generateUrlAnalysis(results),
-    ...generatePageTitleAnalysis(results),
-    ...generateMetaDescriptionAnalysis(results),
-    ...generateHeadingAnalysis(results),
-    ...generateImageAnalysis(results),
-    ...generateLinkAnalysis(results),
-    ...generateSecurityAnalysis(results),
-    ...generateHreflangAnalysis(results),
-    ...generateCanonicalAnalysis(results),
-    ...generateContentAnalysis(results),
-    ...generateOrphanedUrlsAnalysis(results),
-    ...generatePa11yAnalysis(results),
-    ...generateJavaScriptErrorsAnalysis(results),
-    ...generateSeoScoreAnalysis(results),
-    ...generatePerformanceAnalysis(results),
+const memoize = (fn) => {
+  const cache = new Map();
+  return (...args) => {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) return cache.get(key);
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  };
+};
+
+function categorizeResponseCodes(responseCodeMetrics) {
+  const categories = {
+    '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0,
+  };
+
+  Object.entries(responseCodeMetrics).forEach(([code, count]) => {
+    const codeNum = parseInt(code, 10);
+    if (codeNum >= 200 && codeNum < 300) categories['2xx'] += count;
+    else if (codeNum >= 300 && codeNum < 400) categories['3xx'] += count;
+    else if (codeNum >= 400 && codeNum < 500) categories['4xx'] += count;
+    else if (codeNum >= 500 && codeNum < 600) categories['5xx'] += count;
+  });
+
+  return categories;
+}
+
+const memoizedCategorizeResponseCodes = memoize(categorizeResponseCodes);
+
+function validateResults(results) {
+  const requiredProperties = ['urlMetrics', 'responseCodeMetrics', 'titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics', 'seoScores', 'performanceAnalysis'];
+  const missingProperties = requiredProperties.filter((prop) => !(prop in results));
+
+  if (missingProperties.length > 0) {
+    throw new Error(`Missing required properties in results: ${missingProperties.join(', ')}`);
+  }
+}
+
+function sanitizeForCsv(value) {
+  if (typeof value === 'string') {
+    return value.replace(/^[=+@-]/, '\'$&');
+  }
+  return value;
+}
+
+// eslint-disable-next-line import/prefer-default-export
+export function generateReport(results, sitemapUrl, logger) {
+  logger.info('Generating SEO report');
+  const startTime = process.hrtime();
+
+  try {
+    validateResults(results);
+  } catch (error) {
+    logger.error('Invalid results object:', error);
+    return null;
+  }
+
+  const reportSections = [
+    { name: 'Header', generator: generateHeader, args: [sitemapUrl] },
+    { name: 'Summary', generator: generateSummary, args: [results, memoizedCategorizeResponseCodes(results.responseCodeMetrics)] },
+    { name: 'URL Analysis', generator: generateUrlAnalysis, args: [results] },
+    { name: 'Page Title Analysis', generator: generatePageTitleAnalysis, args: [results] },
+    { name: 'Meta Description Analysis', generator: generateMetaDescriptionAnalysis, args: [results] },
+    { name: 'Heading Analysis', generator: generateHeadingAnalysis, args: [results] },
+    { name: 'Image Analysis', generator: generateImageAnalysis, args: [results] },
+    { name: 'Link Analysis', generator: generateLinkAnalysis, args: [results] },
+    { name: 'Security Analysis', generator: generateSecurityAnalysis, args: [results] },
+    { name: 'Hreflang Analysis', generator: generateHreflangAnalysis, args: [results] },
+    { name: 'Canonical Analysis', generator: generateCanonicalAnalysis, args: [results] },
+    { name: 'Content Analysis', generator: generateContentAnalysis, args: [results] },
+    { name: 'Orphaned URLs Analysis', generator: generateOrphanedUrlsAnalysis, args: [results] },
+    { name: 'Pa11y Analysis', generator: generatePa11yAnalysis, args: [results] },
+    { name: 'JavaScript Errors Analysis', generator: generateJavaScriptErrorsAnalysis, args: [results] },
+    { name: 'SEO Score Analysis', generator: generateSeoScoreAnalysis, args: [results] },
+    { name: 'Performance Analysis', generator: generatePerformanceAnalysis, args: [results] },
   ];
 
-  // Round all numeric values in the report to 2 decimal places
-  const roundedReportData = reportData.map((row) => row.map((cell) => (typeof cell === 'number' ? Number(cell.toFixed(2)) : cell)));
+  let completedSections = 0;
+  const totalSections = reportSections.length;
 
-  return formatCsv(roundedReportData);
+  const reportData = reportSections.flatMap((section) => {
+    try {
+      logger.debug(`Generating ${section.name} section`);
+      const sectionData = section.generator(...section.args);
+      completedSections += 1;
+      logger.debug(`Completed ${completedSections}/${totalSections} sections`);
+      return sectionData;
+    } catch (error) {
+      logger.error(`Error generating ${section.name} section:`, error);
+      return [['Error', `Failed to generate ${section.name} section`]];
+    }
+  });
+
+  // Round all numeric values in the report to 2 decimal places and sanitize
+  const processedReportData = reportData.map((row) => row.map((cell) => {
+    const roundedCell = typeof cell === 'number' ? Number(cell.toFixed(2)) : cell;
+    return sanitizeForCsv(roundedCell);
+  }));
+
+  const [seconds, nanoseconds] = process.hrtime(startTime);
+  const duration = seconds + nanoseconds / 1e9;
+  logger.info(`Report generation completed in ${duration.toFixed(3)} seconds`);
+
+  logger.debug('Report data generated successfully');
+  return formatCsv(processedReportData);
 }
 
 function generateHeader(sitemapUrl) {
@@ -217,20 +292,4 @@ function generatePerformanceAnalysis(results) {
     ['Average Load Time', avgLoadTime.toFixed(2)],
     [],
   ];
-}
-
-function categorizeResponseCodes(responseCodeMetrics) {
-  const categories = {
-    '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0,
-  };
-
-  for (const [code, count] of Object.entries(responseCodeMetrics)) {
-    const codeNum = parseInt(code, 10);
-    if (codeNum >= 200 && codeNum < 300) categories['2xx'] += count;
-    else if (codeNum >= 300 && codeNum < 400) categories['3xx'] += count;
-    else if (codeNum >= 400 && codeNum < 500) categories['4xx'] += count;
-    else if (codeNum >= 500 && codeNum < 600) categories['5xx'] += count;
-  }
-
-  return categories;
 }

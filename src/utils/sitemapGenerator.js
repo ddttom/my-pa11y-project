@@ -1,3 +1,6 @@
+/* eslint-disable max-len */
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-plusplus */
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-use-before-define */
 /* eslint-disable no-restricted-syntax */
@@ -10,61 +13,107 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createGzip } from 'zlib';
 import { promisify } from 'util';
-import { debug } from './debug.js';
+import { SitemapStream, streamToPromise } from 'sitemap';
+import { Readable } from 'stream';
 
 const gzip = promisify(createGzip);
 
-export async function generateSitemap(results, outputDir, options) {
+const MAX_URLS_PER_SITEMAP = 50000;
+
+export async function generateSitemap(results, outputDir, options, logger) {
   const baseUrl = typeof options.baseUrl === 'string' ? options.baseUrl : '';
-  debug(`Generating sitemap with base URL: ${baseUrl}`);
+  logger.info(`Generating sitemap with base URL: ${baseUrl}`);
 
-  const urls = extractUrlsFromResults(results);
+  try {
+    const urls = extractUrlsFromResults(results, logger);
 
-  let sitemapXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  sitemapXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-
-  let urlAdded = false;
-  for (const url of urls) {
-    try {
-      const fullUrl = url.loc.startsWith('http') ? url.loc : new URL(url.loc, baseUrl).href;
-      sitemapXml += '  <url>\n';
-      sitemapXml += `    <loc>${escapeXml(fullUrl)}</loc>\n`;
-      if (url.lastmod) sitemapXml += `    <lastmod>${url.lastmod}</lastmod>\n`;
-      if (url.changefreq) sitemapXml += `    <changefreq>${url.changefreq}</changefreq>\n`;
-      if (url.priority) sitemapXml += `    <priority>${url.priority}</priority>\n`;
-      sitemapXml += '  </url>\n';
-      urlAdded = true;
-    } catch (error) {
-      console.warn(`Failed to add URL to sitemap: ${url.loc}`, error);
+    if (urls.length === 0) {
+      logger.warn('No valid URLs were found to include in the sitemap.');
+      return null;
     }
+
+    if (urls.length > MAX_URLS_PER_SITEMAP) {
+      logger.info(`Large number of URLs (${urls.length}). Splitting into multiple sitemaps.`);
+      return await generateSplitSitemaps(urls, outputDir, baseUrl, logger);
+    }
+
+    logger.debug('Creating sitemap stream');
+    const stream = new SitemapStream({ hostname: baseUrl });
+    const pipeline = stream.pipe(createGzip());
+
+    for (const url of urls) {
+      stream.write(url);
+    }
+    stream.end();
+
+    logger.debug('Compressing sitemap');
+    const sitemapBuffer = await streamToPromise(pipeline);
+
+    const sitemapPath = path.join(outputDir, 'sitemap.xml.gz');
+    await fs.writeFile(sitemapPath, sitemapBuffer);
+
+    logger.info(`Sitemap generated and saved to ${sitemapPath}`);
+    return sitemapPath;
+  } catch (error) {
+    logger.error('Error generating sitemap:', error);
+    throw error;
   }
-
-  sitemapXml += '</urlset>';
-
-  if (!urlAdded) {
-    console.warn('No valid URLs were added to the sitemap.');
-    return null;
-  }
-
-  // Compress the sitemap
-  const compressedSitemap = await gzip(Buffer.from(sitemapXml, 'utf-8'));
-
-  // Save the sitemap
-  const sitemapPath = path.join(outputDir, 'sitemap.xml.gz');
-  await fs.writeFile(sitemapPath, compressedSitemap);
-
-  console.log(`Sitemap generated and saved to ${sitemapPath}`);
-
-  return sitemapPath;
 }
 
-function extractUrlsFromResults(results) {
+async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
+  const sitemapIndex = [];
+  const chunks = chunkArray(urls, MAX_URLS_PER_SITEMAP);
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const sitemapName = `sitemap-${i + 1}.xml.gz`;
+    const sitemapPath = path.join(outputDir, sitemapName);
+
+    logger.debug(`Generating sitemap ${i + 1} of ${chunks.length}`);
+    const stream = new SitemapStream({ hostname: baseUrl });
+    const pipeline = stream.pipe(createGzip());
+
+    for (const url of chunk) {
+      stream.write(url);
+    }
+    stream.end();
+
+    const sitemapBuffer = await streamToPromise(pipeline);
+    await fs.writeFile(sitemapPath, sitemapBuffer);
+
+    sitemapIndex.push({
+      url: `${baseUrl}/${sitemapName}`,
+      lastmod: new Date().toISOString(),
+    });
+
+    logger.info(`Sitemap ${i + 1} generated and saved to ${sitemapPath}`);
+  }
+
+  const indexStream = new SitemapStream({ hostname: baseUrl });
+  const indexPipeline = indexStream.pipe(createGzip());
+
+  for (const sitemap of sitemapIndex) {
+    indexStream.write(sitemap);
+  }
+  indexStream.end();
+
+  const indexBuffer = await streamToPromise(indexPipeline);
+  const indexPath = path.join(outputDir, 'sitemap-index.xml.gz');
+  await fs.writeFile(indexPath, indexBuffer);
+
+  logger.info(`Sitemap index generated and saved to ${indexPath}`);
+  return indexPath;
+}
+
+function extractUrlsFromResults(results, logger) {
   const urls = new Set();
+
+  logger.debug('Extracting URLs from results');
 
   // Extract from internalLinks
   if (results.internalLinks) {
     results.internalLinks.forEach((link) => {
-      if (link.url) urls.add({ loc: link.url });
+      if (link.url) urls.add(createUrlObject(link, results));
     });
   }
 
@@ -72,12 +121,7 @@ function extractUrlsFromResults(results) {
   if (results.contentAnalysis) {
     results.contentAnalysis.forEach((page) => {
       if (page.url) {
-        urls.add({
-          loc: page.url,
-          lastmod: page.lastmod,
-          changefreq: calculateChangeFreq(page),
-          priority: calculatePriority(page),
-        });
+        urls.add(createUrlObject(page, results));
       }
     });
   }
@@ -86,36 +130,103 @@ function extractUrlsFromResults(results) {
   if (results.seoScores) {
     results.seoScores.forEach((score) => {
       if (score.url) {
-        urls.add({
-          loc: score.url,
-          priority: (score.score / 100).toFixed(1),
-        });
+        const existingUrl = Array.from(urls).find((u) => u.url === score.url);
+        if (existingUrl) {
+          existingUrl.priority = (score.score / 100).toFixed(1);
+        } else {
+          urls.add(createUrlObject({ url: score.url, score: score.score }, results));
+        }
       }
     });
   }
 
+  logger.info(`Extracted ${urls.size} unique URLs for sitemap`);
   return Array.from(urls);
 }
 
-function calculateChangeFreq(page) {
-  // Implement logic to determine change frequency
-  return 'weekly'; // Default value
+function createUrlObject(page, results) {
+  const urlObject = {
+    url: page.url,
+    lastmod: page.lastmod || getLastModified(page.url, results),
+    changefreq: calculateChangeFreq(page, results),
+    priority: calculatePriority(page, results),
+  };
+
+  // Add image data if available
+  if (page.images && page.images.length > 0) {
+    urlObject.img = page.images.map((img) => ({
+      url: img.url,
+      caption: img.caption,
+      title: img.title,
+    }));
+  }
+
+  // Add video data if available
+  if (page.videos && page.videos.length > 0) {
+    urlObject.video = page.videos.map((video) => ({
+      thumbnail_loc: video.thumbnailUrl,
+      title: video.title,
+      description: video.description,
+      content_loc: video.url,
+      duration: video.duration,
+    }));
+  }
+
+  return urlObject;
 }
 
-function calculatePriority(page) {
-  // Implement logic to determine priority
-  return '0.5'; // Default value
+function getLastModified(url, results) {
+  // Try to find last modified date in contentAnalysis
+  const contentAnalysis = results.contentAnalysis?.find((page) => page.url === url);
+  if (contentAnalysis && contentAnalysis.lastModified) {
+    return new Date(contentAnalysis.lastModified).toISOString();
+  }
+  // If not found, return current date
+  return new Date().toISOString();
 }
 
-function escapeXml(unsafe) {
-  return unsafe.replace(/[<>&'"]/g, (c) => {
-    switch (c) {
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '&': return '&amp;';
-      case '\'': return '&apos;';
-      case '"': return '&quot;';
-      default: return c;
-    }
-  });
+function calculateChangeFreq(page, results) {
+  const lastModified = new Date(getLastModified(page.url, results));
+  const daysSinceLastMod = Math.floor((new Date() - lastModified) / (1000 * 60 * 60 * 24));
+
+  // Check update frequency in content analysis
+  const contentAnalysis = results.contentAnalysis?.find((p) => p.url === page.url);
+  const updateFrequency = contentAnalysis?.updateFrequency || 'unknown';
+
+  if (updateFrequency === 'daily' || daysSinceLastMod < 1) return 'daily';
+  if (updateFrequency === 'weekly' || daysSinceLastMod < 7) return 'weekly';
+  if (updateFrequency === 'monthly' || daysSinceLastMod < 30) return 'monthly';
+  if (daysSinceLastMod < 365) return 'yearly';
+  return 'never';
+}
+
+function calculatePriority(page, results) {
+  let priority = 0.5; // Default priority
+
+  // Adjust based on URL depth
+  const urlDepth = page.url.split('/').length - 1;
+  if (urlDepth === 0) priority = 1.0; // Homepage
+  else if (urlDepth === 1) priority = 0.8;
+  else if (urlDepth === 2) priority = 0.6;
+
+  // Adjust based on SEO score if available
+  const seoScore = results.seoScores?.find((score) => score.url === page.url)?.score;
+  if (seoScore) {
+    priority = Math.max(priority, seoScore / 100);
+  }
+
+  // Adjust based on internal links count
+  const internalLinksCount = results.internalLinks?.filter((link) => link.url === page.url).length || 0;
+  if (internalLinksCount > 10) priority = Math.min(1, priority + 0.1);
+  else if (internalLinksCount > 5) priority = Math.min(1, priority + 0.05);
+
+  return priority.toFixed(1);
+}
+
+function chunkArray(array, size) {
+  const result = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
 }
