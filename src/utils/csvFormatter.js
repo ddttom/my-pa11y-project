@@ -2,14 +2,28 @@
 /* eslint-disable import/extensions */
 // csvFormatter.js
 
+/**
+ * Escapes a cell value for CSV format.
+ * @param {*} cell - The cell value to escape.
+ * @returns {string} The escaped cell value.
+ */
 function escapeCell(cell) {
   if (cell === null || cell === undefined) {
     return '';
   }
-  return typeof cell === 'string' ? `"${cell.replace(/"/g, '""')}"` : cell;
+  return typeof cell === 'string' ? `"${cell.replace(/"/g, '""')}"` : String(cell);
 }
 
-export function formatCsv(data, headers, logger) {
+/**
+ * Formats data into CSV string.
+ * @param {Array} data - The data to format.
+ * @param {Array<string>} [headers] - Optional headers for the CSV.
+ * @param {Object} logger - The logger object.
+ * @param {string} [delimiter=','] - The delimiter to use (default: comma).
+ * @returns {string} The formatted CSV string.
+ * @throws {Error} If input is invalid.
+ */
+export function formatCsv(data, headers, logger, delimiter = ',') {
   logger.debug('Formatting CSV data...');
   logger.debug('Data type:', typeof data);
   logger.debug('Data length:', Array.isArray(data) ? data.length : 'N/A');
@@ -19,27 +33,31 @@ export function formatCsv(data, headers, logger) {
     throw new Error('Invalid input: data must be an array');
   }
 
+  if (headers && !Array.isArray(headers)) {
+    logger.error('formatCsv received non-array headers:', headers);
+    throw new Error('Invalid input: headers must be an array or undefined');
+  }
+
   let csvContent = '';
 
-  if (headers && Array.isArray(headers)) {
-    csvContent += `${headers.map(escapeCell).join(',')}\n`;
+  if (headers && headers.length > 0) {
+    csvContent += `${headers.map(escapeCell).join(delimiter)}\n`;
   }
 
   data.forEach((row, index) => {
     try {
       if (Array.isArray(row)) {
-        csvContent += `${row.map(escapeCell).join(',')}\n`;
+        csvContent += `${row.map(escapeCell).join(delimiter)}\n`;
       } else if (typeof row === 'object' && row !== null) {
-        const values = headers ? headers.map((header) => row[header] || '') : Object.values(row);
-        csvContent += `${values.map(escapeCell).join(',')}\n`;
+        const values = headers ? headers.map((header) => row[header] ?? '') : Object.values(row);
+        csvContent += `${values.map(escapeCell).join(delimiter)}\n`;
       } else {
         throw new Error(`Invalid row type at index ${index}`);
       }
     } catch (error) {
       logger.error(`Error processing row at index ${index}:`, error);
       logger.debug('Problematic row:', row);
-      // Optionally, you can choose to skip this row or add a placeholder
-      csvContent += 'ERROR\n';
+      csvContent += `ERROR${delimiter.repeat(headers ? headers.length - 1 : 0)}\n`;
     }
   });
 

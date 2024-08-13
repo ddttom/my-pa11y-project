@@ -1,24 +1,89 @@
 /* eslint-disable import/extensions */
-/* eslint-disable import/prefer-default-export */
-// linkAnalyzer.toJSON()
+// linkAnalyzer.js
 
 import cheerio from 'cheerio';
-
 import { fixUrl } from './urlUtils.js';
 
-export async function getInternalLinks(html, pageUrl, baseUrl) {
-  const $ = cheerio.load(html);
-  const links = new Set();
+/**
+ * Extracts internal links from HTML content.
+ * @param {string} html - The HTML content to analyze.
+ * @param {string} pageUrl - The URL of the page being analyzed.
+ * @param {string} baseUrl - The base URL of the website.
+ * @returns {Array<Object>} An array of internal link objects.
+ * @throws {Error} If the HTML content is invalid.
+ */
+export function getInternalLinks(html, pageUrl, baseUrl) {
+  if (typeof html !== 'string' || html.trim().length === 0) {
+    throw new Error('Invalid HTML content');
+  }
 
-  $('a').each((i, element) => {
-    const href = $(element).attr('href');
-    if (href) {
-      const absoluteUrl = new URL(href, pageUrl).href;
-      if (absoluteUrl.startsWith(baseUrl)) {
-        links.add(fixUrl(absoluteUrl));
+  try {
+    const $ = cheerio.load(html);
+    const links = new Set();
+
+    $('a').each((i, element) => {
+      const href = $(element).attr('href');
+      if (href) {
+        try {
+          const absoluteUrl = new URL(href, pageUrl).href;
+          if (absoluteUrl.startsWith(baseUrl)) {
+            links.add({
+              url: fixUrl(absoluteUrl),
+              text: $(element).text().trim(),
+              title: $(element).attr('title') || '',
+              rel: $(element).attr('rel') || '',
+            });
+          }
+        } catch (urlError) {
+          console.warn(`Invalid URL found: ${href}`);
+        }
       }
-    }
-  });
+    });
 
-  return Array.from(links);
+    return Array.from(links);
+  } catch (error) {
+    throw new Error(`Error parsing HTML: ${error.message}`);
+  }
+}
+
+/**
+ * Extracts external links from HTML content.
+ * @param {string} html - The HTML content to analyze.
+ * @param {string} pageUrl - The URL of the page being analyzed.
+ * @param {string} baseUrl - The base URL of the website.
+ * @returns {Array<Object>} An array of external link objects.
+ * @throws {Error} If the HTML content is invalid.
+ */
+export function getExternalLinks(html, pageUrl, baseUrl) {
+  if (typeof html !== 'string' || html.trim().length === 0) {
+    throw new Error('Invalid HTML content');
+  }
+
+  try {
+    const $ = cheerio.load(html);
+    const links = new Set();
+
+    $('a').each((i, element) => {
+      const href = $(element).attr('href');
+      if (href) {
+        try {
+          const absoluteUrl = new URL(href, pageUrl).href;
+          if (!absoluteUrl.startsWith(baseUrl)) {
+            links.add({
+              url: fixUrl(absoluteUrl),
+              text: $(element).text().trim(),
+              title: $(element).attr('title') || '',
+              rel: $(element).attr('rel') || '',
+            });
+          }
+        } catch (urlError) {
+          console.warn(`Invalid URL found: ${href}`);
+        }
+      }
+    });
+
+    return Array.from(links);
+  } catch (error) {
+    throw new Error(`Error parsing HTML: ${error.message}`);
+  }
 }

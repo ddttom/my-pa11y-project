@@ -1,6 +1,12 @@
 /* eslint-disable import/extensions */
 // index.js
 
+/**
+ * This script is the entry point for the SEO analysis tool.
+ * It processes a sitemap URL, analyzes the pages, and generates various reports.
+ * The script uses Commander.js for CLI option parsing and Winston for logging.
+ */
+
 import { program } from 'commander';
 import winston from 'winston';
 import { runTestsOnSitemap } from './src/main.js';
@@ -11,9 +17,7 @@ const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => (
-      `${timestamp} ${level}: ${message}`
-    )),
+    winston.format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`),
   ),
   transports: [
     new winston.transports.Console(),
@@ -39,8 +43,18 @@ program
 
 const options = program.opts();
 
+// Input validation for required options
+if (!options.sitemap || !options.output) {
+  // eslint-disable-next-line no-console
+  console.error('Error: Sitemap URL and output directory are required.');
+  process.exit(1);
+}
+
 // Ensure limit is a number
-options.limit = parseInt(options.limit, 10) || -1;
+options.limit = parseInt(options.limit, 10);
+if (Number.isNaN(options.limit)) {
+  options.limit = -1;
+}
 
 // Set log level based on command line option
 logger.level = options.logLevel;
@@ -60,11 +74,16 @@ logger.info('\nStarting the crawl process...\n');
 
 displayCachingOptions(options);
 
-runTestsOnSitemap(options.sitemap, options.output, options, options.limit, logger)
-  .then(() => {
-    logger.info('Script completed successfully');
-  })
-  .catch((error) => {
-    logger.error('Script failed with error:', error);
-    process.exit(1);
-  });
+try {
+  runTestsOnSitemap(options.sitemap, options.output, options, options.limit, logger)
+    .then(() => {
+      logger.info('Script completed successfully');
+    })
+    .catch((error) => {
+      logger.error('Script failed with error:', error);
+      process.exit(1);
+    });
+} catch (error) {
+  logger.error('Uncaught exception:', error);
+  process.exit(1);
+}
