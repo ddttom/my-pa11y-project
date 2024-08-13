@@ -92,7 +92,7 @@ async function savePa11yResults(results, outputDir, logger) {
     'context',
     'selector',
     'error',
-  ]);
+  ], logger);
   await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv, logger);
   logger.debug('Pa11y results saved');
 }
@@ -114,6 +114,7 @@ async function saveInternalLinks(results, outputDir, logger) {
   const internalLinksCsv = formatCsv(
     flattenInternalLinks(results.internalLinks),
     ['source', 'target', 'anchorText', 'statusCode'],
+    logger,
   );
   await saveFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv, logger);
   logger.debug('Internal links results saved');
@@ -140,7 +141,7 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
       src: img.src,
       location: img.location || '',
     }));
-    const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers);
+    const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers, logger);
 
     await saveFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, logger);
     logger.info(`${imagesWithoutAlt.length} images without alt text saved`);
@@ -159,7 +160,7 @@ async function saveContentAnalysis(results, outputDir, logger) {
     'imagesCount',
     'internalLinksCount',
     'externalLinksCount',
-  ]);
+  ], logger);
   await saveFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv, logger);
   logger.debug('Content analysis saved');
 }
@@ -167,7 +168,7 @@ async function saveContentAnalysis(results, outputDir, logger) {
 async function saveOrphanedUrls(results, outputDir, logger) {
   if (results.orphanedUrls && results.orphanedUrls.size > 0) {
     const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({ url }));
-    const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url']);
+    const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url'], logger);
     await saveFile(path.join(outputDir, 'orphaned_urls.csv'), orphanedUrlsCsv, logger);
     logger.info(`${results.orphanedUrls.size} orphaned URLs saved`);
     return results.orphanedUrls.size;
@@ -211,7 +212,7 @@ async function saveSeoScores(results, outputDir, logger) {
     'details.socialMediaTags',
   ];
 
-  const seoScoresCsv = formatCsv(seoScoresFormatted, headers);
+  const seoScoresCsv = formatCsv(seoScoresFormatted, headers, logger);
   await saveFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv, logger);
   logger.debug('SEO scores saved');
 }
@@ -279,7 +280,7 @@ async function savePerformanceAnalysis(results, outputDir, logger) {
     ]),
   ];
 
-  const performanceAnalysisCsv = formatCsv(csvData);
+  const performanceAnalysisCsv = formatCsv(csvData, logger);
   await saveFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv, logger);
   logger.debug('Performance analysis saved');
   return roundedPerformanceAnalysis.length;
@@ -357,7 +358,7 @@ async function saveSeoScoresSummary(results, outputDir, logger) {
     }
   });
 
-  const seoScoresSummaryCsv = formatCsv(summaryData);
+  const seoScoresSummaryCsv = formatCsv(summaryData, '', logger);
   await saveFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv, logger);
   logger.debug('SEO scores summary saved');
 }
@@ -399,7 +400,7 @@ function analyzeCommonPa11yIssues(pa11yResults) {
 
 async function saveCommonPa11yIssues(commonIssues, outputDir, logger) {
   if (commonIssues.length > 0) {
-    const csvData = formatCsv(commonIssues, ['code', 'message', 'count']);
+    const csvData = formatCsv(commonIssues, ['code', 'message', 'count'], logger);
     await saveFile(path.join(outputDir, 'common_pa11y_issues.csv'), csvData, logger);
     logger.debug('Common Pa11y issues saved');
   } else {

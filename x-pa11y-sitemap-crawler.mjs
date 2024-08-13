@@ -121,7 +121,7 @@ async function logInvalidUrl(url, error, outputDir) {
         url: url,
         error: error.message
     }];
-    const csvData = formatCsv(invalidUrlData, ['url', 'error']);
+    const csvData = formatCsv(invalidUrlData, ['url', 'error', logger]);
     const filePath = path.join(outputDir, 'invalid_urls.csv');
     
     try {
@@ -230,7 +230,7 @@ async function analyzeContent(html, pageUrl, baseUrl, jsErrors = []) {
 
 
 async function saveInternalLinks(results, outputDir) {
-    const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks), 
+    const internalLinksCsv = formatCsv(flattenInternalLinks(results.internalLinks, logger), 
         ['source', 'target', 'anchorText', 'statusCode']);
     await fs.writeFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv);
     debug('Internal links results saved');
@@ -465,7 +465,7 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
             src: img.src,
             location: img.location || ''
         }));
-        const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers);
+        const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers, logger);
         
         try {
             const filePath = path.join(outputDir, 'images_without_alt.csv');
@@ -765,7 +765,7 @@ async function logInvalidUrl(url, error, outputDir, index, totalTests) {
         error: error.message,
         location: `${index} of ${totalTests}`
     }];
-    const csvData = formatCsv(invalidUrlData, ['url', 'error', 'location']);
+    const csvData = formatCsv(invalidUrlData, ['url', 'error', 'location'],logger);
     const filePath = path.join(outputDir, 'invalid_urls.csv');
     
     try {
@@ -1147,7 +1147,7 @@ async function saveSeoScoresSummary(results, outputDir) {
     debug('Summary data:', summaryData);
 
     try {
-        const seoScoresSummaryCsv = formatCsv(summaryData);
+        const seoScoresSummaryCsv = formatCsv(summaryData, logger);
         await fs.writeFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv);
         debug('SEO scores summary saved successfully');
     } catch (error) {
@@ -1190,7 +1190,7 @@ async function saveSeoScores(results, outputDir) {
         'details.imageOptimization', 'details.pageSpeed', 'details.mobileOptimization', 'details.securityFactors',
         'details.structuredData', 'details.socialMediaTags'];
 
-    const seoScoresCsv = formatCsv(seoScoresFormatted, headers);
+    const seoScoresCsv = formatCsv(seoScoresFormatted, headers, logger);
     await fs.writeFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv);
     debug('SEO scores saved successfully');
 }
@@ -1277,7 +1277,7 @@ async function savePerformanceAnalysis(results, outputDir) {
     ];
 
     try {
-        const performanceAnalysisCsv = formatCsv(csvData);
+        const performanceAnalysisCsv = formatCsv(csvData, logger);
         await fs.writeFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv);
         debug('Performance analysis saved with comments and summary statistics');
     } catch (error) {
@@ -1287,7 +1287,7 @@ async function savePerformanceAnalysis(results, outputDir) {
 async function savePa11yResults(results, outputDir) {
     await saveRawPa11yResult(results, outputDir);
     const pa11yCsv = formatCsv(flattenPa11yResults(results.pa11y), 
-        ['url', 'type', 'code', 'message', 'context', 'selector', 'error']);
+        ['url', 'type', 'code', 'message', 'context', 'selector', 'error'],logger);
     await fs.writeFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
     debug('Pa11y results saved');
 }
@@ -1309,7 +1309,7 @@ function flattenPa11yResults(pa11yResults) {
 async function saveOrphanedUrls(results, outputDir) {
     if (results.orphanedUrls && results.orphanedUrls instanceof Set && results.orphanedUrls.size > 0) {
         const orphanedUrlsArray = Array.from(results.orphanedUrls).map(url => ({ url }));
-        const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url']);
+        const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url'], logger);
         const filePath = path.join(outputDir, 'orphaned_urls.csv');
         try {
             await fs.writeFile(filePath, orphanedUrlsCsv, 'utf8');
@@ -1425,7 +1425,7 @@ async function saveRawPa11yResult(results, outputDir) {
   
   async function saveCommonPa11yIssues(commonIssues, outputDir) {
     if (commonIssues.length > 0) {
-      const csvData = formatCsv(commonIssues, ['code', 'message', 'count']);
+      const csvData = formatCsv(commonIssues, ['code', 'message', 'count'], logger);
       await fs.writeFile(path.join(outputDir, 'common_pa11y_issues.csv'), csvData);
       debug('Common Pa11y issues saved');
     } else {

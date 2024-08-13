@@ -11,16 +11,26 @@ import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js
 import { analyzePerformance } from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 5000; // 5 seconds
+const DEFAULT_CONFIG = {
+  maxRetries: 3,
+  retryDelay: 5000, // 5 seconds
+  concurrency: 5,
+  batchSize: 10,
+  runPa11y: true,
+  pa11yTimeout: 60000,
+  pa11yThreshold: 200,
+  generateAccessibilityReport: true,
+};
 
-class UrlProcessor {
+export class UrlProcessor {
   constructor(options, logger) {
-    this.options = options;
+    this.options = { ...DEFAULT_CONFIG, ...options };
     this.logger = logger;
     this.results = {
       performanceAnalysis: [],
       seoScores: [],
+      pa11y: [],
+      failedUrls: [],
     };
     this.priorityQueue = new PriorityQueue((a, b) => b.priority - a.priority);
   }
@@ -28,7 +38,7 @@ class UrlProcessor {
   async processUrl(testUrl, lastmod, index, totalTests, priority = 0) {
     this.logger.info(`Processing URL ${index + 1} of ${totalTests}: ${testUrl}`);
 
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
       try {
         const data = await getOrRenderData(testUrl, this.options, this.logger);
 
@@ -53,47 +63,72 @@ class UrlProcessor {
 
         return; // Successfully processed, exit the retry loop
       } catch (error) {
-        this.logger.error(`Error processing ${testUrl} (Attempt ${attempt}/${MAX_RETRIES}):`, error);
+        this.logger.error(`Error processing ${testUrl} (Attempt ${attempt}/${this.options.maxRetries}):`, error);
 
-        if (attempt === MAX_RETRIES) {
+        if (attempt === this.options.maxRetries) {
           this.handleProcessingFailure(testUrl, error);
         } else {
-          this.logger.info(`Retrying ${testUrl} in ${RETRY_DELAY / 1000} seconds...`);
-          await new Promise((resolve) => { setTimeout(resolve, RETRY_DELAY); });
+          this.logger.info(`Retrying ${testUrl} in ${this.options.retryDelay / 1000} seconds...`);
+          await new Promise((resolve) => { setTimeout(resolve, this.options.retryDelay); });
         }
       }
     }
   }
 
   async processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod) {
-    // eslint-disable-next-line max-len
-    await analyzePageContent(testUrl, html, jsErrors, this.options.baseUrl, this.results, headers, pageData, this.logger);
+    try {
+      const result = await analyzePageContent(
+        testUrl,
+        html,
+        jsErrors,
+        this.options.baseUrl,
+        this.results,
+        headers,
+        pageData,
+        this.logger,
+        {
+          runPa11y: this.options.runPa11y,
+          pa11yTimeout: this.options.pa11yTimeout,
+          pa11yThreshold: this.options.pa11yThreshold,
+          generateAccessibilityReport: this.options.generateAccessibilityReport,
+          retryAttempts: this.options.maxRetries,
+          retryDelay: this.options.retryDelay,
+        },
+        this.options.outputDir,
+      );
 
-    this.logger.debug(`Analyzing performance for ${testUrl}`);
-    const performanceMetrics = await analyzePerformance(testUrl, this.logger);
-    this.results.performanceAnalysis.push({ url: testUrl, lastmod, ...performanceMetrics });
+      if (result.pa11ySuccess) {
+        this.logger.info(`Pa11y analysis successful for ${result.url}`);
+      }
 
-    this.logger.debug(`Calculating SEO score for ${testUrl}`);
-    const seoScore = calculateSeoScore({ ...pageData, performanceMetrics }, this.logger);
-    this.results.seoScores.push({ url: testUrl, lastmod, ...seoScore });
+      this.logger.debug(`Analyzing performance for ${testUrl}`);
+      const performanceMetrics = await analyzePerformance(testUrl, this.logger);
+      this.results.performanceAnalysis.push({ url: testUrl, lastmod, ...performanceMetrics });
 
-    this.logger.info(`Successfully processed ${testUrl}`);
+      this.logger.debug(`Calculating SEO score for ${testUrl}`);
+      const seoScore = calculateSeoScore({ ...pageData, performanceMetrics }, this.logger);
+      this.results.seoScores.push({ url: testUrl, lastmod, ...seoScore });
+
+      this.logger.info(`Successfully processed ${testUrl}`);
+    } catch (error) {
+      this.logger.error(`Error in processSuccessfulResponse for ${testUrl}:`, error);
+      this.handleProcessingFailure(testUrl, error);
+    }
   }
 
   handleProcessingFailure(testUrl, error) {
-    this.logger.error(`Failed to process ${testUrl} after ${MAX_RETRIES} attempts. Last error:`, error);
-    this.results.failedUrls = this.results.failedUrls || [];
+    this.logger.error(`Failed to process ${testUrl} after ${this.options.maxRetries} attempts. Last error:`, error);
     this.results.failedUrls.push({ url: testUrl, error: error.message });
   }
 
-  async processBatch(urls, startIndex, batchSize, totalTests) {
+  async processBatch(urls, startIndex, batchSize) {
     const endIndex = Math.min(startIndex + batchSize, urls.length);
     const batchPromises = [];
 
     for (let i = startIndex; i < endIndex; i++) {
       const { url, lastmod, priority } = urls[i];
       this.priorityQueue.enq({
-        url, lastmod, index: i, totalTests, priority,
+        url, lastmod, index: i, totalTests: urls.length, priority,
       });
     }
 
@@ -130,7 +165,7 @@ class UrlProcessor {
     const batchSize = this.options.batchSize || 10;
 
     for (let i = 0; i < totalTests; i += batchSize) {
-      await this.processBatch(urls, i, batchSize, totalTests);
+      await this.processBatch(urls, i, batchSize);
     }
 
     return this.results;
