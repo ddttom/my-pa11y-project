@@ -22,7 +22,15 @@ const DEFAULT_CONFIG = {
   generateAccessibilityReport: true,
 };
 
+/**
+ * Class for processing URLs and performing SEO analysis.
+ */
 export class UrlProcessor {
+  /**
+   * Creates a new UrlProcessor instance.
+   * @param {Object} options - Configuration options.
+   * @param {Object} logger - Logger instance.
+   */
   constructor(options, logger) {
     this.options = { ...DEFAULT_CONFIG, ...options };
     this.logger = logger;
@@ -35,6 +43,16 @@ export class UrlProcessor {
     this.priorityQueue = new PriorityQueue((a, b) => b.priority - a.priority);
   }
 
+  /**
+   * Processes a single URL.
+   * @param {string} testUrl - The URL to process.
+   * @param {string} lastmod - The last modification date of the URL.
+   * @param {number} index - The index of the URL in the batch.
+   * @param {number} totalTests - The total number of URLs to process.
+   * @param {number} [priority=0] - The priority of the URL.
+   * @returns {Promise<void>}
+   */
+  // eslint-disable-next-line no-unused-vars
   async processUrl(testUrl, lastmod, index, totalTests, priority = 0) {
     this.logger.info(`Processing URL ${index + 1} of ${totalTests}: ${testUrl}`);
 
@@ -75,6 +93,16 @@ export class UrlProcessor {
     }
   }
 
+  /**
+   * Processes a successful response.
+   * @param {string} testUrl - The URL being processed.
+   * @param {string} html - The HTML content of the page.
+   * @param {Array} jsErrors - JavaScript errors encountered during rendering.
+   * @param {Object} headers - HTTP headers of the response.
+   * @param {Object} pageData - Additional data about the page.
+   * @param {string} lastmod - The last modification date of the URL.
+   * @returns {Promise<void>}
+   */
   async processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod) {
     try {
       const result = await analyzePageContent(
@@ -116,11 +144,23 @@ export class UrlProcessor {
     }
   }
 
+  /**
+   * Handles a processing failure for a URL.
+   * @param {string} testUrl - The URL that failed processing.
+   * @param {Error} error - The error that occurred.
+   */
   handleProcessingFailure(testUrl, error) {
     this.logger.error(`Failed to process ${testUrl} after ${this.options.maxRetries} attempts. Last error:`, error);
     this.results.failedUrls.push({ url: testUrl, error: error.message });
   }
 
+  /**
+   * Processes a batch of URLs.
+   * @param {Array} urls - The URLs to process.
+   * @param {number} startIndex - The starting index of the batch.
+   * @param {number} batchSize - The size of the batch.
+   * @returns {Promise<void>}
+   */
   async processBatch(urls, startIndex, batchSize) {
     const endIndex = Math.min(startIndex + batchSize, urls.length);
     const batchPromises = [];
@@ -151,8 +191,14 @@ export class UrlProcessor {
     this.logger.info(`Completed processing batch ${startIndex + 1} to ${endIndex}`);
   }
 
+  /**
+   * Calculates the priority of a URL.
+   * @param {string} url - The URL to calculate priority for.
+   * @param {number} pageRank - The page rank of the URL.
+   * @param {number} internalLinksCount - The number of internal links to the URL.
+   * @returns {number} The calculated priority.
+   */
   getPriority(url, pageRank, internalLinksCount) {
-    // Simple priority calculation, can be expanded based on more factors
     let priority = pageRank || 0;
     if (url === this.options.baseUrl) priority += 10; // Prioritize homepage
     if (internalLinksCount > 10) priority += 5;
@@ -160,6 +206,11 @@ export class UrlProcessor {
     return priority;
   }
 
+  /**
+   * Processes an array of URLs.
+   * @param {Array} urls - The URLs to process.
+   * @returns {Promise<Object>} The results of processing all URLs.
+   */
   async processUrls(urls) {
     const totalTests = urls.length;
     const batchSize = this.options.batchSize || 10;
