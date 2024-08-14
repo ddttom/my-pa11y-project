@@ -244,19 +244,3 @@ function analyzeContentFreshness(data) {
   return freshness;
 }
 
-export function displayCachingOptions(currentOptions) {
-  global.auditcore.logger.info('Available Caching Options:');
-  global.auditcore.logger.info('---------------------------');
-  [
-    { name: 'No Puppeteer', flag: '--no-puppeteer', description: 'Bypass Puppeteer execution and use cached HTML' },
-    { name: 'Cache Only', flag: '--cache-only', description: 'Use only cached data, do not fetch new data' },
-    { name: 'No Cache', flag: '--no-cache', description: 'Disable caching, always fetch fresh data' },
-    { name: 'Force Delete Cache', flag: '--force-delete-cache', description: 'Force delete existing cache before starting' },
-  ].forEach((option) => {
-    global.auditcore.logger.info(`${option.name}:`);
-    global.auditcore.logger.info(`  Flag: ${option.flag}`);
-    global.auditcore.logger.info(`  Description: ${option.description}`);
-    global.auditcore.logger.info(`  Current Setting: ${currentOptions[option.flag.replace('--', '')] ? 'Enabled' : 'Disabled'}`);
-    global.auditcore.logger.info('');
-  });
-}

@@ -50,6 +50,7 @@ program
   .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
   .option('--force-delete-cache', 'Force delete existing cache before starting')
   .option('--log-level <level>', 'Set logging level (error, warn, info, verbose, debug)', 'info')
+
   .parse(process.argv);
 
 // Store options in the global auditcore object
@@ -58,7 +59,6 @@ auditcore.options = program.opts();
 // Input validation for required options
 if (!auditcore.options.sitemap || !auditcore.options.output) {
   global.auditcore.logger.error('Error: Sitemap URL and output directory are required.');
-  displayCachingOptions(auditcore.options);
   process.exit(1);
 }
 
