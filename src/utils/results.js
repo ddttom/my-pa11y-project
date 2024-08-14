@@ -1,6 +1,5 @@
-/* eslint-disable no-use-before-define */
-/* eslint-disable max-len */
 /* eslint-disable no-param-reassign */
+/* eslint-disable no-use-before-define */
 /* eslint-disable import/extensions */
 // results.js
 
@@ -9,6 +8,14 @@ import path from 'path';
 import { formatCsv } from './csvFormatter.js';
 import { generateReport } from './reportGenerator.js';
 
+/**
+ * Saves content to a file.
+ * @param {string} filePath - The path to save the file.
+ * @param {string} content - The content to save.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ * @throws {Error} If there's an error saving the file.
+ */
 async function saveFile(filePath, content, logger) {
   try {
     await fs.writeFile(filePath, content, 'utf8');
@@ -19,6 +26,13 @@ async function saveFile(filePath, content, logger) {
   }
 }
 
+/**
+ * Post-processes the analysis results.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 export async function postProcessResults(results, outputDir, logger) {
   logger.info('Post-processing results');
   const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
@@ -27,76 +41,119 @@ export async function postProcessResults(results, outputDir, logger) {
   logger.info('Results post-processing completed');
 }
 
+/**
+ * Saves all analysis results to the specified output directory.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {string} sitemapUrl - The URL of the analyzed sitemap.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 export async function saveResults(results, outputDir, sitemapUrl, logger) {
   logger.info(`Saving results to: ${outputDir}`);
 
   const saveOperations = [
-    { name: 'Pa11y results', func: savePa11yResults },
-    { name: 'Internal links', func: saveInternalLinks },
-    { name: 'Images without alt', func: saveImagesWithoutAlt },
-    { name: 'Content analysis', func: saveContentAnalysis },
-    { name: 'Orphaned URLs', func: saveOrphanedUrls },
-    { name: 'SEO report', func: saveSeoReport },
-    { name: 'SEO scores', func: saveSeoScores },
-    { name: 'Performance analysis', func: savePerformanceAnalysis },
-    { name: 'SEO scores summary', func: saveSeoScoresSummary },
+    {
+      name: 'Pa11y results',
+      func: () => savePa11yResults(results, outputDir, logger),
+    },
+    {
+      name: 'Internal links',
+      func: () => saveInternalLinks(results, outputDir, logger),
+    },
+    {
+      name: 'Images without alt',
+      func: () => saveImagesWithoutAlt(results.contentAnalysis, outputDir, logger),
+    },
+    {
+      name: 'Content analysis',
+      func: () => saveContentAnalysis(results, outputDir, logger),
+    },
+    {
+      name: 'Orphaned URLs',
+      func: () => saveOrphanedUrls(results, outputDir, logger),
+    },
+    {
+      name: 'SEO report',
+      func: () => saveSeoReport(results, outputDir, sitemapUrl, logger),
+    },
+    {
+      name: 'SEO scores',
+      func: () => saveSeoScores(results, outputDir, logger),
+    },
+    {
+      name: 'Performance analysis',
+      func: () => savePerformanceAnalysis(results, outputDir, logger),
+    },
+    {
+      name: 'SEO scores summary',
+      func: () => saveSeoScoresSummary(results, outputDir, logger),
+    },
   ];
 
-  const saveResults = await Promise.allSettled(saveOperations.map(async (operation) => {
-    try {
-      logger.debug(`Attempting to save ${operation.name}...`);
-      let result;
-      if (operation.name === 'Orphaned URLs') {
-        result = await operation.func(results, outputDir, logger);
-      } else if (operation.name === 'SEO report') {
-        result = await operation.func(results, outputDir, sitemapUrl, logger);
-      } else if (operation.name === 'Images without alt') {
-        result = await operation.func(results.contentAnalysis, outputDir, logger);
-      } else {
-        result = await operation.func(results, outputDir, logger);
+  const saveResultsList = await Promise.allSettled(
+    saveOperations.map(async (operation) => {
+      try {
+        logger.debug(`Attempting to save ${operation.name}...`);
+        const result = await operation.func();
+        if (typeof result === 'number') {
+          logger.debug(`${operation.name}: ${result} items saved`);
+        } else {
+          logger.debug(`${operation.name} saved successfully`);
+        }
+        return { name: operation.name, success: true, result };
+      } catch (error) {
+        logger.error(`Error saving ${operation.name}:`, error);
+        return { name: operation.name, success: false, error: error.message };
       }
+    }),
+  );
 
-      if (typeof result === 'number') {
-        logger.debug(`${operation.name}: ${result} items saved`);
-      } else {
-        logger.debug(`${operation.name} saved successfully`);
-      }
-      return { name: operation.name, success: true, result };
-    } catch (error) {
-      logger.error(`Error saving ${operation.name}:`, error);
-      return { name: operation.name, success: false, error: error.message };
-    }
-  }));
+  const successfulOperations = saveResultsList.filter(
+    (result) => result.status === 'fulfilled' && result.value.success,
+  );
+  const failedOperations = saveResultsList.filter(
+    (result) => result.status === 'rejected' || !result.value.success,
+  );
 
-  const successfulOperations = saveResults.filter((result) => result.status === 'fulfilled' && result.value.success);
-  const failedOperations = saveResults.filter((result) => result.status === 'rejected' || !result.value.success);
-
-  logger.info(`Successfully saved ${successfulOperations.length} out of ${saveOperations.length} result types`);
+  logger.info(
+    `Successfully saved ${successfulOperations.length} out of ${saveOperations.length} result types`,
+  );
   if (failedOperations.length > 0) {
     logger.warn(`Failed to save ${failedOperations.length} result types`);
     failedOperations.forEach((result) => {
-      logger.warn(`  - ${result.value.name}: ${result.value.error || result.reason}`);
+      logger.warn(
+        `  - ${result.value.name}: ${result.value.error || result.reason}`,
+      );
     });
   }
 
   logger.info(`All results saved to ${outputDir}`);
 }
 
+/**
+ * Saves Pa11y results to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function savePa11yResults(results, outputDir, logger) {
   await saveRawPa11yResult(results, outputDir, logger);
-  const pa11yCsv = formatCsv(flattenPa11yResults(results.pa11y), [
-    'url',
-    'type',
-    'code',
-    'message',
-    'context',
-    'selector',
-    'error',
-  ], logger);
+  const pa11yCsv = formatCsv(
+    flattenPa11yResults(results.pa11y),
+    ['url', 'type', 'code', 'message', 'context', 'selector', 'error'],
+    logger,
+  );
   await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv, logger);
   logger.debug('Pa11y results saved');
 }
 
+/**
+ * Flattens Pa11y results for CSV formatting.
+ * @param {Array} pa11yResults - The Pa11y results to flatten.
+ * @returns {Array} Flattened Pa11y results.
+ */
 function flattenPa11yResults(pa11yResults) {
   return pa11yResults.flatMap((result) => (result.issues
     ? result.issues.map((issue) => ({
@@ -110,16 +167,32 @@ function flattenPa11yResults(pa11yResults) {
     : [{ url: result.url, error: result.error }]));
 }
 
+/**
+ * Saves internal links to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveInternalLinks(results, outputDir, logger) {
   const internalLinksCsv = formatCsv(
     flattenInternalLinks(results.internalLinks),
     ['source', 'target', 'anchorText', 'statusCode'],
     logger,
   );
-  await saveFile(path.join(outputDir, 'internal_links.csv'), internalLinksCsv, logger);
+  await saveFile(
+    path.join(outputDir, 'internal_links.csv'),
+    internalLinksCsv,
+    logger,
+  );
   logger.debug('Internal links results saved');
 }
 
+/**
+ * Flattens internal links for CSV formatting.
+ * @param {Array} internalLinks - The internal links to flatten.
+ * @returns {Array} Flattened internal links.
+ */
 function flattenInternalLinks(internalLinks) {
   return internalLinks.flatMap((result) => (result.checkedLinks
     ? result.checkedLinks.map((link) => ({
@@ -131,8 +204,17 @@ function flattenInternalLinks(internalLinks) {
     : [{ source: result.url, error: result.error }]));
 }
 
+/**
+ * Saves images without alt text to a file.
+ * @param {Array} contentAnalysis - The content analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<number>} The number of images without alt text saved.
+ */
 async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
-  const imagesWithoutAlt = contentAnalysis.flatMap((page) => page.imagesWithoutAlt || []);
+  const imagesWithoutAlt = contentAnalysis.flatMap(
+    (page) => page.imagesWithoutAlt || [],
+  );
 
   if (imagesWithoutAlt.length > 0) {
     const headers = ['url', 'src', 'location'];
@@ -141,9 +223,17 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
       src: img.src,
       location: img.location || '',
     }));
-    const imagesWithoutAltCsv = formatCsv(formattedImagesWithoutAlt, headers, logger);
+    const imagesWithoutAltCsv = formatCsv(
+      formattedImagesWithoutAlt,
+      headers,
+      logger,
+    );
 
-    await saveFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv, logger);
+    await saveFile(
+      path.join(outputDir, 'images_without_alt.csv'),
+      imagesWithoutAltCsv,
+      logger,
+    );
     logger.info(`${imagesWithoutAlt.length} images without alt text saved`);
   } else {
     logger.info('No images without alt text found');
@@ -152,24 +242,52 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
   return imagesWithoutAlt.length;
 }
 
+/**
+ * Saves content analysis results to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveContentAnalysis(results, outputDir, logger) {
-  const contentAnalysisCsv = formatCsv(results.contentAnalysis, [
-    'url',
-    'wordCount',
-    'h1Count',
-    'imagesCount',
-    'internalLinksCount',
-    'externalLinksCount',
-  ], logger);
-  await saveFile(path.join(outputDir, 'content_analysis.csv'), contentAnalysisCsv, logger);
+  const contentAnalysisCsv = formatCsv(
+    results.contentAnalysis,
+    [
+      'url',
+      'wordCount',
+      'h1Count',
+      'imagesCount',
+      'internalLinksCount',
+      'externalLinksCount',
+    ],
+    logger,
+  );
+  await saveFile(
+    path.join(outputDir, 'content_analysis.csv'),
+    contentAnalysisCsv,
+    logger,
+  );
   logger.debug('Content analysis saved');
 }
 
+/**
+ * Saves orphaned URLs to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<number>} The number of orphaned URLs saved.
+ */
 async function saveOrphanedUrls(results, outputDir, logger) {
   if (results.orphanedUrls && results.orphanedUrls.size > 0) {
-    const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({ url }));
+    const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({
+      url,
+    }));
     const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url'], logger);
-    await saveFile(path.join(outputDir, 'orphaned_urls.csv'), orphanedUrlsCsv, logger);
+    await saveFile(
+      path.join(outputDir, 'orphaned_urls.csv'),
+      orphanedUrlsCsv,
+      logger,
+    );
     logger.info(`${results.orphanedUrls.size} orphaned URLs saved`);
     return results.orphanedUrls.size;
   }
@@ -177,16 +295,32 @@ async function saveOrphanedUrls(results, outputDir, logger) {
   return 0;
 }
 
+/**
+ * Saves the SEO report to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {string} sitemapUrl - The URL of the analyzed sitemap.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveSeoReport(results, outputDir, sitemapUrl, logger) {
   const report = generateReport(results, sitemapUrl, logger);
   await saveFile(path.join(outputDir, 'seo_report.csv'), report, logger);
   logger.debug('SEO report saved');
 }
 
+/**
+ * Saves SEO scores to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveSeoScores(results, outputDir, logger) {
   const seoScoresFormatted = results.seoScores.map((score) => ({
     url: score.url || '',
-    score: typeof score.score === 'number' ? Number(score.score.toFixed(2)) : 'N/A',
+    score:
+      typeof score.score === 'number' ? Number(score.score.toFixed(2)) : 'N/A',
     ...Object.fromEntries(
       Object.entries(score.details || {}).map(([key, value]) => [
         `details.${key}`,
@@ -217,6 +351,13 @@ async function saveSeoScores(results, outputDir, logger) {
   logger.debug('SEO scores saved');
 }
 
+/**
+ * Saves performance analysis results to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<number>} The number of performance analysis results saved.
+ */
 async function savePerformanceAnalysis(results, outputDir, logger) {
   const getPerformanceComment = (metric, value) => {
     if (value === null || value === undefined) return 'N/A';
@@ -236,22 +377,33 @@ async function savePerformanceAnalysis(results, outputDir, logger) {
   const roundedPerformanceAnalysis = results.performanceAnalysis.map(
     (entry) => ({
       url: entry.url,
-      loadTime: entry.loadTime !== null && entry.loadTime !== undefined
-        ? Number(entry.loadTime.toFixed(2))
-        : null,
+      loadTime:
+        entry.loadTime !== null && entry.loadTime !== undefined
+          ? Number(entry.loadTime.toFixed(2))
+          : null,
       loadTimeComment: getPerformanceComment('loadTime', entry.loadTime),
-      domContentLoaded: entry.domContentLoaded !== null && entry.domContentLoaded !== undefined
-        ? Number(entry.domContentLoaded.toFixed(2))
-        : null,
-      domContentLoadedComment: getPerformanceComment('domContentLoaded', entry.domContentLoaded),
-      firstPaint: entry.firstPaint !== null && entry.firstPaint !== undefined
-        ? Number(entry.firstPaint.toFixed(2))
-        : null,
+      domContentLoaded:
+        entry.domContentLoaded !== null && entry.domContentLoaded !== undefined
+          ? Number(entry.domContentLoaded.toFixed(2))
+          : null,
+      domContentLoadedComment: getPerformanceComment(
+        'domContentLoaded',
+        entry.domContentLoaded,
+      ),
+      firstPaint:
+        entry.firstPaint !== null && entry.firstPaint !== undefined
+          ? Number(entry.firstPaint.toFixed(2))
+          : null,
       firstPaintComment: getPerformanceComment('firstPaint', entry.firstPaint),
-      firstContentfulPaint: entry.firstContentfulPaint !== null && entry.firstContentfulPaint !== undefined
-        ? Number(entry.firstContentfulPaint.toFixed(2))
-        : null,
-      firstContentfulPaintComment: getPerformanceComment('firstContentfulPaint', entry.firstContentfulPaint),
+      firstContentfulPaint:
+        entry.firstContentfulPaint !== null
+        && entry.firstContentfulPaint !== undefined
+          ? Number(entry.firstContentfulPaint.toFixed(2))
+          : null,
+      firstContentfulPaintComment: getPerformanceComment(
+        'firstContentfulPaint',
+        entry.firstContentfulPaint,
+      ),
     }),
   );
 
@@ -281,10 +433,22 @@ async function savePerformanceAnalysis(results, outputDir, logger) {
   ];
 
   const performanceAnalysisCsv = formatCsv(csvData, logger);
-  await saveFile(path.join(outputDir, 'performance_analysis.csv'), performanceAnalysisCsv, logger);
+  await saveFile(
+    path.join(outputDir, 'performance_analysis.csv'),
+    performanceAnalysisCsv,
+    logger,
+  );
   logger.debug('Performance analysis saved');
   return roundedPerformanceAnalysis.length;
 }
+
+/**
+ * Saves SEO scores summary to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveSeoScoresSummary(results, outputDir, logger) {
   const getScoreComment = (score) => {
     if (score >= 90) return 'Excellent';
@@ -313,7 +477,10 @@ async function saveSeoScoresSummary(results, outputDir, logger) {
   const averageScores = {
     overallScore: sumScores.totalScore / urlCount,
     details: Object.fromEntries(
-      Object.entries(sumScores.details).map(([key, value]) => [key, value / urlCount]),
+      Object.entries(sumScores.details).map(([key, value]) => [
+        key,
+        value / urlCount,
+      ]),
     ),
   };
 
@@ -359,10 +526,21 @@ async function saveSeoScoresSummary(results, outputDir, logger) {
   });
 
   const seoScoresSummaryCsv = formatCsv(summaryData, '', logger);
-  await saveFile(path.join(outputDir, 'seo_scores_summary.csv'), seoScoresSummaryCsv, logger);
+  await saveFile(
+    path.join(outputDir, 'seo_scores_summary.csv'),
+    seoScoresSummaryCsv,
+    logger,
+  );
   logger.debug('SEO scores summary saved');
 }
 
+/**
+ * Saves raw Pa11y results to a JSON file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveRawPa11yResult(results, outputDir, logger) {
   try {
     const filename = 'pa11y_raw_results.json';
@@ -378,6 +556,11 @@ async function saveRawPa11yResult(results, outputDir, logger) {
   }
 }
 
+/**
+ * Analyzes common Pa11y issues.
+ * @param {Array} pa11yResults - The Pa11y results to analyze.
+ * @returns {Array} Common Pa11y issues.
+ */
 function analyzeCommonPa11yIssues(pa11yResults) {
   const issueCounts = pa11yResults.reduce((counts, result) => {
     if (result.issues) {
@@ -398,22 +581,64 @@ function analyzeCommonPa11yIssues(pa11yResults) {
     }));
 }
 
+/**
+ * Saves common Pa11y issues to a file.
+ * @param {Array} commonIssues - The common Pa11y issues to save.
+ * @param {string} outputDir - The directory to save results to.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function saveCommonPa11yIssues(commonIssues, outputDir, logger) {
   if (commonIssues.length > 0) {
-    const csvData = formatCsv(commonIssues, ['code', 'message', 'count'], logger);
-    await saveFile(path.join(outputDir, 'common_pa11y_issues.csv'), csvData, logger);
+    const csvData = formatCsv(
+      commonIssues,
+      ['code', 'message', 'count'],
+      logger,
+    );
+    await saveFile(
+      path.join(outputDir, 'common_pa11y_issues.csv'),
+      csvData,
+      logger,
+    );
     logger.debug('Common Pa11y issues saved');
   } else {
     logger.debug('No common Pa11y issues found');
   }
 }
 
+/**
+ * Filters out repeated Pa11y issues.
+ * @param {Array} pa11yResults - The Pa11y results to filter.
+ * @param {Array} commonIssues - The common Pa11y issues.
+ * @returns {Array} Filtered Pa11y results.
+ */
 function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
-  const commonIssueKeys = new Set(commonIssues.map((issue) => `${issue.code}-${issue.message}`));
+  const commonIssueKeys = new Set(
+    commonIssues.map((issue) => `${issue.code}-${issue.message}`),
+  );
   return pa11yResults.map((result) => ({
     ...result,
-    issues: result.issues ? result.issues.filter(
-      (issue) => !commonIssueKeys.has(`${issue.code}-${issue.message}`),
-    ) : [],
+    issues: result.issues
+      ? result.issues.filter(
+        (issue) => !commonIssueKeys.has(`${issue.code}-${issue.message}`),
+      )
+      : [],
   }));
 }
+
+export {
+  saveFile,
+  savePa11yResults,
+  saveInternalLinks,
+  saveImagesWithoutAlt,
+  saveContentAnalysis,
+  saveOrphanedUrls,
+  saveSeoReport,
+  saveSeoScores,
+  savePerformanceAnalysis,
+  saveSeoScoresSummary,
+  saveRawPa11yResult,
+  analyzeCommonPa11yIssues,
+  saveCommonPa11yIssues,
+  filterRepeatedPa11yIssues,
+};

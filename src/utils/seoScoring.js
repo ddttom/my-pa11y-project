@@ -154,7 +154,7 @@ function scoreUrlStructure(url, logger) {
     score -= 0.1;
     issues.push('Deep URL structure (>4 levels)');
   }
-  if (!/^[a-z0-9-\/]+$/.test(url.replace(/^https?:\/\//, ''))) {
+  if (!/^[a-z0-9-.]+$/.test(url.replace(/^https?:\/\//, ''))) {
     score -= 0.2;
     issues.push('Contains special characters other than hyphens');
   }

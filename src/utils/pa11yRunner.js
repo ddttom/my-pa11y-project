@@ -1,8 +1,6 @@
-/* eslint-disable no-plusplus */
-/* eslint-disable no-unreachable-loop */
-/* eslint-disable max-len */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable import/extensions */
+/* eslint-disable max-len */
 // pa11yRunner.js
 
 import pa11y from 'pa11y';
@@ -10,11 +8,18 @@ import fs from 'fs/promises';
 import path from 'path';
 import { pa11yOptions } from '../config/options.js';
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 3000; // 3 seconds
+const { MAX_RETRIES, RETRY_DELAY } = pa11yOptions;
 
+/**
+ * Runs a Pa11y test with retry mechanism.
+ * @param {string} testUrl - The URL to test.
+ * @param {Object} options - Pa11y options.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<Object>} The Pa11y test result.
+ * @throws {Error} If all retry attempts fail.
+ */
 export async function runPa11yWithRetry(testUrl, options, logger) {
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
       logger.debug(`Pa11y test attempt ${attempt} for ${testUrl}`);
       const result = await pa11y(testUrl, options);
@@ -24,13 +29,24 @@ export async function runPa11yWithRetry(testUrl, options, logger) {
       logger.warn(`Pa11y test failed for ${testUrl} on attempt ${attempt}:`, error);
       if (attempt === MAX_RETRIES) {
         logger.error(`Pa11y test failed for ${testUrl} after ${MAX_RETRIES} attempts.`);
-        throw error; // Throw the error to be caught by the caller
+        throw error;
       }
       await new Promise((resolve) => { setTimeout(resolve, RETRY_DELAY); });
     }
   }
+
+  return null; // Or throw new Error('All retries failed'); depending on your preference
 }
 
+/**
+ * Runs a Pa11y test for a single URL.
+ * @param {string} testUrl - The URL to test.
+ * @param {string} html - The HTML content of the page.
+ * @param {Object} results - The results object to update.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<Object>} The Pa11y test result.
+ * @throws {Error} If the Pa11y test fails.
+ */
 export async function runPa11yTest(testUrl, html, results, logger) {
   logger.info(`Running Pa11y accessibility test for ${testUrl}`);
 
@@ -64,10 +80,18 @@ export async function runPa11yTest(testUrl, html, results, logger) {
   } catch (error) {
     logger.error(`Error running Pa11y test for ${testUrl}:`, error);
     results.pa11y.push({ url: testUrl, error: error.message });
-    throw error; // Re-throw the error to be handled by the caller
+    throw error;
   }
 }
 
+/**
+ * Runs Pa11y tests for a batch of URLs.
+ * @param {string[]} urls - The URLs to test.
+ * @param {Object} results - The results object to update.
+ * @param {Object} logger - The logger object.
+ * @param {number} [concurrency=5] - The number of concurrent tests to run.
+ * @returns {Promise<Object[]>} The Pa11y test results.
+ */
 export async function runPa11yTestBatch(urls, results, logger, concurrency = 5) {
   logger.info(`Running Pa11y tests for ${urls.length} URLs with concurrency of ${concurrency}`);
 
@@ -95,6 +119,12 @@ export async function runPa11yTestBatch(urls, results, logger, concurrency = 5) 
   return batchResults;
 }
 
+/**
+ * Analyzes accessibility results.
+ * @param {Object} results - The results object containing Pa11y test results.
+ * @param {Object} logger - The logger object.
+ * @returns {Object} Analysis of accessibility results.
+ */
 export function analyzeAccessibilityResults(results, logger) {
   logger.info('Analyzing accessibility results');
 
@@ -129,6 +159,14 @@ export function analyzeAccessibilityResults(results, logger) {
   };
 }
 
+/**
+ * Generates an accessibility report in HTML format.
+ * @param {Object} results - The results object containing Pa11y test results.
+ * @param {string} outputDir - The directory to save the report.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<string>} The path to the generated report.
+ * @throws {Error} If there's an error generating the report.
+ */
 export async function generateAccessibilityReport(results, outputDir, logger) {
   logger.info('Generating accessibility report');
 

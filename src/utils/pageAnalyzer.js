@@ -1,21 +1,22 @@
-/* eslint-disable max-len */
-/* eslint-disable no-unused-vars */
-/* eslint-disable no-plusplus */
-/* eslint-disable no-await-in-loop */
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable import/extensions */
+/* eslint-disable max-len */
 // pageAnalyzer.js
 
 import cheerio from 'cheerio';
 import {
   runPa11yWithRetry,
-  analyzeAccessibilityResults,
-  generateAccessibilityReport,
 } from './pa11yRunner.js';
-import { getInternalLinks } from './linkAnalyzer.js';
+import {
+  getInternalLinksWithRetry,
+  updateResults,
+  createContentAnalysis,
+  generateAccessibilityReportIfNeeded,
+  calculateDuration,
+  createAnalysisResult,
+} from './pageAnalyzerHelpers.js';
 import {
   updateContentAnalysis,
-  updateInternalLinks,
   updateTitleMetrics,
   updateMetaDescriptionMetrics,
   updateHeadingMetrics,
@@ -38,12 +39,24 @@ const defaultConfig = {
   retryDelay: 1000,
 };
 
+/**
+ * Validates the input parameters for page analysis.
+ * @param {string} testUrl - The URL of the page being tested.
+ * @param {string} html - The HTML content of the page.
+ * @param {string} baseUrl - The base URL of the website.
+ * @throws {Error} If any of the input parameters are invalid.
+ */
 function validateInput(testUrl, html, baseUrl) {
   if (typeof testUrl !== 'string' || !testUrl) throw new Error('Invalid testUrl');
   if (typeof html !== 'string' || !html) throw new Error('Invalid html');
   if (typeof baseUrl !== 'string' || !baseUrl) throw new Error('Invalid baseUrl');
 }
 
+/**
+ * Memoizes a function to cache its results.
+ * @param {Function} fn - The function to memoize.
+ * @returns {Function} The memoized function.
+ */
 const memoize = (fn) => {
   const cache = new Map();
   return (...args) => {
@@ -57,6 +70,16 @@ const memoize = (fn) => {
 
 const memoizedCheerioLoad = memoize(cheerio.load);
 
+/**
+ * Runs metrics analysis on the page content.
+ * @param {Object} $ - The Cheerio instance.
+ * @param {string} testUrl - The URL of the page being tested.
+ * @param {string} baseUrl - The base URL of the website.
+ * @param {Object} headers - The HTTP headers of the page response.
+ * @param {Object} results - The results object to update.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<void>}
+ */
 async function runMetricsAnalysis($, testUrl, baseUrl, headers, results, logger) {
   try {
     await updateTitleMetrics($, results, logger);
@@ -73,6 +96,14 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results, logger)
   }
 }
 
+/**
+ * Runs Pa11y analysis on the page.
+ * @param {string} testUrl - The URL of the page being tested.
+ * @param {string} html - The HTML content of the page.
+ * @param {Object} config - The configuration options.
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<Object>} The Pa11y test result.
+ */
 async function runPa11yAnalysis(testUrl, html, config, logger) {
   try {
     const pa11yOptions = {
@@ -81,29 +112,29 @@ async function runPa11yAnalysis(testUrl, html, config, logger) {
       wait: config.pa11yWait,
       threshold: config.pa11yThreshold,
     };
-    return await runPa11yWithRetry(testUrl, pa11yOptions, logger, config.retryAttempts, config.retryDelay);
+    return await runPa11yWithRetry(testUrl, pa11yOptions, logger);
   } catch (error) {
     logger.error(`Error in runPa11yAnalysis for ${testUrl}:`, error);
     throw error;
   }
 }
 
-async function retryOperation(operation, retryAttempts, retryDelay, logger) {
-  for (let attempt = 1; attempt <= retryAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (attempt === retryAttempts) {
-        logger.warn(`Operation failed after ${retryAttempts} attempts: ${error.message}`);
-        return null; // eslint-disable-line consistent-return
-      }
-      logger.warn(`Operation failed, retrying (${attempt}/${retryAttempts}): ${error.message}`);
-      await new Promise((resolve) => { setTimeout(resolve, retryDelay); });
-    }
-  }
-}
-
-export async function analyzePageContent(
+/**
+ * Analyzes the content of a web page.
+ * @param {Object} params - The parameters for page analysis.
+ * @param {string} params.testUrl - The URL of the page being tested.
+ * @param {string} params.html - The HTML content of the page.
+ * @param {Array} params.jsErrors - JavaScript errors encountered during page load.
+ * @param {string} params.baseUrl - The base URL of the website.
+ * @param {Object} params.results - The results object to update.
+ * @param {Object} params.headers - The HTTP headers of the page response.
+ * @param {Object} params.pageData - Additional data about the page.
+ * @param {Object} params.logger - The logger object.
+ * @param {Object} [params.config={}] - Configuration options for the analysis.
+ * @param {string} params.outputDir - The directory to output reports.
+ * @returns {Promise<Object>} The analysis results.
+ */
+export async function analyzePageContent({
   testUrl,
   html,
   jsErrors,
@@ -114,7 +145,7 @@ export async function analyzePageContent(
   logger,
   config = {},
   outputDir,
-) {
+}) {
   const startTime = process.hrtime();
   logger.info(`Analyzing content for ${testUrl}`);
 
@@ -123,70 +154,30 @@ export async function analyzePageContent(
     const analysisConfig = { ...defaultConfig, ...config };
     const $ = memoizedCheerioLoad(html);
 
-    let pa11yResult = null;
-    let internalLinks = null;
-
-    if (analysisConfig.runPa11y) {
-      logger.debug('Running Pa11y test');
-      pa11yResult = await runPa11yAnalysis(testUrl, html, analysisConfig, logger);
-    }
-
-    if (analysisConfig.analyzeInternalLinks) {
-      logger.debug('Getting internal links');
-      internalLinks = await retryOperation(
-        () => getInternalLinks(html, testUrl, baseUrl),
-        analysisConfig.retryAttempts,
-        analysisConfig.retryDelay,
-        logger,
-      );
-    }
+    const [pa11yResult, internalLinks] = await Promise.all([
+      analysisConfig.runPa11y ? runPa11yAnalysis(testUrl, html, analysisConfig, logger) : null,
+      analysisConfig.analyzeInternalLinks ? getInternalLinksWithRetry(html, testUrl, baseUrl, analysisConfig, logger) : null,
+    ]);
 
     if (analysisConfig.analyzeMetrics) {
-      logger.debug('Running metrics analysis');
       await runMetricsAnalysis($, testUrl, baseUrl, headers, results, logger);
     }
 
-    if (pa11yResult) {
-      results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
-    }
+    updateResults(results, testUrl, pa11yResult, internalLinks);
 
-    if (internalLinks) {
-      updateInternalLinks(testUrl, internalLinks, results, logger);
-    }
-
-    const contentAnalysis = {
-      url: testUrl,
-      ...pageData,
-      jsErrors,
-      internalLinksCount: internalLinks ? internalLinks.length : 0,
-      pa11yIssuesCount: pa11yResult ? pa11yResult.issues.length : 0,
-    };
-
+    const contentAnalysis = createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11yResult);
     updateContentAnalysis(contentAnalysis, results, logger);
 
     if (analysisConfig.generateAccessibilityReport && results.pa11y.length > 0) {
-      const analysisResults = analyzeAccessibilityResults(results, logger);
-      const reportPath = await generateAccessibilityReport(results, outputDir, logger);
-      logger.info(`Accessibility report generated at: ${reportPath}`);
+      await generateAccessibilityReportIfNeeded(results, outputDir, logger);
     }
 
-    const [seconds, nanoseconds] = process.hrtime(startTime);
-    const duration = seconds + nanoseconds / 1e9;
+    const duration = calculateDuration(startTime);
     logger.info(`Content analysis completed for ${testUrl} in ${duration.toFixed(3)} seconds`);
 
-    return {
-      url: testUrl,
-      analysisTime: duration,
-      contentAnalysis,
-      pa11ySuccess: !!pa11yResult,
-      internalLinksSuccess: !!internalLinks,
-      metricsSuccess: true,
-    };
+    return createAnalysisResult(testUrl, duration, contentAnalysis, pa11yResult, internalLinks);
   } catch (error) {
     logger.error(`Error analyzing content for ${testUrl}:`, error);
-    return {
-      url: testUrl,
-      error: error.message,
-    };
+    return { url: testUrl, error: error.message };
   }
 }

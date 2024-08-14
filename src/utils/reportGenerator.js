@@ -1,10 +1,16 @@
-/* eslint-disable max-len */
 /* eslint-disable no-use-before-define */
+/* eslint-disable import/prefer-default-export */
 /* eslint-disable import/extensions */
+/* eslint-disable max-len */
 // reportGenerator.js
 
 import { formatCsv } from './csvFormatter.js';
 
+/**
+ * Memoizes a function to cache its results.
+ * @param {Function} fn - The function to memoize.
+ * @returns {Function} The memoized function.
+ */
 const memoize = (fn) => {
   const cache = new Map();
   return (...args) => {
@@ -16,6 +22,11 @@ const memoize = (fn) => {
   };
 };
 
+/**
+ * Categorizes response codes into groups.
+ * @param {Object} responseCodeMetrics - The response code metrics.
+ * @returns {Object} Categorized response codes.
+ */
 function categorizeResponseCodes(responseCodeMetrics) {
   const categories = {
     '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0,
@@ -34,8 +45,17 @@ function categorizeResponseCodes(responseCodeMetrics) {
 
 const memoizedCategorizeResponseCodes = memoize(categorizeResponseCodes);
 
+/**
+ * Validates the results object for required properties.
+ * @param {Object} results - The results object to validate.
+ * @throws {Error} If required properties are missing.
+ */
 function validateResults(results) {
-  const requiredProperties = ['urlMetrics', 'responseCodeMetrics', 'titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics', 'seoScores', 'performanceAnalysis'];
+  const requiredProperties = [
+    'urlMetrics', 'responseCodeMetrics', 'titleMetrics', 'metaDescriptionMetrics',
+    'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics',
+    'hreflangMetrics', 'canonicalMetrics', 'contentMetrics', 'seoScores', 'performanceAnalysis',
+  ];
   const missingProperties = requiredProperties.filter((prop) => !(prop in results));
 
   if (missingProperties.length > 0) {
@@ -43,6 +63,11 @@ function validateResults(results) {
   }
 }
 
+/**
+ * Sanitizes a value for CSV output.
+ * @param {*} value - The value to sanitize.
+ * @returns {*} The sanitized value.
+ */
 function sanitizeForCsv(value) {
   if (typeof value === 'string') {
     return value.replace(/^[=+@-]/, '\'$&');
@@ -50,19 +75,44 @@ function sanitizeForCsv(value) {
   return value;
 }
 
-// eslint-disable-next-line import/prefer-default-export
+/**
+ * Generates an SEO analysis report.
+ * @param {Object} results - The SEO analysis results.
+ * @param {string} sitemapUrl - The URL of the analyzed sitemap.
+ * @param {Object} logger - The logger object.
+ * @returns {string|null} The generated report as a CSV string, or null if an error occurred.
+ */
 export function generateReport(results, sitemapUrl, logger) {
   logger.info('Generating SEO report');
   const startTime = process.hrtime();
 
   try {
     validateResults(results);
+
+    const reportSections = getReportSections(results, sitemapUrl);
+    const reportData = generateReportSections(reportSections, logger);
+    const processedReportData = processReportData(reportData);
+
+    const [seconds, nanoseconds] = process.hrtime(startTime);
+    const duration = seconds + nanoseconds / 1e9;
+    logger.info(`Report generation completed in ${duration.toFixed(3)} seconds`);
+
+    logger.debug('Report data generated successfully');
+    return formatCsv(processedReportData);
   } catch (error) {
-    logger.error('Invalid results object:', error);
+    logger.error('Error generating report:', error);
     return null;
   }
+}
 
-  const reportSections = [
+/**
+ * Gets the report sections configuration.
+ * @param {Object} results - The SEO analysis results.
+ * @param {string} sitemapUrl - The URL of the analyzed sitemap.
+ * @returns {Array} The report sections configuration.
+ */
+function getReportSections(results, sitemapUrl) {
+  return [
     { name: 'Header', generator: generateHeader, args: [sitemapUrl] },
     { name: 'Summary', generator: generateSummary, args: [results, memoizedCategorizeResponseCodes(results.responseCodeMetrics)] },
     { name: 'URL Analysis', generator: generateUrlAnalysis, args: [results] },
@@ -81,11 +131,19 @@ export function generateReport(results, sitemapUrl, logger) {
     { name: 'SEO Score Analysis', generator: generateSeoScoreAnalysis, args: [results] },
     { name: 'Performance Analysis', generator: generatePerformanceAnalysis, args: [results] },
   ];
+}
 
+/**
+ * Generates report sections based on the configuration.
+ * @param {Array} reportSections - The report sections configuration.
+ * @param {Object} logger - The logger object.
+ * @returns {Array} The generated report data.
+ */
+function generateReportSections(reportSections, logger) {
   let completedSections = 0;
   const totalSections = reportSections.length;
 
-  const reportData = reportSections.flatMap((section) => {
+  return reportSections.flatMap((section) => {
     try {
       logger.debug(`Generating ${section.name} section`);
       const sectionData = section.generator(...section.args);
@@ -97,21 +155,25 @@ export function generateReport(results, sitemapUrl, logger) {
       return [['Error', `Failed to generate ${section.name} section`]];
     }
   });
+}
 
-  // Round all numeric values in the report to 2 decimal places and sanitize
-  const processedReportData = reportData.map((row) => row.map((cell) => {
+/**
+ * Processes the report data by rounding numeric values and sanitizing.
+ * @param {Array} reportData - The raw report data.
+ * @returns {Array} The processed report data.
+ */
+function processReportData(reportData) {
+  return reportData.map((row) => row.map((cell) => {
     const roundedCell = typeof cell === 'number' ? Number(cell.toFixed(2)) : cell;
     return sanitizeForCsv(roundedCell);
   }));
-
-  const [seconds, nanoseconds] = process.hrtime(startTime);
-  const duration = seconds + nanoseconds / 1e9;
-  logger.info(`Report generation completed in ${duration.toFixed(3)} seconds`);
-
-  logger.debug('Report data generated successfully');
-  return formatCsv(processedReportData);
 }
 
+/**
+ * Generates the header section of the report.
+ * @param {string} sitemapUrl - The URL of the analyzed sitemap.
+ * @returns {Array} The header section data.
+ */
 function generateHeader(sitemapUrl) {
   return [
     ['SEO Analysis Report'],
@@ -121,7 +183,12 @@ function generateHeader(sitemapUrl) {
     [], // Empty row for spacing
   ];
 }
-
+/**
+ * Generates the summary section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @param {Object} responseCategories - The categorized response codes.
+ * @returns {Array} The summary section data.
+ */
 function generateSummary(results, responseCategories) {
   return [
     ['Summary', 'Count'],
@@ -140,6 +207,11 @@ function generateSummary(results, responseCategories) {
   ];
 }
 
+/**
+ * Generates the URL analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The URL analysis section data.
+ */
 function generateUrlAnalysis(results) {
   return [
     ['URL Analysis', 'Count'],
@@ -152,6 +224,11 @@ function generateUrlAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the page title analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The page title analysis section data.
+ */
 function generatePageTitleAnalysis(results) {
   return [
     ['Page Title Analysis', 'Count'],
@@ -163,6 +240,11 @@ function generatePageTitleAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the meta description analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The meta description analysis section data.
+ */
 function generateMetaDescriptionAnalysis(results) {
   return [
     ['Meta Description Analysis', 'Count'],
@@ -174,6 +256,11 @@ function generateMetaDescriptionAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the heading analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The heading analysis section data.
+ */
 function generateHeadingAnalysis(results) {
   return [
     ['Heading Analysis', 'Count'],
@@ -186,6 +273,11 @@ function generateHeadingAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the image analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The image analysis section data.
+ */
 function generateImageAnalysis(results) {
   return [
     ['Image Analysis', 'Count'],
@@ -197,6 +289,11 @@ function generateImageAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the link analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The link analysis section data.
+ */
 function generateLinkAnalysis(results) {
   return [
     ['Link Analysis', 'Count'],
@@ -208,6 +305,11 @@ function generateLinkAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the security analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The security analysis section data.
+ */
 function generateSecurityAnalysis(results) {
   return [
     ['Security Analysis', 'Count'],
@@ -220,6 +322,11 @@ function generateSecurityAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the hreflang analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The hreflang analysis section data.
+ */
 function generateHreflangAnalysis(results) {
   return [
     ['Hreflang Analysis', 'Count'],
@@ -230,6 +337,11 @@ function generateHreflangAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the canonical analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The canonical analysis section data.
+ */
 function generateCanonicalAnalysis(results) {
   return [
     ['Canonical Analysis', 'Count'],
@@ -241,6 +353,11 @@ function generateCanonicalAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the content analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The content analysis section data.
+ */
 function generateContentAnalysis(results) {
   return [
     ['Content Analysis', 'Count'],
@@ -250,6 +367,11 @@ function generateContentAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the orphaned URLs analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The orphaned URLs analysis section data.
+ */
 function generateOrphanedUrlsAnalysis(results) {
   return [
     ['Orphaned URLs Analysis', 'Count'],
@@ -258,6 +380,11 @@ function generateOrphanedUrlsAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the Pa11y analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The Pa11y analysis section data.
+ */
 function generatePa11yAnalysis(results) {
   const totalIssues = results.pa11y.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
   return [
@@ -267,6 +394,11 @@ function generatePa11yAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the JavaScript errors analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The JavaScript errors analysis section data.
+ */
 function generateJavaScriptErrorsAnalysis(results) {
   const pagesWithJsErrors = results.contentAnalysis.filter((page) => page.jsErrors && page.jsErrors.length > 0).length;
   return [
@@ -276,6 +408,11 @@ function generateJavaScriptErrorsAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the SEO score analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The SEO score analysis section data.
+ */
 function generateSeoScoreAnalysis(results) {
   const averageScore = results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length;
   return [
@@ -285,6 +422,11 @@ function generateSeoScoreAnalysis(results) {
   ];
 }
 
+/**
+ * Generates the performance analysis section of the report.
+ * @param {Object} results - The SEO analysis results.
+ * @returns {Array} The performance analysis section data.
+ */
 function generatePerformanceAnalysis(results) {
   const avgLoadTime = results.performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / results.performanceAnalysis.length;
   return [
