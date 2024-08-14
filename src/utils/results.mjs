@@ -5,7 +5,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { formatCsv } from './csvFormatter.js';
+import { formatCsv } from './csvFormatter.mjs';
 import { generateReport } from './reportGenerator.mjs';
 
 /**

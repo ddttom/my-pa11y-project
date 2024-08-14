@@ -10,8 +10,8 @@
 
 import { program } from 'commander';
 import winston from 'winston';
-import { runTestsOnSitemap } from './src/main.js';
-import { displayCachingOptions } from './src/utils/caching.js';
+import { runTestsOnSitemap } from './src/main.mjs';
+import { displayCachingOptions } from './src/utils/caching.mjs';
 
 // Create the global auditcore object
 const auditcore = {

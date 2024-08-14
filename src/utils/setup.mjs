@@ -2,7 +2,7 @@
 // setup.js
 
 import fs from 'fs/promises';
-import { ensureCacheDir } from './caching.js';
+import { ensureCacheDir } from './caching.mjs';
 
 async function createDirectories(outputDir, options) {
   await fs.mkdir(outputDir, { recursive: true });

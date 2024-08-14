@@ -8,9 +8,13 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createGzip } from 'zlib';
-
+import axios from 'axios';
+import { parseString } from 'xml2js';
+import { promisify } from 'util';
 import { SitemapStream, streamToPromise } from 'sitemap';
 
+const parseXml = promisify(parseString);
+// const gunzipAsync = promisify(gunzip);
 const MAX_URLS_PER_SITEMAP = 50000;
 
 /**
@@ -265,4 +269,90 @@ function chunkArray(array, size) {
     result.push(array.slice(i, i + size));
   }
   return result;
+}
+
+/**
+ * Fetches URLs from a sitemap.
+ * @param {string} sitemapUrl - The URL of the sitemap.
+ * @param {number} limit - The maximum number of URLs to fetch (-1 for no limit).
+ * @param {Object} logger - The logger object.
+ * @returns {Promise<Array>} An array of URL objects.
+ * @throws {Error} If there's an error fetching or parsing the sitemap.
+ */
+export async function getUrlsFromSitemap(sitemapUrl, limit, logger) {
+  logger.info(`Fetching sitemap from ${sitemapUrl}`);
+
+  try {
+    const response = await axios.get(sitemapUrl, { responseType: 'arraybuffer' });
+    let sitemapContent = response.data;
+
+    // Check if the content is gzipped
+    if (response.headers['content-encoding'] === 'gzip' || sitemapUrl.endsWith('.gz')) {
+      sitemapContent = await gunzipAsync(sitemapContent);
+    }
+
+    const sitemapString = sitemapContent.toString('utf-8');
+    const result = await parseXml(sitemapString);
+
+    let urls = [];
+
+    if (result.sitemapindex) {
+      // This is a sitemap index, we need to fetch each sitemap
+      logger.info('Sitemap index detected. Fetching individual sitemaps...');
+      const sitemapUrls = result.sitemapindex.sitemap.map((sitemap) => sitemap.loc[0]);
+      for (const url of sitemapUrls) {
+        const sitemapUrlsList = await getUrlsFromSitemap(url, -1, logger);
+        urls = urls.concat(sitemapUrlsList);
+        if (limit !== -1 && urls.length >= limit) break;
+      }
+    } else if (result.urlset) {
+      // This is a regular sitemap
+      urls = result.urlset.url.map((url) => ({
+        url: url.loc[0],
+        lastmod: url.lastmod ? url.lastmod[0] : null,
+        changefreq: url.changefreq ? url.changefreq[0] : null,
+        priority: url.priority ? parseFloat(url.priority[0]) : null,
+      }));
+    } else {
+      throw new Error('Invalid sitemap format');
+    }
+
+    if (limit !== -1) {
+      urls = urls.slice(0, limit);
+    }
+
+    logger.info(`Extracted ${urls.length} URLs from sitemap`);
+    return urls;
+  } catch (error) {
+    logger.error(`Error fetching sitemap: ${error.message}`);
+    throw error;
+  }
+}
+
+export async function processSitemapUrls(urls, options, logger) {
+  logger.info(`Processing ${urls.length} URL(s)`);
+
+  const processorOptions = {
+    ...options,
+    baseUrl: options.baseUrl || (urls[0] && new URL(urls[0].url).origin),
+    outputDir: options.outputDir || './output',
+    concurrency: options.concurrency || 5,
+    batchSize: options.batchSize || 10,
+  };
+
+  const urlProcessor = new UrlProcessor(processorOptions, logger);
+
+  try {
+    const results = await urlProcessor.processUrls(urls);
+    logger.info(`Completed processing ${urls.length} URLs`);
+
+    if (results.failedUrls && results.failedUrls.length > 0) {
+      logger.warn(`${results.failedUrls.length} URLs encountered errors during processing`);
+    }
+
+    return results;
+  } catch (error) {
+    logger.error(`Error during URL processing: ${error.message}`);
+    throw error;
+  }
 }
