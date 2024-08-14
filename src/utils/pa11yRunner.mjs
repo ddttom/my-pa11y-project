@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-/* eslint-disable import/extensions */
 /* eslint-disable max-len */
 // pa11yRunner.js
 

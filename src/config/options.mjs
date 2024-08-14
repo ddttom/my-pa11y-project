@@ -1,4 +1,4 @@
-// options.js
+// options.mjs
 
 /**
  * Global configuration options.
