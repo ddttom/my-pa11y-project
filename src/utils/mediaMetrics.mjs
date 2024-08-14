@@ -1,8 +1,8 @@
 /* eslint-disable import/extensions */
 // mediaMetrics.js
 
-import { safeIncrement } from './metricsCommon.js';
-import { isValidUrl } from './urlUtils.js';
+import { safeIncrement } from './metricsCommon.mjs';
+import { isValidUrl } from './urlUtils.mjs';
 
 const ALT_TEXT_MAX_LENGTH = 100;
 const MAX_EXTERNAL_LINKS = 100;

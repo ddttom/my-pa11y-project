@@ -6,7 +6,7 @@
 import cheerio from 'cheerio';
 import {
   runPa11yWithRetry,
-} from './pa11yRunner.js';
+} from './pa11yRunner.mjs';
 import {
   getInternalLinksWithRetry,
   updateResults,
@@ -14,7 +14,7 @@ import {
   generateAccessibilityReportIfNeeded,
   calculateDuration,
   createAnalysisResult,
-} from './pageAnalyzerHelpers.js';
+} from './pageAnalyzerHelpers.mjs';
 import {
   updateContentAnalysis,
   updateTitleMetrics,
@@ -25,7 +25,7 @@ import {
   updateSecurityMetrics,
   updateHreflangMetrics,
   updateCanonicalMetrics,
-} from './metricsUpdater.js';
+} from './metricsUpdater.mjs';
 
 const defaultConfig = {
   runPa11y: true,

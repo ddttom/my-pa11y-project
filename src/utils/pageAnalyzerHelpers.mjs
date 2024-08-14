@@ -3,9 +3,9 @@
 
 // pageAnalyzerHelpers.js
 
-import { getInternalLinks } from './linkAnalyzer.js';
-import { analyzeAccessibilityResults, generateAccessibilityReport } from './pa11yRunner.js';
-import { updateInternalLinks } from './metricsUpdater.js';
+import { getInternalLinks } from './linkAnalyzer.mjs';
+import { analyzeAccessibilityResults, generateAccessibilityReport } from './pa11yRunner.mjs';
+import { updateInternalLinks } from './metricsUpdater.mjs';
 
 /**
  * Retries an operation with a specified number of attempts and delay.

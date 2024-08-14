@@ -4,7 +4,7 @@
 /* eslint-disable max-len */
 // reportGenerator.js
 
-import { formatCsv } from './csvFormatter.js';
+import { formatCsv } from './csvFormatter.mjs';
 
 /**
  * Memoizes a function to cache its results.

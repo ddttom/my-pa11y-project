@@ -1,8 +1,8 @@
 /* eslint-disable import/extensions */
 // technicalMetrics.js
 
-import { safeIncrement } from './metricsCommon.js';
-import { isValidUrl } from './urlUtils.js';
+import { safeIncrement } from './metricsCommon.mjs';
+import { isValidUrl } from './urlUtils.mjs';
 
 /**
  * Updates security metrics based on the page's security features.

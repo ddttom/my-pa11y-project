@@ -12,7 +12,7 @@ import fs from 'fs/promises';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import RateLimiter from 'limiter';
-import { fixUrl } from './urlUtils.js';
+import { fixUrl } from './urlUtils.mjs';
 
 const gunzip = promisify(zlib.gunzip);
 const { RateLimiter: Limiter } = RateLimiter;

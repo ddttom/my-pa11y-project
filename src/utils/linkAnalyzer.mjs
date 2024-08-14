@@ -3,7 +3,7 @@
 // linkAnalyzer.js
 
 import cheerio from 'cheerio';
-import { fixUrl } from './urlUtils.js';
+import { fixUrl } from './urlUtils.mjs';
 
 /**
  * Extracts internal links from HTML content.

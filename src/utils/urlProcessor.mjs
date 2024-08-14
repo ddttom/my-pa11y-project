@@ -5,11 +5,11 @@
 // urlProcessor.js
 
 import PriorityQueue from 'priorityqueuejs';
-import { getOrRenderData } from './caching.js';
-import { analyzePageContent } from './pageAnalyzer.js';
-import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js';
-import { analyzePerformance } from './performanceAnalyzer.js';
-import { calculateSeoScore } from './seoScoring.js';
+import { getOrRenderData } from './caching.mjs';
+import { analyzePageContent } from './pageAnalyzer.mjs';
+import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.mjs';
+import { analyzePerformance } from './performanceAnalyzer.mjs';
+import { calculateSeoScore } from './seoScoring.mjs';
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,

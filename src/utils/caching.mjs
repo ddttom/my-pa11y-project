@@ -8,7 +8,7 @@ import path from 'path';
 import crypto from 'crypto';
 import axios from 'axios';
 import cheerio from 'cheerio';
-import { calculateSeoScore } from './seoScoring.js';
+import { calculateSeoScore } from './seoScoring.mjs';
 
 const CACHE_DIR = path.join(process.cwd(), '.cache');
 

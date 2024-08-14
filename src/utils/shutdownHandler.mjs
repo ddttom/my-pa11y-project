@@ -1,7 +1,7 @@
 /* eslint-disable import/extensions */
 // shutdownHandler.js
 
-import { saveResults } from './results.js';
+import { saveResults } from './results.mjs';
 
 let isShuttingDown = false;
 

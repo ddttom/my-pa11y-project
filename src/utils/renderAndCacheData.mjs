@@ -3,7 +3,7 @@
 // renderAndCacheData.js
 
 import puppeteer from 'puppeteer';
-import { calculateSeoScore } from './seoScoring.js';
+import { calculateSeoScore } from './seoScoring.mjs';
 
 /**
  * Renders a page using Puppeteer and collects various data.

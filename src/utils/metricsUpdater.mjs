@@ -1,16 +1,16 @@
 /* eslint-disable import/extensions */
 // metricsUpdater.js
 
-import { updateUrlMetrics, updateResponseCodeMetrics } from './urlMetrics.js';
-import { updateTitleMetrics, updateMetaDescriptionMetrics, updateHeadingMetrics } from './contentMetrics.js';
-import { updateImageMetrics, updateLinkMetrics } from './mediaMetrics.js';
+import { updateUrlMetrics, updateResponseCodeMetrics } from './urlMetrics.mjs';
+import { updateTitleMetrics, updateMetaDescriptionMetrics, updateHeadingMetrics } from './contentMetrics.mjs';
+import { updateImageMetrics, updateLinkMetrics } from './mediaMetrics.mjs';
 import {
   updateSecurityMetrics,
   updateHreflangMetrics,
   updateCanonicalMetrics,
   updateContentAnalysis,
   updateInternalLinks,
-} from './technicalMetrics.js';
+} from './technicalMetrics.mjs';
 
 /**
  * Updates all metrics for a given page.

@@ -6,7 +6,7 @@
 import pa11y from 'pa11y';
 import fs from 'fs/promises';
 import path from 'path';
-import { pa11yOptions } from '../config/options.js';
+import { pa11yOptions } from '../config/options.mjs';
 
 const { MAX_RETRIES, RETRY_DELAY } = pa11yOptions;
 

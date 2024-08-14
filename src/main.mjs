@@ -5,14 +5,14 @@
 
 import path from 'path';
 import fs from 'fs/promises';
-import { validateAndPrepare } from './utils/setup.js';
-import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
-import { postProcessResults, saveResults } from './utils/results.js';
-import { generateSitemap } from './utils/sitemapGenerator.js';
+import { validateAndPrepare } from './utils/setup.mjs';
+import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.mjs';
+import { postProcessResults, saveResults } from './utils/results.mjs';
+import { generateSitemap } from './utils/sitemapGenerator.mjs';
 import {
   checkIsShuttingDown,
   setupShutdownHandler,
-} from './utils/shutdownHandler.js';
+} from './utils/shutdownHandler.mjs';
 
 export function initializeResults() {
   // ... (keep the existing initializeResults function unchanged)

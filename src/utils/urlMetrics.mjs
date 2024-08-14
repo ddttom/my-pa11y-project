@@ -1,8 +1,8 @@
 /* eslint-disable import/extensions */
 // urlMetrics.js
 
-import { isValidUrl } from './urlUtils.js';
-import { safeIncrement } from './metricsCommon.js';
+import { isValidUrl } from './urlUtils.mjs';
+import { safeIncrement } from './metricsCommon.mjs';
 
 const URL_MAX_LENGTH = 115;
 

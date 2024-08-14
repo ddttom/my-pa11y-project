@@ -6,7 +6,7 @@
 // performanceAnalyzer.js
 
 import puppeteer from 'puppeteer';
-import { globalOptions, performanceOptions } from '../config/options.js';
+import { globalOptions, performanceOptions } from '../config/options.mjs';
 
 const { MAX_RETRIES, INITIAL_BACKOFF } = globalOptions;
 

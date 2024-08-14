@@ -1,7 +1,7 @@
 /* eslint-disable import/extensions */
 // contentMetrics.js
 
-import { safeIncrement, estimatePixelWidth } from './metricsCommon.js';
+import { safeIncrement, estimatePixelWidth } from './metricsCommon.mjs';
 
 const TITLE_MIN_LENGTH = 30;
 const TITLE_MAX_LENGTH = 60;
