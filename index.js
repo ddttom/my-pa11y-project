@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /* eslint-disable import/extensions */
 // index.js
 
@@ -12,8 +13,18 @@ import winston from 'winston';
 import { runTestsOnSitemap } from './src/main.js';
 import { displayCachingOptions } from './src/utils/caching.js';
 
+// Create the global auditcore object
+const auditcore = {
+  logger: null,
+  options: {},
+  // Add more properties here as needed
+};
+
+// Assign to global namespace
+global.auditcore = auditcore;
+
 // Winston logger setup
-const logger = winston.createLogger({
+auditcore.logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
@@ -41,49 +52,49 @@ program
   .option('--log-level <level>', 'Set logging level (error, warn, info, verbose, debug, silly)', 'info')
   .parse(process.argv);
 
-const options = program.opts();
+// Store options in the global auditcore object
+auditcore.options = program.opts();
 
 // Input validation for required options
-if (!options.sitemap || !options.output) {
-  // eslint-disable-next-line no-console
-  console.error('Error: Sitemap URL and output directory are required.');
+if (!auditcore.options.sitemap || !auditcore.options.output) {
+  auditcore.logger.error('Error: Sitemap URL and output directory are required.');
   process.exit(1);
 }
 
 // Ensure limit is a number
-options.limit = parseInt(options.limit, 10);
-if (Number.isNaN(options.limit)) {
-  options.limit = -1;
+auditcore.options.limit = parseInt(auditcore.options.limit, 10);
+if (Number.isNaN(auditcore.options.limit)) {
+  auditcore.options.limit = -1;
 }
 
 // Set log level based on command line option
-logger.level = options.logLevel;
+auditcore.logger.level = auditcore.options.logLevel;
 
-logger.info('Current Settings Summary:');
-logger.info('-------------------------');
-logger.info(`Sitemap URL: ${options.sitemap}`);
-logger.info(`Output Directory: ${options.output}`);
-logger.info(`Limit: ${options.limit}`);
-logger.info(`Puppeteer: ${options.puppeteer ? 'Enabled' : 'Disabled'}`);
-logger.info(`Cache Only: ${options.cacheOnly ? 'Enabled' : 'Disabled'}`);
-logger.info(`Cache: ${options.cache ? 'Enabled' : 'Disabled'}`);
-logger.info(`Force Delete Cache: ${options.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
-logger.info(`Log Level: ${options.logLevel}`);
+auditcore.logger.info('Current Settings Summary:');
+auditcore.logger.info('-------------------------');
+auditcore.logger.info(`Sitemap URL: ${auditcore.options.sitemap}`);
+auditcore.logger.info(`Output Directory: ${auditcore.options.output}`);
+auditcore.logger.info(`Limit: ${auditcore.options.limit}`);
+auditcore.logger.info(`Puppeteer: ${auditcore.options.puppeteer ? 'Enabled' : 'Disabled'}`);
+auditcore.logger.info(`Cache Only: ${auditcore.options.cacheOnly ? 'Enabled' : 'Disabled'}`);
+auditcore.logger.info(`Cache: ${auditcore.options.cache ? 'Enabled' : 'Disabled'}`);
+auditcore.logger.info(`Force Delete Cache: ${auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
+auditcore.logger.info(`Log Level: ${auditcore.options.logLevel}`);
 
-logger.info('\nStarting the crawl process...\n');
+auditcore.logger.info('\nStarting the crawl process...\n');
 
-displayCachingOptions(options);
+displayCachingOptions(auditcore.options);
 
 try {
-  runTestsOnSitemap(options.sitemap, options.output, options, options.limit, logger)
+  runTestsOnSitemap(auditcore.options.sitemap, auditcore.options.output, auditcore.options, auditcore.options.limit, auditcore.logger)
     .then(() => {
-      logger.info('Script completed successfully');
+      auditcore.logger.info('Script completed successfully');
     })
     .catch((error) => {
-      logger.error('Script failed with error:', error);
+      auditcore.logger.error('Script failed with error:', error);
       process.exit(1);
     });
 } catch (error) {
-  logger.error('Uncaught exception:', error);
+  auditcore.logger.error('Uncaught exception:', error);
   process.exit(1);
 }
