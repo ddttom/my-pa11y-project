@@ -81,7 +81,7 @@ auditcore.logger.info(`Cache: ${auditcore.options.cache ? 'Enabled' : 'Disabled'
 auditcore.logger.info(`Force Delete Cache: ${auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
 auditcore.logger.info(`Log Level: ${auditcore.options.logLevel}`);
 
-auditcore.logger.info('\nStarting the crawl process...\n');
+auditcore.logger.info('Starting the crawl process...');
 
 displayCachingOptions(auditcore.options);
 
