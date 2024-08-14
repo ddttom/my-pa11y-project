@@ -49,7 +49,7 @@ program
   .option('--no-cache', 'Disable caching, always fetch fresh data')
   .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
   .option('--force-delete-cache', 'Force delete existing cache before starting')
-  .option('--log-level <level>', 'Set logging level (error, warn, info, verbose, debug, silly)', 'info')
+  .option('--log-level <level>', 'Set logging level (error, warn, info, verbose, debug)', 'info')
   .parse(process.argv);
 
 // Store options in the global auditcore object
@@ -57,7 +57,8 @@ auditcore.options = program.opts();
 
 // Input validation for required options
 if (!auditcore.options.sitemap || !auditcore.options.output) {
-  auditcore.logger.error('Error: Sitemap URL and output directory are required.');
+  global.auditcore.logger.error('Error: Sitemap URL and output directory are required.');
+  displayCachingOptions(auditcore.options);
   process.exit(1);
 }
 
@@ -68,33 +69,31 @@ if (Number.isNaN(auditcore.options.limit)) {
 }
 
 // Set log level based on command line option
-auditcore.logger.level = auditcore.options.logLevel;
+global.auditcore.logger.level = auditcore.options.logLevel;
 
-auditcore.logger.info('Current Settings Summary:');
-auditcore.logger.info('-------------------------');
-auditcore.logger.info(`Sitemap URL: ${auditcore.options.sitemap}`);
-auditcore.logger.info(`Output Directory: ${auditcore.options.output}`);
-auditcore.logger.info(`Limit: ${auditcore.options.limit}`);
-auditcore.logger.info(`Puppeteer: ${auditcore.options.puppeteer ? 'Enabled' : 'Disabled'}`);
-auditcore.logger.info(`Cache Only: ${auditcore.options.cacheOnly ? 'Enabled' : 'Disabled'}`);
-auditcore.logger.info(`Cache: ${auditcore.options.cache ? 'Enabled' : 'Disabled'}`);
-auditcore.logger.info(`Force Delete Cache: ${auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
-auditcore.logger.info(`Log Level: ${auditcore.options.logLevel}`);
+global.auditcore.logger.info('Current Settings Summary:');
+global.auditcore.logger.info('-------------------------');
+global.auditcore.logger.info(`Sitemap URL: ${auditcore.options.sitemap}`);
+global.auditcore.logger.info(`Output Directory: ${auditcore.options.output}`);
+global.auditcore.logger.info(`Limit: ${auditcore.options.limit}`);
+global.auditcore.logger.info(`Puppeteer: ${auditcore.options.puppeteer ? 'Enabled' : 'Disabled'}`);
+global.auditcore.logger.info(`Cache Only: ${auditcore.options.cacheOnly ? 'Enabled' : 'Disabled'}`);
+global.auditcore.logger.info(`Cache: ${auditcore.options.cache ? 'Enabled' : 'Disabled'}`);
+global.auditcore.logger.info(`Force Delete Cache: ${auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
+global.auditcore.logger.info(`Log Level: ${auditcore.options.logLevel}`);
 
-auditcore.logger.info('Starting the crawl process...');
+global.auditcore.logger.info('Starting the crawl process...');
 
-displayCachingOptions(auditcore.options);
 
 try {
-  runTestsOnSitemap(auditcore.options.sitemap, auditcore.options.output, auditcore.options, auditcore.options.limit, auditcore.logger)
-    .then(() => {
-      auditcore.logger.info('Script completed successfully');
+  runTestsOnSitemap().then(() => {
+      global.auditcore.logger.info('Script completed successfully');
     })
     .catch((error) => {
-      auditcore.logger.error('Script failed with error:', error);
+      global.auditcore.logger.error('Script failed with error:', error);
       process.exit(1);
     });
 } catch (error) {
-  auditcore.logger.error('Uncaught exception:', error);
+  global.auditcore.logger.error('Uncaught exception:', error);
   process.exit(1);
 }

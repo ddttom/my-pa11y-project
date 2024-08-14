@@ -18,17 +18,17 @@ const { MAX_RETRIES, RETRY_DELAY } = pa11yOptions;
  * @returns {Promise<Object>} The Pa11y test result.
  * @throws {Error} If all retry attempts fail.
  */
-export async function runPa11yWithRetry(testUrl, options, logger) {
+export async function runPa11yWithRetry(testUrl, options) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
-      logger.debug(`Pa11y test attempt ${attempt} for ${testUrl}`);
+      global.auditcore.logger.debug(`Pa11y test attempt ${attempt} for ${testUrl}`);
       const result = await pa11y(testUrl, options);
-      logger.debug(`Pa11y test successful for ${testUrl} on attempt ${attempt}`);
+      global.auditcore.logger.debug(`Pa11y test successful for ${testUrl} on attempt ${attempt}`);
       return result;
     } catch (error) {
-      logger.warn(`Pa11y test failed for ${testUrl} on attempt ${attempt}:`, error);
+      global.auditcore.logger.warn(`Pa11y test failed for ${testUrl} on attempt ${attempt}:`, error);
       if (attempt === MAX_RETRIES) {
-        logger.error(`Pa11y test failed for ${testUrl} after ${MAX_RETRIES} attempts.`);
+        global.auditcore.logger.error(`Pa11y test failed for ${testUrl} after ${MAX_RETRIES} attempts.`);
         throw error;
       }
       await new Promise((resolve) => { setTimeout(resolve, RETRY_DELAY); });
@@ -47,8 +47,8 @@ export async function runPa11yWithRetry(testUrl, options, logger) {
  * @returns {Promise<Object>} The Pa11y test result.
  * @throws {Error} If the Pa11y test fails.
  */
-export async function runPa11yTest(testUrl, html, results, logger) {
-  logger.info(`Running Pa11y accessibility test for ${testUrl}`);
+export async function runPa11yTest(testUrl, html, results) {
+  global.auditcore.logger.info(`Running Pa11y accessibility test for ${testUrl}`);
 
   try {
     const options = {
@@ -56,12 +56,12 @@ export async function runPa11yTest(testUrl, html, results, logger) {
       html,
     };
 
-    logger.debug('Pa11y options:', JSON.stringify(options, null, 2));
+    global.auditcore.logger.debug('Pa11y options:', JSON.stringify(options, null, 2));
 
-    const pa11yResult = await runPa11yWithRetry(testUrl, options, logger);
+    const pa11yResult = await runPa11yWithRetry(testUrl, options);
 
-    logger.debug(`Pa11y test completed for ${testUrl}`);
-    logger.debug(`Number of issues found: ${pa11yResult.issues.length}`);
+    global.auditcore.logger.debug(`Pa11y test completed for ${testUrl}`);
+    global.auditcore.logger.debug(`Number of issues found: ${pa11yResult.issues.length}`);
 
     results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
 
@@ -71,14 +71,14 @@ export async function runPa11yTest(testUrl, html, results, logger) {
       return acc;
     }, {});
 
-    logger.info('Pa11y test summary:');
+    global.auditcore.logger.info('Pa11y test summary:');
     Object.entries(issueTypes).forEach(([type, count]) => {
-      logger.info(`  ${type}: ${count}`);
+      global.auditcore.logger.info(`  ${type}: ${count}`);
     });
 
     return pa11yResult;
   } catch (error) {
-    logger.error(`Error running Pa11y test for ${testUrl}:`, error);
+    global.auditcore.logger.error(`Error running Pa11y test for ${testUrl}:`, error);
     results.pa11y.push({ url: testUrl, error: error.message });
     throw error;
   }
@@ -92,17 +92,17 @@ export async function runPa11yTest(testUrl, html, results, logger) {
  * @param {number} [concurrency=5] - The number of concurrent tests to run.
  * @returns {Promise<Object[]>} The Pa11y test results.
  */
-export async function runPa11yTestBatch(urls, results, logger, concurrency = 5) {
-  logger.info(`Running Pa11y tests for ${urls.length} URLs with concurrency of ${concurrency}`);
+export async function runPa11yTestBatch(urls, results, concurrency = 5) {
+  global.auditcore.logger.info(`Running Pa11y tests for ${urls.length} URLs with concurrency of ${concurrency}`);
 
   const batchResults = await Promise.all(
     urls.map(async (url) => {
       try {
-        const pa11yResult = await runPa11yWithRetry(url, pa11yOptions, logger);
-        logger.debug(`Pa11y test completed for ${url}`);
+        const pa11yResult = await runPa11yWithRetry(url, pa11yOptions);
+        global.auditcore.logger.debug(`Pa11y test completed for ${url}`);
         return { url, issues: pa11yResult.issues };
       } catch (error) {
-        logger.error(`Error running Pa11y test for ${url}:`, error);
+        global.auditcore.logger.error(`Error running Pa11y test for ${url}:`, error);
         return { url, error: error.message };
       }
     }),
@@ -110,11 +110,11 @@ export async function runPa11yTestBatch(urls, results, logger, concurrency = 5) 
 
   results.pa11y.push(...batchResults);
 
-  logger.info('Pa11y batch tests completed');
+  global.auditcore.logger.info('Pa11y batch tests completed');
 
   // Log summary of all issues
   const totalIssues = batchResults.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
-  logger.info(`Total issues found across all URLs: ${totalIssues}`);
+  global.auditcore.logger.info(`Total issues found across all URLs: ${totalIssues}`);
 
   return batchResults;
 }
@@ -125,14 +125,14 @@ export async function runPa11yTestBatch(urls, results, logger, concurrency = 5) 
  * @param {Object} logger - The logger object.
  * @returns {Object} Analysis of accessibility results.
  */
-export function analyzeAccessibilityResults(results, logger) {
-  logger.info('Analyzing accessibility results');
+export function analyzeAccessibilityResults(results) {
+  global.auditcore.logger.info('Analyzing accessibility results');
 
   const totalIssues = results.pa11y.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
   const urlsWithIssues = results.pa11y.filter((result) => result.issues && result.issues.length > 0).length;
 
-  logger.info(`Total accessibility issues: ${totalIssues}`);
-  logger.info(`URLs with issues: ${urlsWithIssues} out of ${results.pa11y.length}`);
+  global.auditcore.logger.info(`Total accessibility issues: ${totalIssues}`);
+  global.auditcore.logger.info(`URLs with issues: ${urlsWithIssues} out of ${results.pa11y.length}`);
 
   // Analyze common issues
   const issueFrequency = {};
@@ -144,12 +144,12 @@ export function analyzeAccessibilityResults(results, logger) {
     }
   });
 
-  logger.info('Most common accessibility issues:');
+  global.auditcore.logger.info('Most common accessibility issues:');
   Object.entries(issueFrequency)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .forEach(([code, count]) => {
-      logger.info(`  ${code}: ${count} occurrences`);
+      global.auditcore.logger.info(`  ${code}: ${count} occurrences`);
     });
 
   return {
@@ -167,8 +167,8 @@ export function analyzeAccessibilityResults(results, logger) {
  * @returns {Promise<string>} The path to the generated report.
  * @throws {Error} If there's an error generating the report.
  */
-export async function generateAccessibilityReport(results, outputDir, logger) {
-  logger.info('Generating accessibility report');
+export async function generateAccessibilityReport(results, outputDir) {
+  global.auditcore.logger.info('Generating accessibility report');
 
   const reportPath = path.join(outputDir, 'accessibility-report.html');
 
@@ -243,10 +243,10 @@ export async function generateAccessibilityReport(results, outputDir, logger) {
 
   try {
     await fs.writeFile(reportPath, htmlContent);
-    logger.info(`Accessibility report generated: ${reportPath}`);
+    global.auditcore.logger.info(`Accessibility report generated: ${reportPath}`);
     return reportPath;
   } catch (error) {
-    logger.error('Error generating accessibility report:', error);
+    global.auditcore.logger.error('Error generating accessibility report:', error);
     throw error;
   }
 }

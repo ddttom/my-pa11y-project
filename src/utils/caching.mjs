@@ -1,5 +1,4 @@
 /* eslint-disable no-lonely-if */
-/* eslint-disable no-use-before-define */
 /* eslint-disable import/extensions */
 // caching.js
 
@@ -16,100 +15,100 @@ function generateCacheKey(url) {
   return crypto.createHash('md5').update(url).digest('hex');
 }
 
-export async function ensureCacheDir(options = {}, logger) {
+export async function ensureCacheDir(options = {}) {
   try {
     if (options.forceDeleteCache) {
-      logger.debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
+      global.auditcore.logger.debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
       try {
         await fs.rm(CACHE_DIR, { recursive: true, force: true });
-        logger.debug('Cache directory deleted successfully');
+        global.auditcore.logger.debug('Cache directory deleted successfully');
       } catch (deleteError) {
-        logger.error(`Error deleting cache directory: ${deleteError.message}`);
-        logger.debug('Delete error stack:', deleteError.stack);
+        global.auditcore.logger.error(`Error deleting cache directory: ${deleteError.message}`);
+        global.auditcore.logger.debug('Delete error stack:', deleteError.stack);
       }
     }
 
     await fs.mkdir(CACHE_DIR, { recursive: true });
-    logger.debug(`Cache directory ensured: ${CACHE_DIR}`);
+    global.auditcore.logger.debug(`Cache directory ensured: ${CACHE_DIR}`);
   } catch (error) {
-    logger.error('Error managing cache directory:', error.message);
-    logger.debug('Error stack:', error.stack);
+    global.auditcore.logger.error('Error managing cache directory:', error.message);
+    global.auditcore.logger.debug('Error stack:', error.stack);
     throw error;
   }
 }
 
-export async function getCachedData(url, logger) {
+export async function getCachedData(url) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
-  logger.debug(`Attempting to read cache from: ${cachePath}`);
+  global.auditcore.logger.debug(`Attempting to read cache from: ${cachePath}`);
   try {
     const cachedData = await fs.readFile(cachePath, 'utf8');
-    logger.debug(`Cache hit for ${url}`);
+    global.auditcore.logger.debug(`Cache hit for ${url}`);
     return JSON.parse(cachedData);
   } catch (error) {
     if (error.code !== 'ENOENT') {
-      logger.error(`Error reading cache for ${url}:`, error);
+      global.auditcore.logger.error(`Error reading cache for ${url}:`, error);
     } else {
-      logger.info(`Cache miss for ${url}`);
+      global.auditcore.logger.info(`Cache miss for ${url}`);
     }
     return null;
   }
 }
 
-async function setCachedData(url, data, logger) {
+async function setCachedData(url, data) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
-  logger.debug(`Attempting to write cache to: ${cachePath}`);
+  global.auditcore.logger.debug(`Attempting to write cache to: ${cachePath}`);
   try {
     const jsonString = JSON.stringify(data, (key, value) => (typeof value === 'string' ? value.normalize('NFC') : value), 2);
     await fs.writeFile(cachePath, jsonString, 'utf8');
-    logger.debug(`Cache written for ${url}`);
+    global.auditcore.logger.debug(`Cache written for ${url}`);
   } catch (error) {
-    logger.error(`Error writing cache for ${url}:`, error);
+    global.auditcore.logger.error(`Error writing cache for ${url}:`, error);
     throw error;
   }
 }
 
-export async function getOrRenderData(url, options = {}, logger) {
+export async function getOrRenderData(url, options = {}) {
   const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
-  logger.debug(`getOrRenderData called for ${url}`);
+  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
 
   if (!noCache) {
-    const cachedData = await getCachedData(url, logger);
+    const cachedData = await getCachedData(url);
     if (cachedData) {
       cachedData.contentFreshness = analyzeContentFreshness(cachedData);
-      logger.debug(`Returning cached data for ${url}`);
+      global.auditcore.logger.debug(`Returning cached data for ${url}`);
       return cachedData;
     }
   }
 
   if (cacheOnly) {
-    logger.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
+    global.auditcore.logger.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
     return { html: null, statusCode: null };
   }
 
-  logger.debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
+  global.auditcore.logger.debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
   try {
     const newData = noPuppeteer
-      ? await fetchDataWithoutPuppeteer(url, logger)
-      : await renderAndCacheData(url, logger);
+      ? await fetchDataWithoutPuppeteer(url)
+      : await renderAndCacheData(url);
 
     newData.contentFreshness = analyzeContentFreshness(newData);
 
     if (!noCache) {
-      await setCachedData(url, newData, logger);
+      await setCachedData(url, newData);
     }
 
     return newData;
   } catch (error) {
-    logger.error(`Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`, error);
+    global.auditcore.logger.error(`Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`, error);
     return { html: null, statusCode: null, error: error.message };
   }
 }
 
-async function fetchDataWithoutPuppeteer(url, logger) {
+async function fetchDataWithoutPuppeteer(url) {
   try {
-    logger.debug(`Fetching data without Puppeteer for ${url}`);
+    global.auditcore.logger.debug(`Fetching data without Puppeteer for ${url}`);
     const response = await axios.get(url);
     const html = response.data;
     const $ = cheerio.load(html);
@@ -186,19 +185,19 @@ async function fetchDataWithoutPuppeteer(url, logger) {
       lastCrawled: new Date().toISOString(),
     };
 
-    logger.debug(`Successfully fetched, scored, and analyzed ${url} without Puppeteer`);
+    global.auditcore.logger.debug(`Successfully fetched, scored, and analyzed ${url} without Puppeteer`);
     return data;
   } catch (error) {
-    logger.error(`Error fetching data without Puppeteer for ${url}:`, error);
+    global.auditcore.logger.error(`Error fetching data without Puppeteer for ${url}:`, error);
     throw error;
   }
 }
 
-async function renderAndCacheData(url, logger) {
+async function renderAndCacheData(url) {
   // Implementation of renderAndCacheData function
   // This function would use Puppeteer to render the page and collect data
   // It's not included here as it wasn't part of the original snippet
-  logger.warn('renderAndCacheData function is not implemented');
+  global.auditcore.logger.warn('renderAndCacheData function is not implemented');
   throw new Error('renderAndCacheData function is not implemented');
 }
 
@@ -245,19 +244,19 @@ function analyzeContentFreshness(data) {
   return freshness;
 }
 
-export function displayCachingOptions(currentOptions, logger) {
-  logger.info('Available Caching Options:');
-  logger.info('---------------------------');
+export function displayCachingOptions(currentOptions) {
+  global.auditcore.logger.info('Available Caching Options:');
+  global.auditcore.logger.info('---------------------------');
   [
     { name: 'No Puppeteer', flag: '--no-puppeteer', description: 'Bypass Puppeteer execution and use cached HTML' },
     { name: 'Cache Only', flag: '--cache-only', description: 'Use only cached data, do not fetch new data' },
     { name: 'No Cache', flag: '--no-cache', description: 'Disable caching, always fetch fresh data' },
     { name: 'Force Delete Cache', flag: '--force-delete-cache', description: 'Force delete existing cache before starting' },
   ].forEach((option) => {
-    logger.info(`${option.name}:`);
-    logger.info(`  Flag: ${option.flag}`);
-    logger.info(`  Description: ${option.description}`);
-    logger.info(`  Current Setting: ${currentOptions[option.flag.replace('--', '')] ? 'Enabled' : 'Disabled'}`);
-    logger.info('');
+    global.auditcore.logger.info(`${option.name}:`);
+    global.auditcore.logger.info(`  Flag: ${option.flag}`);
+    global.auditcore.logger.info(`  Description: ${option.description}`);
+    global.auditcore.logger.info(`  Current Setting: ${currentOptions[option.flag.replace('--', '')] ? 'Enabled' : 'Disabled'}`);
+    global.auditcore.logger.info('');
   });
 }

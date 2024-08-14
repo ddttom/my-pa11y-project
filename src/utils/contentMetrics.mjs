@@ -15,7 +15,7 @@ const HEADING_MAX_LENGTH = 70;
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateTitleMetrics($, results, logger) {
+export function updateTitleMetrics($, results) {
   if (!$ || !results || !logger) {
     throw new Error('Invalid parameters for updateTitleMetrics');
   }
@@ -31,9 +31,9 @@ export function updateTitleMetrics($, results, logger) {
       const pixelWidth = estimatePixelWidth(title);
       safeIncrement(results.titleMetrics.pixelWidth, pixelWidth);
     }
-    logger.debug('Updated title metrics');
+    global.auditcore.logger.debug('Updated title metrics');
   } catch (error) {
-    logger.error('Error updating title metrics:', error);
+    global.auditcore.logger.error('Error updating title metrics:', error);
   }
 }
 
@@ -43,7 +43,7 @@ export function updateTitleMetrics($, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateMetaDescriptionMetrics($, results, logger) {
+export function updateMetaDescriptionMetrics($, results) {
   if (!$ || !results || !logger) {
     throw new Error('Invalid parameters for updateMetaDescriptionMetrics');
   }
@@ -59,9 +59,9 @@ export function updateMetaDescriptionMetrics($, results, logger) {
       const pixelWidth = estimatePixelWidth(metaDescription);
       safeIncrement(results.metaDescriptionMetrics.pixelWidth, pixelWidth);
     }
-    logger.debug('Updated meta description metrics');
+    global.auditcore.logger.debug('Updated meta description metrics');
   } catch (error) {
-    logger.error('Error updating meta description metrics:', error);
+    global.auditcore.logger.error('Error updating meta description metrics:', error);
   }
 }
 
@@ -71,7 +71,7 @@ export function updateMetaDescriptionMetrics($, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateHeadingMetrics($, results, logger) {
+export function updateHeadingMetrics($, results) {
   if (!$ || !results || !logger) {
     throw new Error('Invalid parameters for updateHeadingMetrics');
   }
@@ -94,8 +94,8 @@ export function updateHeadingMetrics($, results, logger) {
     if ($('h1').length && $('*').index($('h2').first()) < $('*').index($('h1').first())) {
       safeIncrement(results.h2Metrics, 'nonSequential');
     }
-    logger.debug('Updated heading metrics');
+    global.auditcore.logger.debug('Updated heading metrics');
   } catch (error) {
-    logger.error('Error updating heading metrics:', error);
+    global.auditcore.logger.error('Error updating heading metrics:', error);
   }
 }

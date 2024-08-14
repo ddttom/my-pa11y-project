@@ -20,24 +20,24 @@ const gzip = promisify(createGzip);
 
 const MAX_URLS_PER_SITEMAP = 50000;
 
-export async function generateSitemap(results, outputDir, options, logger) {
+export async function generateSitemap(results, outputDir, options) {
   const baseUrl = typeof options.baseUrl === 'string' ? options.baseUrl : '';
-  logger.info(`Generating sitemap with base URL: ${baseUrl}`);
+  global.auditcore.logger.info(`Generating sitemap with base URL: ${baseUrl}`);
 
   try {
-    const urls = extractUrlsFromResults(results, logger);
+    const urls = extractUrlsFromResults(results);
 
     if (urls.length === 0) {
-      logger.warn('No valid URLs were found to include in the sitemap.');
+      global.auditcore.logger.warn('No valid URLs were found to include in the sitemap.');
       return null;
     }
 
     if (urls.length > MAX_URLS_PER_SITEMAP) {
-      logger.info(`Large number of URLs (${urls.length}). Splitting into multiple sitemaps.`);
-      return await generateSplitSitemaps(urls, outputDir, baseUrl, logger);
+      global.auditcore.logger.info(`Large number of URLs (${urls.length}). Splitting into multiple sitemaps.`);
+      return await generateSplitSitemaps(urls, outputDir, baseUrl);
     }
 
-    logger.debug('Creating sitemap stream');
+    global.auditcore.logger.debug('Creating sitemap stream');
     const stream = new SitemapStream({ hostname: baseUrl });
     const pipeline = stream.pipe(createGzip());
 
@@ -46,21 +46,21 @@ export async function generateSitemap(results, outputDir, options, logger) {
     }
     stream.end();
 
-    logger.debug('Compressing sitemap');
+    global.auditcore.logger.debug('Compressing sitemap');
     const sitemapBuffer = await streamToPromise(pipeline);
 
     const sitemapPath = path.join(outputDir, 'sitemap.xml.gz');
     await fs.writeFile(sitemapPath, sitemapBuffer);
 
-    logger.info(`Sitemap generated and saved to ${sitemapPath}`);
+    global.auditcore.logger.info(`Sitemap generated and saved to ${sitemapPath}`);
     return sitemapPath;
   } catch (error) {
-    logger.error('Error generating sitemap:', error);
+    global.auditcore.logger.error('Error generating sitemap:', error);
     throw error;
   }
 }
 
-async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
+async function generateSplitSitemaps(urls, outputDir, baseUrl) {
   const sitemapIndex = [];
   const chunks = chunkArray(urls, MAX_URLS_PER_SITEMAP);
 
@@ -69,7 +69,7 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
     const sitemapName = `sitemap-${i + 1}.xml.gz`;
     const sitemapPath = path.join(outputDir, sitemapName);
 
-    logger.debug(`Generating sitemap ${i + 1} of ${chunks.length}`);
+    global.auditcore.logger.debug(`Generating sitemap ${i + 1} of ${chunks.length}`);
     const stream = new SitemapStream({ hostname: baseUrl });
     const pipeline = stream.pipe(createGzip());
 
@@ -86,7 +86,7 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
       lastmod: new Date().toISOString(),
     });
 
-    logger.info(`Sitemap ${i + 1} generated and saved to ${sitemapPath}`);
+    global.auditcore.logger.info(`Sitemap ${i + 1} generated and saved to ${sitemapPath}`);
   }
 
   const indexStream = new SitemapStream({ hostname: baseUrl });
@@ -101,14 +101,14 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
   const indexPath = path.join(outputDir, 'sitemap-index.xml.gz');
   await fs.writeFile(indexPath, indexBuffer);
 
-  logger.info(`Sitemap index generated and saved to ${indexPath}`);
+  global.auditcore.logger.info(`Sitemap index generated and saved to ${indexPath}`);
   return indexPath;
 }
 
-function extractUrlsFromResults(results, logger) {
+function extractUrlsFromResults(results) {
   const urls = new Set();
 
-  logger.debug('Extracting URLs from results');
+  global.auditcore.logger.debug('Extracting URLs from results');
 
   // Extract from internalLinks
   if (results.internalLinks) {
@@ -140,7 +140,7 @@ function extractUrlsFromResults(results, logger) {
     });
   }
 
-  logger.info(`Extracted ${urls.size} unique URLs for sitemap`);
+  global.auditcore.logger.info(`Extracted ${urls.size} unique URLs for sitemap`);
   return Array.from(urls);
 }
 

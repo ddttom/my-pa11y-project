@@ -31,7 +31,7 @@ export class UrlProcessor {
    * @param {Object} options - Configuration options.
    * @param {Object} logger - Logger instance.
    */
-  constructor(options, logger) {
+  constructor(options) {
     this.options = { ...DEFAULT_CONFIG, ...options };
     this.logger = logger;
     this.results = {
@@ -54,7 +54,7 @@ export class UrlProcessor {
    */
   // eslint-disable-next-line no-unused-vars
   async processUrl(testUrl, lastmod, index, totalTests, priority = 0) {
-    this.logger.info(`Processing URL ${index + 1} of ${totalTests}: ${testUrl}`);
+    this.global.auditcore.logger.info(`Processing URL ${index + 1} of ${totalTests}: ${testUrl}`);
 
     for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
       try {
@@ -68,7 +68,7 @@ export class UrlProcessor {
           html, jsErrors, statusCode, headers, pageData,
         } = data;
 
-        this.logger.debug(`Retrieved data for ${testUrl}. Status code: ${statusCode}`);
+        this.global.auditcore.logger.debug(`Retrieved data for ${testUrl}. Status code: ${statusCode}`);
 
         updateUrlMetrics(testUrl, this.options.baseUrl, html, statusCode, this.results, this.logger);
         updateResponseCodeMetrics(statusCode, this.results, this.logger);
@@ -76,17 +76,17 @@ export class UrlProcessor {
         if (statusCode === 200) {
           await this.processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod);
         } else {
-          this.logger.warn(`Skipping content analysis for ${testUrl} due to non-200 status code`);
+          this.global.auditcore.logger.warn(`Skipping content analysis for ${testUrl} due to non-200 status code`);
         }
 
         return; // Successfully processed, exit the retry loop
       } catch (error) {
-        this.logger.error(`Error processing ${testUrl} (Attempt ${attempt}/${this.options.maxRetries}):`, error);
+        this.global.auditcore.logger.error(`Error processing ${testUrl} (Attempt ${attempt}/${this.options.maxRetries}):`, error);
 
         if (attempt === this.options.maxRetries) {
           this.handleProcessingFailure(testUrl, error);
         } else {
-          this.logger.info(`Retrying ${testUrl} in ${this.options.retryDelay / 1000} seconds...`);
+          this.global.auditcore.logger.info(`Retrying ${testUrl} in ${this.options.retryDelay / 1000} seconds...`);
           await new Promise((resolve) => { setTimeout(resolve, this.options.retryDelay); });
         }
       }
@@ -126,20 +126,20 @@ export class UrlProcessor {
       );
 
       if (result.pa11ySuccess) {
-        this.logger.info(`Pa11y analysis successful for ${result.url}`);
+        this.global.auditcore.logger.info(`Pa11y analysis successful for ${result.url}`);
       }
 
-      this.logger.debug(`Analyzing performance for ${testUrl}`);
+      this.global.auditcore.logger.debug(`Analyzing performance for ${testUrl}`);
       const performanceMetrics = await analyzePerformance(testUrl, this.logger);
       this.results.performanceAnalysis.push({ url: testUrl, lastmod, ...performanceMetrics });
 
-      this.logger.debug(`Calculating SEO score for ${testUrl}`);
+      this.global.auditcore.logger.debug(`Calculating SEO score for ${testUrl}`);
       const seoScore = calculateSeoScore({ ...pageData, performanceMetrics }, this.logger);
       this.results.seoScores.push({ url: testUrl, lastmod, ...seoScore });
 
-      this.logger.info(`Successfully processed ${testUrl}`);
+      this.global.auditcore.logger.info(`Successfully processed ${testUrl}`);
     } catch (error) {
-      this.logger.error(`Error in processSuccessfulResponse for ${testUrl}:`, error);
+      this.global.auditcore.logger.error(`Error in processSuccessfulResponse for ${testUrl}:`, error);
       this.handleProcessingFailure(testUrl, error);
     }
   }
@@ -150,7 +150,7 @@ export class UrlProcessor {
    * @param {Error} error - The error that occurred.
    */
   handleProcessingFailure(testUrl, error) {
-    this.logger.error(`Failed to process ${testUrl} after ${this.options.maxRetries} attempts. Last error:`, error);
+    this.global.auditcore.logger.error(`Failed to process ${testUrl} after ${this.options.maxRetries} attempts. Last error:`, error);
     this.results.failedUrls.push({ url: testUrl, error: error.message });
   }
 
@@ -188,7 +188,7 @@ export class UrlProcessor {
       await Promise.all(batchPromises);
     }
 
-    this.logger.info(`Completed processing batch ${startIndex + 1} to ${endIndex}`);
+    this.global.auditcore.logger.info(`Completed processing batch ${startIndex + 1} to ${endIndex}`);
   }
 
   /**

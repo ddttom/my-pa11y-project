@@ -16,12 +16,12 @@ import { generateReport } from './reportGenerator.mjs';
  * @returns {Promise<void>}
  * @throws {Error} If there's an error saving the file.
  */
-async function saveFile(filePath, content, logger) {
+async function saveFile(filePath, content) {
   try {
     await fs.writeFile(filePath, content, 'utf8');
-    logger.info(`File saved successfully: ${filePath}`);
+    global.auditcore.logger.info(`File saved successfully: ${filePath}`);
   } catch (error) {
-    logger.error(`Error saving file ${filePath}:`, error);
+    global.auditcore.logger.error(`Error saving file ${filePath}:`, error);
     throw error; // Re-throw to allow caller to handle
   }
 }
@@ -33,12 +33,12 @@ async function saveFile(filePath, content, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-export async function postProcessResults(results, outputDir, logger) {
-  logger.info('Post-processing results');
+export async function postProcessResults(results, outputDir) {
+  global.auditcore.logger.info('Post-processing results');
   const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
-  await saveCommonPa11yIssues(commonPa11yIssues, outputDir, logger);
+  await saveCommonPa11yIssues(commonPa11yIssues, outputDir);
   results.pa11y = filterRepeatedPa11yIssues(results.pa11y, commonPa11yIssues);
-  logger.info('Results post-processing completed');
+  global.auditcore.logger.info('Results post-processing completed');
 }
 
 /**
@@ -49,61 +49,61 @@ export async function postProcessResults(results, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-export async function saveResults(results, outputDir, sitemapUrl, logger) {
-  logger.info(`Saving results to: ${outputDir}`);
+export async function saveResults(results, outputDir, sitemapUrl) {
+  global.auditcore.logger.info(`Saving results to: ${outputDir}`);
 
   const saveOperations = [
     {
       name: 'Pa11y results',
-      func: () => savePa11yResults(results, outputDir, logger),
+      func: () => savePa11yResults(results, outputDir),
     },
     {
       name: 'Internal links',
-      func: () => saveInternalLinks(results, outputDir, logger),
+      func: () => saveInternalLinks(results, outputDir),
     },
     {
       name: 'Images without alt',
-      func: () => saveImagesWithoutAlt(results.contentAnalysis, outputDir, logger),
+      func: () => saveImagesWithoutAlt(results.contentAnalysis, outputDir),
     },
     {
       name: 'Content analysis',
-      func: () => saveContentAnalysis(results, outputDir, logger),
+      func: () => saveContentAnalysis(results, outputDir),
     },
     {
       name: 'Orphaned URLs',
-      func: () => saveOrphanedUrls(results, outputDir, logger),
+      func: () => saveOrphanedUrls(results, outputDir),
     },
     {
       name: 'SEO report',
-      func: () => saveSeoReport(results, outputDir, sitemapUrl, logger),
+      func: () => saveSeoReport(results, outputDir, sitemapUrl),
     },
     {
       name: 'SEO scores',
-      func: () => saveSeoScores(results, outputDir, logger),
+      func: () => saveSeoScores(results, outputDir),
     },
     {
       name: 'Performance analysis',
-      func: () => savePerformanceAnalysis(results, outputDir, logger),
+      func: () => savePerformanceAnalysis(results, outputDir),
     },
     {
       name: 'SEO scores summary',
-      func: () => saveSeoScoresSummary(results, outputDir, logger),
+      func: () => saveSeoScoresSummary(results, outputDir),
     },
   ];
 
   const saveResultsList = await Promise.allSettled(
     saveOperations.map(async (operation) => {
       try {
-        logger.debug(`Attempting to save ${operation.name}...`);
+        global.auditcore.logger.debug(`Attempting to save ${operation.name}...`);
         const result = await operation.func();
         if (typeof result === 'number') {
-          logger.debug(`${operation.name}: ${result} items saved`);
+          global.auditcore.logger.debug(`${operation.name}: ${result} items saved`);
         } else {
-          logger.debug(`${operation.name} saved successfully`);
+          global.auditcore.logger.debug(`${operation.name} saved successfully`);
         }
         return { name: operation.name, success: true, result };
       } catch (error) {
-        logger.error(`Error saving ${operation.name}:`, error);
+        global.auditcore.logger.error(`Error saving ${operation.name}:`, error);
         return { name: operation.name, success: false, error: error.message };
       }
     }),
@@ -116,19 +116,19 @@ export async function saveResults(results, outputDir, sitemapUrl, logger) {
     (result) => result.status === 'rejected' || !result.value.success,
   );
 
-  logger.info(
+  global.auditcore.logger.info(
     `Successfully saved ${successfulOperations.length} out of ${saveOperations.length} result types`,
   );
   if (failedOperations.length > 0) {
-    logger.warn(`Failed to save ${failedOperations.length} result types`);
+    global.auditcore.logger.warn(`Failed to save ${failedOperations.length} result types`);
     failedOperations.forEach((result) => {
-      logger.warn(
+      global.auditcore.logger.warn(
         `  - ${result.value.name}: ${result.value.error || result.reason}`,
       );
     });
   }
 
-  logger.info(`All results saved to ${outputDir}`);
+  global.auditcore.logger.info(`All results saved to ${outputDir}`);
 }
 
 /**
@@ -138,15 +138,15 @@ export async function saveResults(results, outputDir, sitemapUrl, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function savePa11yResults(results, outputDir, logger) {
-  await saveRawPa11yResult(results, outputDir, logger);
+async function savePa11yResults(results, outputDir) {
+  await saveRawPa11yResult(results, outputDir);
   const pa11yCsv = formatCsv(
     flattenPa11yResults(results.pa11y),
     ['url', 'type', 'code', 'message', 'context', 'selector', 'error'],
     logger,
   );
-  await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv, logger);
-  logger.debug('Pa11y results saved');
+  await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
+  global.auditcore.logger.debug('Pa11y results saved');
 }
 
 /**
@@ -174,7 +174,7 @@ function flattenPa11yResults(pa11yResults) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveInternalLinks(results, outputDir, logger) {
+async function saveInternalLinks(results, outputDir) {
   const internalLinksCsv = formatCsv(
     flattenInternalLinks(results.internalLinks),
     ['source', 'target', 'anchorText', 'statusCode'],
@@ -185,7 +185,7 @@ async function saveInternalLinks(results, outputDir, logger) {
     internalLinksCsv,
     logger,
   );
-  logger.debug('Internal links results saved');
+  global.auditcore.logger.debug('Internal links results saved');
 }
 
 /**
@@ -211,7 +211,7 @@ function flattenInternalLinks(internalLinks) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<number>} The number of images without alt text saved.
  */
-async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
+async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
   const imagesWithoutAlt = contentAnalysis.flatMap(
     (page) => page.imagesWithoutAlt || [],
   );
@@ -234,9 +234,9 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
       imagesWithoutAltCsv,
       logger,
     );
-    logger.info(`${imagesWithoutAlt.length} images without alt text saved`);
+    global.auditcore.logger.info(`${imagesWithoutAlt.length} images without alt text saved`);
   } else {
-    logger.info('No images without alt text found');
+    global.auditcore.logger.info('No images without alt text found');
   }
 
   return imagesWithoutAlt.length;
@@ -249,7 +249,7 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveContentAnalysis(results, outputDir, logger) {
+async function saveContentAnalysis(results, outputDir) {
   const contentAnalysisCsv = formatCsv(
     results.contentAnalysis,
     [
@@ -267,7 +267,7 @@ async function saveContentAnalysis(results, outputDir, logger) {
     contentAnalysisCsv,
     logger,
   );
-  logger.debug('Content analysis saved');
+  global.auditcore.logger.debug('Content analysis saved');
 }
 
 /**
@@ -277,21 +277,21 @@ async function saveContentAnalysis(results, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<number>} The number of orphaned URLs saved.
  */
-async function saveOrphanedUrls(results, outputDir, logger) {
+async function saveOrphanedUrls(results, outputDir) {
   if (results.orphanedUrls && results.orphanedUrls.size > 0) {
     const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({
       url,
     }));
-    const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url'], logger);
+    const orphanedUrlsCsv = formatCsv(orphanedUrlsArray, ['url']);
     await saveFile(
       path.join(outputDir, 'orphaned_urls.csv'),
       orphanedUrlsCsv,
       logger,
     );
-    logger.info(`${results.orphanedUrls.size} orphaned URLs saved`);
+    global.auditcore.logger.info(`${results.orphanedUrls.size} orphaned URLs saved`);
     return results.orphanedUrls.size;
   }
-  logger.info('No orphaned URLs found');
+  global.auditcore.logger.info('No orphaned URLs found');
   return 0;
 }
 
@@ -303,10 +303,10 @@ async function saveOrphanedUrls(results, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveSeoReport(results, outputDir, sitemapUrl, logger) {
-  const report = generateReport(results, sitemapUrl, logger);
-  await saveFile(path.join(outputDir, 'seo_report.csv'), report, logger);
-  logger.debug('SEO report saved');
+async function saveSeoReport(results, outputDir, sitemapUrl) {
+  const report = generateReport(results, sitemapUrl);
+  await saveFile(path.join(outputDir, 'seo_report.csv'), report);
+  global.auditcore.logger.debug('SEO report saved');
 }
 
 /**
@@ -316,7 +316,7 @@ async function saveSeoReport(results, outputDir, sitemapUrl, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveSeoScores(results, outputDir, logger) {
+async function saveSeoScores(results, outputDir) {
   const seoScoresFormatted = results.seoScores.map((score) => ({
     url: score.url || '',
     score:
@@ -346,9 +346,9 @@ async function saveSeoScores(results, outputDir, logger) {
     'details.socialMediaTags',
   ];
 
-  const seoScoresCsv = formatCsv(seoScoresFormatted, headers, logger);
-  await saveFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv, logger);
-  logger.debug('SEO scores saved');
+  const seoScoresCsv = formatCsv(seoScoresFormatted, headers);
+  await saveFile(path.join(outputDir, 'seo_scores.csv'), seoScoresCsv);
+  global.auditcore.logger.debug('SEO scores saved');
 }
 
 /**
@@ -358,7 +358,7 @@ async function saveSeoScores(results, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<number>} The number of performance analysis results saved.
  */
-async function savePerformanceAnalysis(results, outputDir, logger) {
+async function savePerformanceAnalysis(results, outputDir) {
   const getPerformanceComment = (metric, value) => {
     if (value === null || value === undefined) return 'N/A';
     const thresholds = {
@@ -432,13 +432,13 @@ async function savePerformanceAnalysis(results, outputDir, logger) {
     ]),
   ];
 
-  const performanceAnalysisCsv = formatCsv(csvData, logger);
+  const performanceAnalysisCsv = formatCsv(csvData);
   await saveFile(
     path.join(outputDir, 'performance_analysis.csv'),
     performanceAnalysisCsv,
     logger,
   );
-  logger.debug('Performance analysis saved');
+  global.auditcore.logger.debug('Performance analysis saved');
   return roundedPerformanceAnalysis.length;
 }
 
@@ -449,7 +449,7 @@ async function savePerformanceAnalysis(results, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveSeoScoresSummary(results, outputDir, logger) {
+async function saveSeoScoresSummary(results, outputDir) {
   const getScoreComment = (score) => {
     if (score >= 90) return 'Excellent';
     if (score >= 80) return 'Good';
@@ -521,17 +521,17 @@ async function saveSeoScoresSummary(results, outputDir, logger) {
         averageScores.details[key],
       );
     } else {
-      logger.warn(`Detail key '${key}' not found in average scores.`);
+      global.auditcore.logger.warn(`Detail key '${key}' not found in average scores.`);
     }
   });
 
-  const seoScoresSummaryCsv = formatCsv(summaryData, '', logger);
+  const seoScoresSummaryCsv = formatCsv(summaryData, '');
   await saveFile(
     path.join(outputDir, 'seo_scores_summary.csv'),
     seoScoresSummaryCsv,
     logger,
   );
-  logger.debug('SEO scores summary saved');
+  global.auditcore.logger.debug('SEO scores summary saved');
 }
 
 /**
@@ -541,7 +541,7 @@ async function saveSeoScoresSummary(results, outputDir, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveRawPa11yResult(results, outputDir, logger) {
+async function saveRawPa11yResult(results, outputDir) {
   try {
     const filename = 'pa11y_raw_results.json';
     const filePath = path.join(outputDir, filename);
@@ -550,9 +550,9 @@ async function saveRawPa11yResult(results, outputDir, logger) {
       issues: result.issues,
     }));
     await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
-    logger.debug(`Raw pa11y results saved to ${filePath}`);
+    global.auditcore.logger.debug(`Raw pa11y results saved to ${filePath}`);
   } catch (error) {
-    logger.error('Error saving raw pa11y results:', error);
+    global.auditcore.logger.error('Error saving raw pa11y results:', error);
   }
 }
 
@@ -588,7 +588,7 @@ function analyzeCommonPa11yIssues(pa11yResults) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function saveCommonPa11yIssues(commonIssues, outputDir, logger) {
+async function saveCommonPa11yIssues(commonIssues, outputDir) {
   if (commonIssues.length > 0) {
     const csvData = formatCsv(
       commonIssues,
@@ -600,9 +600,9 @@ async function saveCommonPa11yIssues(commonIssues, outputDir, logger) {
       csvData,
       logger,
     );
-    logger.debug('Common Pa11y issues saved');
+    global.auditcore.logger.debug('Common Pa11y issues saved');
   } else {
-    logger.debug('No common Pa11y issues found');
+    global.auditcore.logger.debug('No common Pa11y issues found');
   }
 }
 

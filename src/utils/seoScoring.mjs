@@ -29,13 +29,13 @@ const SEO_WEIGHTS = {
  * @param {Object} logger - The logger object.
  * @returns {Object} The SEO score and details.
  */
-export function calculateSeoScore(pageData, logger) {
+export function calculateSeoScore(pageData) {
   if (!pageData) {
-    logger.warn('pageData is undefined or null in calculateSeoScore');
+    global.auditcore.logger.warn('pageData is undefined or null in calculateSeoScore');
     return { score: 0, details: {} };
   }
 
-  logger.info(`Calculating SEO score for ${pageData.url}`);
+  global.auditcore.logger.info(`Calculating SEO score for ${pageData.url}`);
 
   const {
     title, metaDescription, url, h1, wordCount, internalLinks,
@@ -66,11 +66,11 @@ export function calculateSeoScore(pageData, logger) {
 
     scoringFunctions.forEach(({ name, func, param }) => {
       try {
-        details[name] = func(param, logger);
+        details[name] = func(param);
         totalScore += details[name] * SEO_WEIGHTS[name];
         maxPossibleScore += SEO_WEIGHTS[name];
       } catch (error) {
-        logger.error(`Error in ${name} scoring: ${error.message}`);
+        global.auditcore.logger.error(`Error in ${name} scoring: ${error.message}`);
         details[name] = 0;
         maxPossibleScore += SEO_WEIGHTS[name];
       }
@@ -78,13 +78,13 @@ export function calculateSeoScore(pageData, logger) {
 
     const finalScore = (totalScore / maxPossibleScore) * 100;
 
-    logger.info(`SEO score calculated for ${url}: ${finalScore.toFixed(2)}`);
+    global.auditcore.logger.info(`SEO score calculated for ${url}: ${finalScore.toFixed(2)}`);
     return {
       score: Math.round(finalScore),
       details,
     };
   } catch (error) {
-    logger.error(`Error calculating SEO score for ${url}:`, error);
+    global.auditcore.logger.error(`Error calculating SEO score for ${url}:`, error);
     return { score: 0, details: {}, error: error.message };
   }
 }
@@ -138,14 +138,14 @@ function validateInput(value, name, type) {
  * @param {Object} logger - The logger object.
  * @returns {number} The title optimization score.
  */
-function scoreTitleOptimization(title, logger) {
+function scoreTitleOptimization(title) {
   try {
     validateInput(title, 'title', 'string');
     const score = scoreRange(title.length, 30, 60);
-    logger.debug(`Title optimization score: ${score.toFixed(2)}. Title length: ${title.length}`);
+    global.auditcore.logger.debug(`Title optimization score: ${score.toFixed(2)}. Title length: ${title.length}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreTitleOptimization');
+    return handleScoringError(error, 'scoreTitleOptimization');
   }
 }
 
@@ -155,14 +155,14 @@ function scoreTitleOptimization(title, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The meta description score.
  */
-function scoreMetaDescription(metaDescription, logger) {
+function scoreMetaDescription(metaDescription) {
   try {
     validateInput(metaDescription, 'metaDescription', 'string');
     const score = scoreRange(metaDescription.length, 70, 155);
-    logger.debug(`Meta description score: ${score.toFixed(2)}. Length: ${metaDescription.length}`);
+    global.auditcore.logger.debug(`Meta description score: ${score.toFixed(2)}. Length: ${metaDescription.length}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreMetaDescription');
+    return handleScoringError(error, 'scoreMetaDescription');
   }
 }
 
@@ -172,7 +172,7 @@ function scoreMetaDescription(metaDescription, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The URL structure score.
  */
-function scoreUrlStructure(url, logger) {
+function scoreUrlStructure(url) {
   try {
     validateInput(url, 'url', 'string');
     let score = 1;
@@ -208,10 +208,10 @@ function scoreUrlStructure(url, logger) {
       issues.push('Contains special characters other than hyphens');
     }
     score = Math.max(0, score);
-    logger.debug(`URL structure score: ${score.toFixed(2)}. Issues: ${issues.join(', ') || 'None'}`);
+    global.auditcore.logger.debug(`URL structure score: ${score.toFixed(2)}. Issues: ${issues.join(', ') || 'None'}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreUrlStructure');
+    return handleScoringError(error, 'scoreUrlStructure');
   }
 }
 
@@ -221,14 +221,14 @@ function scoreUrlStructure(url, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The H1 optimization score.
  */
-function scoreH1Optimization(h1, logger) {
+function scoreH1Optimization(h1) {
   try {
     validateInput(h1, 'h1', 'string');
     const score = h1.length > 0 && h1.length <= 70 ? 1 : 0.5;
-    logger.debug(`H1 optimization score: ${score.toFixed(2)}. H1 length: ${h1.length}`);
+    global.auditcore.logger.debug(`H1 optimization score: ${score.toFixed(2)}. H1 length: ${h1.length}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreH1Optimization');
+    return handleScoringError(error, 'scoreH1Optimization');
   }
 }
 
@@ -238,14 +238,14 @@ function scoreH1Optimization(h1, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The content length score.
  */
-function scoreContentLength(wordCount, logger) {
+function scoreContentLength(wordCount) {
   try {
     validateInput(wordCount, 'wordCount', 'number');
     const score = scoreRange(wordCount, 300, 1500);
-    logger.debug(`Content length score: ${score.toFixed(2)}. Word count: ${wordCount}`);
+    global.auditcore.logger.debug(`Content length score: ${score.toFixed(2)}. Word count: ${wordCount}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreContentLength');
+    return handleScoringError(error, 'scoreContentLength');
   }
 }
 
@@ -255,7 +255,7 @@ function scoreContentLength(wordCount, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The content quality score.
  */
-function scoreContentQuality(pageData, logger) {
+function scoreContentQuality(pageData) {
   try {
     validateInput(pageData, 'pageData', 'object');
     let score = 0;
@@ -281,10 +281,10 @@ function scoreContentQuality(pageData, logger) {
     }
 
     score = Math.min(1, Math.max(0, score));
-    logger.debug(`Content quality score: ${score.toFixed(2)}. Issues: ${issues.join(', ') || 'None'}`);
+    global.auditcore.logger.debug(`Content quality score: ${score.toFixed(2)}. Issues: ${issues.join(', ') || 'None'}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreContentQuality');
+    return handleScoringError(error, 'scoreContentQuality');
   }
 }
 
@@ -312,14 +312,14 @@ function extractMainKeyword(title, metaDescription, h1) {
  * @param {Object} logger - The logger object.
  * @returns {number} The internal linking score.
  */
-function scoreInternalLinking(internalLinksCount, logger) {
+function scoreInternalLinking(internalLinksCount) {
   try {
     validateInput(internalLinksCount, 'internalLinksCount', 'number');
     const score = scoreRange(internalLinksCount, 2, 20);
-    logger.debug(`Internal linking score: ${score.toFixed(2)}. Internal links count: ${internalLinksCount}`);
+    global.auditcore.logger.debug(`Internal linking score: ${score.toFixed(2)}. Internal links count: ${internalLinksCount}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreInternalLinking');
+    return handleScoringError(error, 'scoreInternalLinking');
   }
 }
 
@@ -329,19 +329,19 @@ function scoreInternalLinking(internalLinksCount, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The image optimization score.
  */
-function scoreImageOptimization(images, logger) {
+function scoreImageOptimization(images) {
   try {
     validateInput(images, 'images', 'array');
     if (images.length === 0) {
-      logger.debug('Image optimization score: 0. No images found.');
+      global.auditcore.logger.debug('Image optimization score: 0. No images found.');
       return 0;
     }
     const imagesWithAlt = images.filter((img) => img.alt).length;
     const score = imagesWithAlt / images.length;
-    logger.debug(`Image optimization score: ${score.toFixed(2)}. Images with alt text: ${imagesWithAlt}/${images.length}`);
+    global.auditcore.logger.debug(`Image optimization score: ${score.toFixed(2)}. Images with alt text: ${imagesWithAlt}/${images.length}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreImageOptimization');
+    return handleScoringError(error, 'scoreImageOptimization');
   }
 }
 
@@ -351,17 +351,17 @@ function scoreImageOptimization(images, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The page speed score.
  */
-function scorePageSpeed(performanceMetrics, logger) {
+function scorePageSpeed(performanceMetrics) {
   try {
     validateInput(performanceMetrics, 'performanceMetrics', 'object');
     if (typeof performanceMetrics.loadTime !== 'number') {
       throw new Error('performanceMetrics.loadTime must be a number');
     }
     const score = scoreRange(performanceMetrics.loadTime, 5000, 1000, true);
-    logger.debug(`Page speed score: ${score.toFixed(2)}. Load time: ${performanceMetrics.loadTime}ms`);
+    global.auditcore.logger.debug(`Page speed score: ${score.toFixed(2)}. Load time: ${performanceMetrics.loadTime}ms`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scorePageSpeed');
+    return handleScoringError(error, 'scorePageSpeed');
   }
 }
 
@@ -371,14 +371,14 @@ function scorePageSpeed(performanceMetrics, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The mobile optimization score.
  */
-function scoreMobileOptimization(hasResponsiveMetaTag, logger) {
+function scoreMobileOptimization(hasResponsiveMetaTag) {
   try {
     validateInput(hasResponsiveMetaTag, 'hasResponsiveMetaTag', 'boolean');
     const score = hasResponsiveMetaTag ? 1 : 0;
-    logger.debug(`Mobile optimization score: ${score.toFixed(2)}. Has responsive meta tag: ${hasResponsiveMetaTag}`);
+    global.auditcore.logger.debug(`Mobile optimization score: ${score.toFixed(2)}. Has responsive meta tag: ${hasResponsiveMetaTag}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreMobileOptimization');
+    return handleScoringError(error, 'scoreMobileOptimization');
   }
 }
 
@@ -388,14 +388,14 @@ function scoreMobileOptimization(hasResponsiveMetaTag, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The security factors score.
  */
-function scoreSecurityFactors(url, logger) {
+function scoreSecurityFactors(url) {
   try {
     validateInput(url, 'url', 'string');
     const score = url.startsWith('https') ? 1 : 0;
-    logger.debug(`Security factors score: ${score.toFixed(2)}. Uses HTTPS: ${score === 1}`);
+    global.auditcore.logger.debug(`Security factors score: ${score.toFixed(2)}. Uses HTTPS: ${score === 1}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreSecurityFactors');
+    return handleScoringError(error, 'scoreSecurityFactors');
   }
 }
 
@@ -405,14 +405,14 @@ function scoreSecurityFactors(url, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The structured data score.
  */
-function scoreStructuredData(structuredData, logger) {
+function scoreStructuredData(structuredData) {
   try {
     validateInput(structuredData, 'structuredData', 'array');
     const score = structuredData.length > 0 ? 1 : 0;
-    logger.debug(`Structured data score: ${score.toFixed(2)}. Has structured data: ${score === 1}`);
+    global.auditcore.logger.debug(`Structured data score: ${score.toFixed(2)}. Has structured data: ${score === 1}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreStructuredData');
+    return handleScoringError(error, 'scoreStructuredData');
   }
 }
 
@@ -424,17 +424,17 @@ function scoreStructuredData(structuredData, logger) {
  * @param {Object} logger - The logger object.
  * @returns {number} The social media tags score.
  */
-function scoreSocialMediaTags({ openGraphTags, twitterTags }, logger) {
+function scoreSocialMediaTags({ openGraphTags, twitterTags }) {
   try {
     validateInput(openGraphTags, 'openGraphTags', 'object');
     validateInput(twitterTags, 'twitterTags', 'object');
     const hasOpenGraph = Object.keys(openGraphTags).length > 0;
     const hasTwitterCard = Object.keys(twitterTags).length > 0;
     const score = (hasOpenGraph || hasTwitterCard) ? 1 : 0;
-    logger.debug(`Social media tags score: ${score.toFixed(2)}. Has Open Graph: ${hasOpenGraph}, Has Twitter Card: ${hasTwitterCard}`);
+    global.auditcore.logger.debug(`Social media tags score: ${score.toFixed(2)}. Has Open Graph: ${hasOpenGraph}, Has Twitter Card: ${hasTwitterCard}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, logger, 'scoreSocialMediaTags');
+    return handleScoringError(error, 'scoreSocialMediaTags');
   }
 }
 
@@ -460,8 +460,8 @@ function scoreRange(value, min, max, inverse = false) {
  * @param {string} functionName - The name of the function where the error occurred.
  * @returns {number} A default score of 0.
  */
-function handleScoringError(error, logger, functionName) {
-  logger.error(`Error in ${functionName}: ${error.message}`);
+function handleScoringError(error, functionName) {
+  global.auditcore.logger.error(`Error in ${functionName}: ${error.message}`);
   return 0;
 }
 

@@ -15,16 +15,16 @@ import { updateInternalLinks } from './metricsUpdater.mjs';
  * @param {Object} logger - The logger object.
  * @returns {Promise<*>} The result of the operation.
  */
-async function retryOperation(operation, retryAttempts, retryDelay, logger) {
+async function retryOperation(operation, retryAttempts, retryDelay) {
   for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
       if (attempt === retryAttempts) {
-        logger.warn(`Operation failed after ${retryAttempts} attempts: ${error.message}`);
+        global.auditcore.logger.warn(`Operation failed after ${retryAttempts} attempts: ${error.message}`);
         return Promise.reject(error);
       }
-      logger.warn(`Operation failed, retrying (${attempt}/${retryAttempts}): ${error.message}`);
+      global.auditcore.logger.warn(`Operation failed, retrying (${attempt}/${retryAttempts}): ${error.message}`);
       await new Promise((resolve) => { setTimeout(resolve, retryDelay); });
     }
   }
@@ -41,7 +41,7 @@ async function retryOperation(operation, retryAttempts, retryDelay, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<Array>} The array of internal links.
  */
-async function getInternalLinksWithRetry(html, testUrl, baseUrl, config, logger) {
+async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
   return retryOperation(
     () => getInternalLinks(html, testUrl, baseUrl),
     config.retryAttempts,
@@ -92,11 +92,11 @@ function createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11y
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function generateAccessibilityReportIfNeeded(results, outputDir, logger) {
+async function generateAccessibilityReportIfNeeded(results, outputDir) {
   // eslint-disable-next-line no-unused-vars
-  const analysisResults = analyzeAccessibilityResults(results, logger);
-  const reportPath = await generateAccessibilityReport(results, outputDir, logger);
-  logger.info(`Accessibility report generated at: ${reportPath}`);
+  const analysisResults = analyzeAccessibilityResults(results);
+  const reportPath = await generateAccessibilityReport(results, outputDir);
+  global.auditcore.logger.info(`Accessibility report generated at: ${reportPath}`);
 }
 
 /**

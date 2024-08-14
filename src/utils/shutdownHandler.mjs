@@ -5,25 +5,25 @@ import { saveResults } from './results.mjs';
 
 let isShuttingDown = false;
 
-export function setupShutdownHandler(outputDir, results, logger) {
+export function setupShutdownHandler(outputDir, results) {
   process.on('SIGINT', async () => {
     if (isShuttingDown) {
-      logger.warn('Forced exit');
+      global.auditcore.logger.warn('Forced exit');
       process.exit(1);
     }
 
     isShuttingDown = true;
-    logger.info('Graceful shutdown initiated...');
+    global.auditcore.logger.info('Graceful shutdown initiated...');
 
     try {
-      logger.debug('Attempting to save partial results...');
-      await saveResults(results, outputDir, null, logger);
-      logger.debug('Partial results saved successfully');
+      global.auditcore.logger.debug('Attempting to save partial results...');
+      await saveResults(results, outputDir, null);
+      global.auditcore.logger.debug('Partial results saved successfully');
     } catch (error) {
-      logger.error('Error saving partial results:', error);
+      global.auditcore.logger.error('Error saving partial results:', error);
     }
 
-    logger.info('Shutdown complete. Exiting...');
+    global.auditcore.logger.info('Shutdown complete. Exiting...');
     process.exit(0);
   });
 }

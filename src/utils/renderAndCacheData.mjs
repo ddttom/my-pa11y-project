@@ -11,8 +11,8 @@ import { calculateSeoScore } from './seoScoring.mjs';
  * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The rendered and analyzed data.
  */
-async function renderAndCacheData(url, logger) {
-  logger.debug(`Rendering and caching data for ${url}`);
+async function renderAndCacheData(url) {
+  global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -104,10 +104,10 @@ async function renderAndCacheData(url, logger) {
       lastCrawled: new Date().toISOString(),
     };
 
-    logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
+    global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
     return data;
   } catch (error) {
-    logger.error(`Error rendering data for ${url}:`, error);
+    global.auditcore.logger.error(`Error rendering data for ${url}:`, error);
     if (browser) {
       await browser.close();
     }

@@ -13,7 +13,7 @@ const MAX_EXTERNAL_LINKS = 100;
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateImageMetrics($, results, logger) {
+export function updateImageMetrics($, results) {
   if (!$ || !results || !logger) {
     throw new Error('Invalid parameters for updateImageMetrics');
   }
@@ -32,9 +32,9 @@ export function updateImageMetrics($, results, logger) {
         safeIncrement(results.imageMetrics, 'altTextTooLong');
       }
     });
-    logger.debug('Updated image metrics');
+    global.auditcore.logger.debug('Updated image metrics');
   } catch (error) {
-    logger.error('Error updating image metrics:', error);
+    global.auditcore.logger.error('Error updating image metrics:', error);
   }
 }
 
@@ -45,7 +45,7 @@ export function updateImageMetrics($, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateLinkMetrics($, baseUrl, results, logger) {
+export function updateLinkMetrics($, baseUrl, results) {
   if (!$ || !isValidUrl(baseUrl) || !results || !logger) {
     throw new Error('Invalid parameters for updateLinkMetrics');
   }
@@ -61,8 +61,8 @@ export function updateLinkMetrics($, baseUrl, results, logger) {
         safeIncrement(results.linkMetrics, 'nonDescriptiveAnchorText');
       }
     });
-    logger.debug('Updated link metrics');
+    global.auditcore.logger.debug('Updated link metrics');
   } catch (error) {
-    logger.error('Error updating link metrics:', error);
+    global.auditcore.logger.error('Error updating link metrics:', error);
   }
 }

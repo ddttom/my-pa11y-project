@@ -26,8 +26,8 @@ const axiosInstance = axios.create({
 // Rate limiter: 5 requests per second
 const limiter = new Limiter({ tokensPerInterval: 5, interval: 'second' });
 
-export async function fetchAndParseSitemap(sitemapPath, logger) {
-  logger.info(`Fetching content from: ${sitemapPath}`);
+export async function fetchAndParseSitemap(sitemapPath) {
+  global.auditcore.logger.info(`Fetching content from: ${sitemapPath}`);
   try {
     await limiter.removeTokens(1);
     let content;
@@ -37,15 +37,15 @@ export async function fetchAndParseSitemap(sitemapPath, logger) {
       const response = await axiosInstance.get(sitemapPath, { responseType: 'arraybuffer' });
       content = response.data;
       isCompressed = response.headers['content-encoding'] === 'gzip' || sitemapPath.endsWith('.gz');
-      logger.debug(`Successfully fetched sitemap from URL: ${sitemapPath}`);
+      global.auditcore.logger.debug(`Successfully fetched sitemap from URL: ${sitemapPath}`);
     } else {
       content = await fs.readFile(sitemapPath);
       isCompressed = sitemapPath.endsWith('.gz');
-      logger.debug(`Successfully read sitemap from file: ${sitemapPath}`);
+      global.auditcore.logger.debug(`Successfully read sitemap from file: ${sitemapPath}`);
     }
 
     if (isCompressed) {
-      logger.debug('Decompressing gzipped content');
+      global.auditcore.logger.debug('Decompressing gzipped content');
       content = await gunzip(content);
     }
 
@@ -53,45 +53,45 @@ export async function fetchAndParseSitemap(sitemapPath, logger) {
 
     // Check if the content is XML or HTML
     if (content.trim().startsWith('<!DOCTYPE html>') || content.trim().startsWith('<html')) {
-      logger.warn('Found HTML content instead of sitemap');
+      global.auditcore.logger.warn('Found HTML content instead of sitemap');
       return { html: content, url: sitemapPath };
     }
 
-    logger.debug('Parsing sitemap XML');
+    global.auditcore.logger.debug('Parsing sitemap XML');
     const parser = new xml2js.Parser();
     const result = await parser.parseStringPromise(content);
-    logger.info('Sitemap parsed successfully');
+    global.auditcore.logger.info('Sitemap parsed successfully');
     return { xml: result };
   } catch (error) {
-    logger.error(`Error fetching or parsing content from ${sitemapPath}:`, error);
+    global.auditcore.logger.error(`Error fetching or parsing content from ${sitemapPath}:`, error);
     throw error;
   }
 }
 
-export async function extractUrls(parsedContent, logger) {
+export async function extractUrls(parsedContent) {
   if (parsedContent.html) {
-    logger.debug('Extracting URL from HTML content');
+    global.auditcore.logger.debug('Extracting URL from HTML content');
     return [{ url: normalizeUrl(parsedContent.url), lastmod: null }];
   }
   if (parsedContent.xml) {
     if (parsedContent.xml.sitemapindex) {
-      return processSitemapIndex(parsedContent.xml.sitemapindex, logger);
+      return processSitemapIndex(parsedContent.xml.sitemapindex);
     }
 
     if (parsedContent.xml.urlset) {
-      return processUrlset(parsedContent.xml.urlset, logger);
+      return processUrlset(parsedContent.xml.urlset);
     }
 
-    logger.error('Unknown sitemap format');
+    global.auditcore.logger.error('Unknown sitemap format');
     throw new Error('Unknown sitemap format');
   }
 
-  logger.error('Invalid parsed content');
+  global.auditcore.logger.error('Invalid parsed content');
   throw new Error('Invalid parsed content');
 }
 
-async function processSitemapIndex(sitemapindex, logger) {
-  logger.info('Found a sitemap index. Processing nested sitemaps...');
+async function processSitemapIndex(sitemapindex) {
+  global.auditcore.logger.info('Found a sitemap index. Processing nested sitemaps...');
   const sitemapUrls = sitemapindex.sitemap.map((sitemap) => ({
     url: normalizeUrl(sitemap.loc?.[0] || ''),
     lastmod: sitemap.lastmod?.[0] || null,
@@ -99,28 +99,28 @@ async function processSitemapIndex(sitemapindex, logger) {
   let allUrls = [];
   for (const sitemapUrl of sitemapUrls) {
     if (global.isShuttingDown) {
-      logger.warn('Shutdown signal received. Stopping sitemap processing.');
+      global.auditcore.logger.warn('Shutdown signal received. Stopping sitemap processing.');
       break;
     }
     if (!sitemapUrl.url) {
-      logger.warn('Skipping sitemap with empty URL');
+      global.auditcore.logger.warn('Skipping sitemap with empty URL');
       continue;
     }
-    logger.debug(`Processing nested sitemap: ${sitemapUrl.url}`);
+    global.auditcore.logger.debug(`Processing nested sitemap: ${sitemapUrl.url}`);
     try {
       await limiter.removeTokens(1);
-      const nestedParsedContent = await fetchAndParseSitemap(sitemapUrl.url, logger);
-      const nestedUrls = await extractUrls(nestedParsedContent, logger);
+      const nestedParsedContent = await fetchAndParseSitemap(sitemapUrl.url);
+      const nestedUrls = await extractUrls(nestedParsedContent);
       allUrls = allUrls.concat(nestedUrls);
     } catch (error) {
-      logger.error(`Error processing nested sitemap ${sitemapUrl.url}:`, error);
+      global.auditcore.logger.error(`Error processing nested sitemap ${sitemapUrl.url}:`, error);
     }
   }
   return allUrls;
 }
 
-function processUrlset(urlset, logger) {
-  logger.debug('Extracting URLs from sitemap');
+function processUrlset(urlset) {
+  global.auditcore.logger.debug('Extracting URLs from sitemap');
   const urls = urlset.url
     .map((url) => ({
       url: normalizeUrl(url.loc?.[0] || ''),
@@ -141,7 +141,7 @@ function processUrlset(urlset, logger) {
       })) || [],
     }))
     .filter((item) => item.url);
-  logger.info(`Extracted ${urls.length} URLs from sitemap`);
+  global.auditcore.logger.info(`Extracted ${urls.length} URLs from sitemap`);
   return urls;
 }
 

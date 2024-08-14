@@ -11,7 +11,7 @@ import { isValidUrl } from './urlUtils.mjs';
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateSecurityMetrics(testUrl, headers, results, logger) {
+export function updateSecurityMetrics(testUrl, headers, results) {
   if (!isValidUrl(testUrl) || !headers || !results || !logger) {
     throw new Error('Invalid parameters for updateSecurityMetrics');
   }
@@ -22,9 +22,9 @@ export function updateSecurityMetrics(testUrl, headers, results, logger) {
     if (!headers['content-security-policy']) safeIncrement(results.securityMetrics, 'missingContentSecurityPolicy');
     if (!headers['x-frame-options']) safeIncrement(results.securityMetrics, 'missingXFrameOptions');
     if (!headers['x-content-type-options']) safeIncrement(results.securityMetrics, 'missingXContentTypeOptions');
-    logger.debug('Updated security metrics');
+    global.auditcore.logger.debug('Updated security metrics');
   } catch (error) {
-    logger.error('Error updating security metrics:', error);
+    global.auditcore.logger.error('Error updating security metrics:', error);
   }
 }
 
@@ -34,7 +34,7 @@ export function updateSecurityMetrics(testUrl, headers, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateHreflangMetrics($, results, logger) {
+export function updateHreflangMetrics($, results) {
   if (!$ || !results || !logger) {
     throw new Error('Invalid parameters for updateHreflangMetrics');
   }
@@ -44,9 +44,9 @@ export function updateHreflangMetrics($, results, logger) {
     if (hreflangTags.length > 0) {
       safeIncrement(results.hreflangMetrics, 'pagesWithHreflang');
     }
-    logger.debug('Updated hreflang metrics');
+    global.auditcore.logger.debug('Updated hreflang metrics');
   } catch (error) {
-    logger.error('Error updating hreflang metrics:', error);
+    global.auditcore.logger.error('Error updating hreflang metrics:', error);
   }
 }
 
@@ -57,7 +57,7 @@ export function updateHreflangMetrics($, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateCanonicalMetrics($, testUrl, results, logger) {
+export function updateCanonicalMetrics($, testUrl, results) {
   if (!$ || !isValidUrl(testUrl) || !results || !logger) {
     throw new Error('Invalid parameters for updateCanonicalMetrics');
   }
@@ -74,9 +74,9 @@ export function updateCanonicalMetrics($, testUrl, results, logger) {
         safeIncrement(results.canonicalMetrics, 'nonSelf');
       }
     }
-    logger.debug('Updated canonical metrics');
+    global.auditcore.logger.debug('Updated canonical metrics');
   } catch (error) {
-    logger.error('Error updating canonical metrics:', error);
+    global.auditcore.logger.error('Error updating canonical metrics:', error);
   }
 }
 
@@ -86,7 +86,7 @@ export function updateCanonicalMetrics($, testUrl, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateContentAnalysis(contentAnalysis, results, logger) {
+export function updateContentAnalysis(contentAnalysis, results) {
   if (!contentAnalysis || !results || !logger) {
     throw new Error('Invalid parameters for updateContentAnalysis');
   }
@@ -97,9 +97,9 @@ export function updateContentAnalysis(contentAnalysis, results, logger) {
     if (wordCount < 300) {
       safeIncrement(results.contentMetrics, 'lowContent');
     }
-    logger.debug('Updated content analysis');
+    global.auditcore.logger.debug('Updated content analysis');
   } catch (error) {
-    logger.error('Error updating content analysis:', error);
+    global.auditcore.logger.error('Error updating content analysis:', error);
   }
 }
 
@@ -110,15 +110,15 @@ export function updateContentAnalysis(contentAnalysis, results, logger) {
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateInternalLinks(testUrl, internalLinks, results, logger) {
+export function updateInternalLinks(testUrl, internalLinks, results) {
   if (!isValidUrl(testUrl) || !Array.isArray(internalLinks) || !results || !logger) {
     throw new Error('Invalid parameters for updateInternalLinks');
   }
 
   try {
     results.internalLinks.push({ url: testUrl, links: internalLinks });
-    logger.debug(`Updated internal links for ${testUrl}`);
+    global.auditcore.logger.debug(`Updated internal links for ${testUrl}`);
   } catch (error) {
-    logger.error(`Error updating internal links for ${testUrl}:`, error);
+    global.auditcore.logger.error(`Error updating internal links for ${testUrl}:`, error);
   }
 }

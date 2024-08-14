@@ -15,7 +15,7 @@ const URL_MAX_LENGTH = 115;
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results, logger) {
+export function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results) {
   if (!isValidUrl(testUrl) || !isValidUrl(baseUrl) || typeof html !== 'string' || !Number.isInteger(statusCode) || !results || !logger) {
     throw new Error('Invalid parameters for updateUrlMetrics');
   }
@@ -40,9 +40,9 @@ export function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results, lo
     if (testUrl.includes(' ')) safeIncrement(results.urlMetrics, 'containsSpace');
     if (testUrl.length > URL_MAX_LENGTH) safeIncrement(results.urlMetrics, 'overLength');
 
-    logger.debug(`Updated URL metrics for ${testUrl}`);
+    global.auditcore.logger.debug(`Updated URL metrics for ${testUrl}`);
   } catch (error) {
-    logger.error(`Error updating URL metrics for ${testUrl}:`, error);
+    global.auditcore.logger.error(`Error updating URL metrics for ${testUrl}:`, error);
   }
 }
 
@@ -52,15 +52,15 @@ export function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results, lo
  * @param {Object} results - The results object to update.
  * @param {Object} logger - The logger object.
  */
-export function updateResponseCodeMetrics(statusCode, results, logger) {
+export function updateResponseCodeMetrics(statusCode, results) {
   if (!Number.isInteger(statusCode) || !results || !logger) {
     throw new Error('Invalid parameters for updateResponseCodeMetrics');
   }
 
   try {
     safeIncrement(results.responseCodeMetrics, statusCode);
-    logger.debug(`Updated response code metrics for status ${statusCode}`);
+    global.auditcore.logger.debug(`Updated response code metrics for status ${statusCode}`);
   } catch (error) {
-    logger.error(`Error updating response code metrics for status ${statusCode}:`, error);
+    global.auditcore.logger.error(`Error updating response code metrics for status ${statusCode}:`, error);
   }
 }

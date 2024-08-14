@@ -82,25 +82,25 @@ function sanitizeForCsv(value) {
  * @param {Object} logger - The logger object.
  * @returns {string|null} The generated report as a CSV string, or null if an error occurred.
  */
-export function generateReport(results, sitemapUrl, logger) {
-  logger.info('Generating SEO report');
+export function generateReport(results, sitemapUrl) {
+  global.auditcore.logger.info('Generating SEO report');
   const startTime = process.hrtime();
 
   try {
     validateResults(results);
 
     const reportSections = getReportSections(results, sitemapUrl);
-    const reportData = generateReportSections(reportSections, logger);
+    const reportData = generateReportSections(reportSections);
     const processedReportData = processReportData(reportData);
 
     const [seconds, nanoseconds] = process.hrtime(startTime);
     const duration = seconds + nanoseconds / 1e9;
-    logger.info(`Report generation completed in ${duration.toFixed(3)} seconds`);
+    global.auditcore.logger.info(`Report generation completed in ${duration.toFixed(3)} seconds`);
 
-    logger.debug('Report data generated successfully');
+    global.auditcore.logger.debug('Report data generated successfully');
     return formatCsv(processedReportData);
   } catch (error) {
-    logger.error('Error generating report:', error);
+    global.auditcore.logger.error('Error generating report:', error);
     return null;
   }
 }
@@ -139,19 +139,19 @@ function getReportSections(results, sitemapUrl) {
  * @param {Object} logger - The logger object.
  * @returns {Array} The generated report data.
  */
-function generateReportSections(reportSections, logger) {
+function generateReportSections(reportSections) {
   let completedSections = 0;
   const totalSections = reportSections.length;
 
   return reportSections.flatMap((section) => {
     try {
-      logger.debug(`Generating ${section.name} section`);
+      global.auditcore.logger.debug(`Generating ${section.name} section`);
       const sectionData = section.generator(...section.args);
       completedSections += 1;
-      logger.debug(`Completed ${completedSections}/${totalSections} sections`);
+      global.auditcore.logger.debug(`Completed ${completedSections}/${totalSections} sections`);
       return sectionData;
     } catch (error) {
-      logger.error(`Error generating ${section.name} section:`, error);
+      global.auditcore.logger.error(`Error generating ${section.name} section:`, error);
       return [['Error', `Failed to generate ${section.name} section`]];
     }
   });

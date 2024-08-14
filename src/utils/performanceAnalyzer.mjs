@@ -14,22 +14,22 @@ function sleep(ms) {
   return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
-async function attemptAnalysis(url, logger) {
+async function attemptAnalysis(url) {
   let browser;
   try {
-    logger.debug('Launching browser');
+    global.auditcore.logger.debug('Launching browser');
     browser = await puppeteer.launch();
     const page = await browser.newPage();
-    logger.debug('Browser launched successfully');
+    global.auditcore.logger.debug('Browser launched successfully');
 
-    logger.debug(`Navigating to ${url}`);
+    global.auditcore.logger.debug(`Navigating to ${url}`);
     await page.goto(url, {
       waitUntil: performanceOptions.waitUntil,
       timeout: performanceOptions.timeout,
     });
-    logger.debug('Page loaded successfully');
+    global.auditcore.logger.debug('Page loaded successfully');
 
-    logger.debug('Collecting performance metrics');
+    global.auditcore.logger.debug('Collecting performance metrics');
     const performanceMetrics = await page.evaluate(() => {
       const { timing } = performance;
       const paint = performance.getEntriesByType('paint');
@@ -46,13 +46,13 @@ async function attemptAnalysis(url, logger) {
       };
     });
 
-    logger.debug(`Performance metrics collected for ${url}: ${JSON.stringify(performanceMetrics)}`);
+    global.auditcore.logger.debug(`Performance metrics collected for ${url}: ${JSON.stringify(performanceMetrics)}`);
     return performanceMetrics;
   } finally {
     if (browser) {
-      logger.debug('Closing browser');
+      global.auditcore.logger.debug('Closing browser');
       await browser.close();
-      logger.debug('Browser closed successfully');
+      global.auditcore.logger.debug('Browser closed successfully');
     }
   }
 }
@@ -63,24 +63,24 @@ async function attemptAnalysis(url, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The performance metrics.
  */
-export async function analyzePerformance(url, logger) {
+export async function analyzePerformance(url) {
   if (typeof url !== 'string' || !url.startsWith('http')) {
     throw new Error('Invalid URL provided');
   }
 
-  logger.info(`Starting performance analysis for ${url}`);
+  global.auditcore.logger.info(`Starting performance analysis for ${url}`);
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
-      const result = await attemptAnalysis(url, logger);
-      logger.info(`Performance analysis completed for ${url}`);
+      const result = await attemptAnalysis(url);
+      global.auditcore.logger.info(`Performance analysis completed for ${url}`);
       return result;
     } catch (error) {
-      logger.warn(`Attempt ${attempt} failed for ${url}: ${error.message}`);
-      logger.debug('Error stack:', error.stack);
+      global.auditcore.logger.warn(`Attempt ${attempt} failed for ${url}: ${error.message}`);
+      global.auditcore.logger.debug('Error stack:', error.stack);
 
       if (attempt === MAX_RETRIES) {
-        logger.error(`All ${MAX_RETRIES} attempts failed for ${url}`);
+        global.auditcore.logger.error(`All ${MAX_RETRIES} attempts failed for ${url}`);
         return {
           loadTime: null,
           domContentLoaded: null,
@@ -92,7 +92,7 @@ export async function analyzePerformance(url, logger) {
       }
 
       const backoffTime = INITIAL_BACKOFF * 2 ** (attempt - 1);
-      logger.debug(`Retrying in ${backoffTime}ms`);
+      global.auditcore.logger.debug(`Retrying in ${backoffTime}ms`);
       await sleep(backoffTime);
     }
   }

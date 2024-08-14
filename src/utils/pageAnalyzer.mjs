@@ -80,19 +80,19 @@ const memoizedCheerioLoad = memoize(cheerio.load);
  * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function runMetricsAnalysis($, testUrl, baseUrl, headers, results, logger) {
+async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
   try {
-    await updateTitleMetrics($, results, logger);
-    await updateMetaDescriptionMetrics($, results, logger);
-    await updateHeadingMetrics($, results, logger);
-    await updateImageMetrics($, results, logger);
-    await updateLinkMetrics($, baseUrl, results, logger);
-    await updateSecurityMetrics(testUrl, headers, results, logger);
-    await updateHreflangMetrics($, results, logger);
-    await updateCanonicalMetrics($, testUrl, results, logger);
-    logger.debug('Metrics analysis completed successfully');
+    await updateTitleMetrics($, results);
+    await updateMetaDescriptionMetrics($, results);
+    await updateHeadingMetrics($, results);
+    await updateImageMetrics($, results);
+    await updateLinkMetrics($, baseUrl, results);
+    await updateSecurityMetrics(testUrl, headers, results);
+    await updateHreflangMetrics($, results);
+    await updateCanonicalMetrics($, testUrl, results);
+    global.auditcore.logger.debug('Metrics analysis completed successfully');
   } catch (error) {
-    logger.error('Error in runMetricsAnalysis:', error);
+    global.auditcore.logger.error('Error in runMetricsAnalysis:', error);
   }
 }
 
@@ -104,7 +104,7 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results, logger)
  * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The Pa11y test result.
  */
-async function runPa11yAnalysis(testUrl, html, config, logger) {
+async function runPa11yAnalysis(testUrl, html, config) {
   try {
     const pa11yOptions = {
       html,
@@ -112,9 +112,9 @@ async function runPa11yAnalysis(testUrl, html, config, logger) {
       wait: config.pa11yWait,
       threshold: config.pa11yThreshold,
     };
-    return await runPa11yWithRetry(testUrl, pa11yOptions, logger);
+    return await runPa11yWithRetry(testUrl, pa11yOptions);
   } catch (error) {
-    logger.error(`Error in runPa11yAnalysis for ${testUrl}:`, error);
+    global.auditcore.logger.error(`Error in runPa11yAnalysis for ${testUrl}:`, error);
     throw error;
   }
 }
@@ -147,7 +147,7 @@ export async function analyzePageContent({
   outputDir,
 }) {
   const startTime = process.hrtime();
-  logger.info(`Analyzing content for ${testUrl}`);
+  global.auditcore.logger.info(`Analyzing content for ${testUrl}`);
 
   try {
     validateInput(testUrl, html, baseUrl);
@@ -155,29 +155,29 @@ export async function analyzePageContent({
     const $ = memoizedCheerioLoad(html);
 
     const [pa11yResult, internalLinks] = await Promise.all([
-      analysisConfig.runPa11y ? runPa11yAnalysis(testUrl, html, analysisConfig, logger) : null,
-      analysisConfig.analyzeInternalLinks ? getInternalLinksWithRetry(html, testUrl, baseUrl, analysisConfig, logger) : null,
+      analysisConfig.runPa11y ? runPa11yAnalysis(testUrl, html, analysisConfig) : null,
+      analysisConfig.analyzeInternalLinks ? getInternalLinksWithRetry(html, testUrl, baseUrl, analysisConfig) : null,
     ]);
 
     if (analysisConfig.analyzeMetrics) {
-      await runMetricsAnalysis($, testUrl, baseUrl, headers, results, logger);
+      await runMetricsAnalysis($, testUrl, baseUrl, headers, results);
     }
 
     updateResults(results, testUrl, pa11yResult, internalLinks);
 
     const contentAnalysis = createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11yResult);
-    updateContentAnalysis(contentAnalysis, results, logger);
+    updateContentAnalysis(contentAnalysis, results);
 
     if (analysisConfig.generateAccessibilityReport && results.pa11y.length > 0) {
-      await generateAccessibilityReportIfNeeded(results, outputDir, logger);
+      await generateAccessibilityReportIfNeeded(results, outputDir);
     }
 
     const duration = calculateDuration(startTime);
-    logger.info(`Content analysis completed for ${testUrl} in ${duration.toFixed(3)} seconds`);
+    global.auditcore.logger.info(`Content analysis completed for ${testUrl} in ${duration.toFixed(3)} seconds`);
 
     return createAnalysisResult(testUrl, duration, contentAnalysis, pa11yResult, internalLinks);
   } catch (error) {
-    logger.error(`Error analyzing content for ${testUrl}:`, error);
+    global.auditcore.logger.error(`Error analyzing content for ${testUrl}:`, error);
     return { url: testUrl, error: error.message };
   }
 }

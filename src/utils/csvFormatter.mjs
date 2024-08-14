@@ -23,18 +23,18 @@ function escapeCell(cell) {
  * @returns {string} The formatted CSV string.
  * @throws {Error} If input is invalid.
  */
-export function formatCsv(data, headers, logger, delimiter = ',') {
-  logger.debug('Formatting CSV data...');
-  logger.debug('Data type:', typeof data);
-  logger.debug('Data length:', Array.isArray(data) ? data.length : 'N/A');
+export function formatCsv(data, headers, delimiter = ',') {
+  global.auditcore.logger.debug('Formatting CSV data...');
+  global.auditcore.logger.debug('Data type:', typeof data);
+  global.auditcore.logger.debug('Data length:', Array.isArray(data) ? data.length : 'N/A');
 
   if (!Array.isArray(data)) {
-    logger.error('formatCsv received non-array data:', data);
+    global.auditcore.logger.error('formatCsv received non-array data:', data);
     throw new Error('Invalid input: data must be an array');
   }
 
   if (headers && !Array.isArray(headers)) {
-    logger.error('formatCsv received non-array headers:', headers);
+    global.auditcore.logger.error('formatCsv received non-array headers:', headers);
     throw new Error('Invalid input: headers must be an array or undefined');
   }
 
@@ -55,12 +55,12 @@ export function formatCsv(data, headers, logger, delimiter = ',') {
         throw new Error(`Invalid row type at index ${index}`);
       }
     } catch (error) {
-      logger.error(`Error processing row at index ${index}:`, error);
-      logger.debug('Problematic row:', row);
+      global.auditcore.logger.error(`Error processing row at index ${index}:`, error);
+      global.auditcore.logger.debug('Problematic row:', row);
       csvContent += `ERROR${delimiter.repeat(headers ? headers.length - 1 : 0)}\n`;
     }
   });
 
-  logger.debug('CSV formatting completed.');
+  global.auditcore.logger.debug('CSV formatting completed.');
   return csvContent;
 }

@@ -26,24 +26,24 @@ const MAX_URLS_PER_SITEMAP = 50000;
  * @returns {Promise<string|null>} The path to the generated sitemap, or null if no URLs were found.
  * @throws {Error} If there's an error during sitemap generation.
  */
-export async function generateSitemap(results, outputDir, options, logger) {
+export async function generateSitemap(results, outputDir, options) {
   const { baseUrl = '' } = options;
-  logger.info(`Generating sitemap with base URL: ${baseUrl}`);
+  global.auditcore.logger.info(`Generating sitemap with base URL: ${baseUrl}`);
 
   try {
-    const urls = extractUrlsFromResults(results, logger);
+    const urls = extractUrlsFromResults(results);
 
     if (urls.length === 0) {
-      logger.warn('No valid URLs were found to include in the sitemap.');
+      global.auditcore.logger.warn('No valid URLs were found to include in the sitemap.');
       return null;
     }
 
     if (urls.length > MAX_URLS_PER_SITEMAP) {
-      logger.info(`Large number of URLs (${urls.length}). Splitting into multiple sitemaps.`);
-      return await generateSplitSitemaps(urls, outputDir, baseUrl, logger);
+      global.auditcore.logger.info(`Large number of URLs (${urls.length}). Splitting into multiple sitemaps.`);
+      return await generateSplitSitemaps(urls, outputDir, baseUrl);
     }
 
-    logger.debug('Creating sitemap stream');
+    global.auditcore.logger.debug('Creating sitemap stream');
     const stream = new SitemapStream({ hostname: baseUrl });
     const pipeline = stream.pipe(createGzip());
 
@@ -52,16 +52,16 @@ export async function generateSitemap(results, outputDir, options, logger) {
     }
     await stream.end();
 
-    logger.debug('Compressing sitemap');
+    global.auditcore.logger.debug('Compressing sitemap');
     const sitemapBuffer = await streamToPromise(pipeline);
 
     const sitemapPath = path.join(outputDir, 'sitemap.xml.gz');
     await fs.writeFile(sitemapPath, sitemapBuffer);
 
-    logger.info(`Sitemap generated and saved to ${sitemapPath}`);
+    global.auditcore.logger.info(`Sitemap generated and saved to ${sitemapPath}`);
     return sitemapPath;
   } catch (error) {
-    logger.error('Error generating sitemap:', error);
+    global.auditcore.logger.error('Error generating sitemap:', error);
     throw error;
   }
 }
@@ -75,7 +75,7 @@ export async function generateSitemap(results, outputDir, options, logger) {
  * @returns {Promise<string>} The path to the generated sitemap index.
  * @throws {Error} If there's an error during sitemap generation.
  */
-async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
+async function generateSplitSitemaps(urls, outputDir, baseUrl) {
   const sitemapIndex = [];
   const chunks = chunkArray(urls, MAX_URLS_PER_SITEMAP);
 
@@ -84,7 +84,7 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
     const sitemapName = `sitemap-${i + 1}.xml.gz`;
     const sitemapPath = path.join(outputDir, sitemapName);
 
-    logger.debug(`Generating sitemap ${i + 1} of ${chunks.length}`);
+    global.auditcore.logger.debug(`Generating sitemap ${i + 1} of ${chunks.length}`);
     const stream = new SitemapStream({ hostname: baseUrl });
     const pipeline = stream.pipe(createGzip());
 
@@ -101,7 +101,7 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
       lastmod: new Date().toISOString(),
     });
 
-    logger.info(`Sitemap ${i + 1} generated and saved to ${sitemapPath}`);
+    global.auditcore.logger.info(`Sitemap ${i + 1} generated and saved to ${sitemapPath}`);
   }
 
   const indexStream = new SitemapStream({ hostname: baseUrl });
@@ -116,7 +116,7 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
   const indexPath = path.join(outputDir, 'sitemap-index.xml.gz');
   await fs.writeFile(indexPath, indexBuffer);
 
-  logger.info(`Sitemap index generated and saved to ${indexPath}`);
+  global.auditcore.logger.info(`Sitemap index generated and saved to ${indexPath}`);
   return indexPath;
 }
 
@@ -126,10 +126,10 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl, logger) {
  * @param {Object} logger - The logger object.
  * @returns {Array} An array of URL objects.
  */
-function extractUrlsFromResults(results, logger) {
+function extractUrlsFromResults(results) {
   const urls = new Set();
 
-  logger.debug('Extracting URLs from results');
+  global.auditcore.logger.debug('Extracting URLs from results');
 
   if (results.internalLinks) {
     results.internalLinks.forEach((link) => {
@@ -158,7 +158,7 @@ function extractUrlsFromResults(results, logger) {
     });
   }
 
-  logger.info(`Extracted ${urls.size} unique URLs for sitemap`);
+  global.auditcore.logger.info(`Extracted ${urls.size} unique URLs for sitemap`);
   return Array.from(urls);
 }
 
@@ -279,8 +279,8 @@ function chunkArray(array, size) {
  * @returns {Promise<Array>} An array of URL objects.
  * @throws {Error} If there's an error fetching or parsing the sitemap.
  */
-export async function getUrlsFromSitemap(sitemapUrl, limit, logger) {
-  logger.info(`Fetching sitemap from ${sitemapUrl}`);
+export async function getUrlsFromSitemap(sitemapUrl, limit) {
+  global.auditcore.logger.info(`Fetching sitemap from ${sitemapUrl}`);
 
   try {
     const response = await axios.get(sitemapUrl, { responseType: 'arraybuffer' });
@@ -298,10 +298,10 @@ export async function getUrlsFromSitemap(sitemapUrl, limit, logger) {
 
     if (result.sitemapindex) {
       // This is a sitemap index, we need to fetch each sitemap
-      logger.info('Sitemap index detected. Fetching individual sitemaps...');
+      global.auditcore.logger.info('Sitemap index detected. Fetching individual sitemaps...');
       const sitemapUrls = result.sitemapindex.sitemap.map((sitemap) => sitemap.loc[0]);
       for (const url of sitemapUrls) {
-        const sitemapUrlsList = await getUrlsFromSitemap(url, -1, logger);
+        const sitemapUrlsList = await getUrlsFromSitemap(url, -1);
         urls = urls.concat(sitemapUrlsList);
         if (limit !== -1 && urls.length >= limit) break;
       }
@@ -321,16 +321,16 @@ export async function getUrlsFromSitemap(sitemapUrl, limit, logger) {
       urls = urls.slice(0, limit);
     }
 
-    logger.info(`Extracted ${urls.length} URLs from sitemap`);
+    global.auditcore.logger.info(`Extracted ${urls.length} URLs from sitemap`);
     return urls;
   } catch (error) {
-    logger.error(`Error fetching sitemap: ${error.message}`);
+    global.auditcore.logger.error(`Error fetching sitemap: ${error.message}`);
     throw error;
   }
 }
 
-export async function processSitemapUrls(urls, options, logger) {
-  logger.info(`Processing ${urls.length} URL(s)`);
+export async function processSitemapUrls(urls, options) {
+  global.auditcore.logger.info(`Processing ${urls.length} URL(s)`);
 
   const processorOptions = {
     ...options,
@@ -340,19 +340,19 @@ export async function processSitemapUrls(urls, options, logger) {
     batchSize: options.batchSize || 10,
   };
 
-  const urlProcessor = new UrlProcessor(processorOptions, logger);
+  const urlProcessor = new UrlProcessor(processorOptions);
 
   try {
     const results = await urlProcessor.processUrls(urls);
-    logger.info(`Completed processing ${urls.length} URLs`);
+    global.auditcore.logger.info(`Completed processing ${urls.length} URLs`);
 
     if (results.failedUrls && results.failedUrls.length > 0) {
-      logger.warn(`${results.failedUrls.length} URLs encountered errors during processing`);
+      global.auditcore.logger.warn(`${results.failedUrls.length} URLs encountered errors during processing`);
     }
 
     return results;
   } catch (error) {
-    logger.error(`Error during URL processing: ${error.message}`);
+    global.auditcore.logger.error(`Error during URL processing: ${error.message}`);
     throw error;
   }
 }
