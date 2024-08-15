@@ -33,36 +33,37 @@ export function calculateSeoScore(pageData) {
     global.auditcore.logger.warn('pageData is undefined or null in calculateSeoScore');
     return { score: 0, details: {} };
   }
-
-  global.auditcore.logger.info(`Calculating SEO score for ${pageData.url}`);
-
+  global.auditcore.logger.info(`Calculating SEO score for ${pageData.testUrl}`);
   const {
-    title, metaDescription, url, h1, wordCount, internalLinks,
+    title, metaDescription, testUrl, h1, wordCount, internalLinks,
     images, performanceMetrics, hasResponsiveMetaTag, structuredData,
     openGraphTags, twitterTags,
   } = pageData;
-
   let totalScore = 0;
   let maxPossibleScore = 0;
   const details = {};
-
   try {
+    // Ensure internalLinks is an array and get its length, or default to 0
+    const internalLinksCount = Array.isArray(internalLinks) ? internalLinks.length : 0;
+
+    // Ensure openGraphTags is an object
+    const openGraphTagsObj = typeof openGraphTags === 'object' && openGraphTags !== null ? openGraphTags : {};
+
     const scoringFunctions = [
       { name: 'titleOptimization', func: scoreTitleOptimization, param: title },
       { name: 'metaDescriptionOptimization', func: scoreMetaDescription, param: metaDescription },
-      { name: 'urlStructure', func: scoreUrlStructure, param: url },
+      { name: 'urlStructure', func: scoreUrlStructure, param: testUrl },
       { name: 'h1Optimization', func: scoreH1Optimization, param: h1 },
       { name: 'contentLength', func: scoreContentLength, param: wordCount },
       { name: 'contentQuality', func: scoreContentQuality, param: pageData },
-      { name: 'internalLinking', func: scoreInternalLinking, param: internalLinks ? internalLinks.length : 0 },
+      { name: 'internalLinking', func: scoreInternalLinking, param: internalLinksCount },
       { name: 'imageOptimization', func: scoreImageOptimization, param: images },
       { name: 'pageSpeed', func: scorePageSpeed, param: performanceMetrics },
       { name: 'mobileOptimization', func: scoreMobileOptimization, param: hasResponsiveMetaTag },
-      { name: 'securityFactors', func: scoreSecurityFactors, param: url },
+      { name: 'securityFactors', func: scoreSecurityFactors, param: testUrl },
       { name: 'structuredData', func: scoreStructuredData, param: structuredData },
-      { name: 'socialMediaTags', func: scoreSocialMediaTags, param: { openGraphTags, twitterTags } },
+      { name: 'socialMediaTags', func: scoreSocialMediaTags, param: { openGraphTags: openGraphTagsObj, twitterTags } },
     ];
-
     scoringFunctions.forEach(({ name, func, param }) => {
       try {
         details[name] = func(param);
@@ -74,20 +75,17 @@ export function calculateSeoScore(pageData) {
         maxPossibleScore += SEO_WEIGHTS[name];
       }
     });
-
     const finalScore = (totalScore / maxPossibleScore) * 100;
-
-    global.auditcore.logger.info(`SEO score calculated for ${url}: ${finalScore.toFixed(2)}`);
+    global.auditcore.logger.info(`SEO score calculated for ${testUrl}: ${finalScore.toFixed(2)}`);
     return {
       score: Math.round(finalScore),
       details,
     };
   } catch (error) {
-    global.auditcore.logger.error(`Error calculating SEO score for ${url}:`, error);
+    global.auditcore.logger.error(`Error calculating SEO score for ${testUrl}:`, error);
     return { score: 0, details: {}, error: error.message };
   }
 }
-
 /**
  * Validates the input for scoring functions.
  * @param {*} value - The value to validate.
@@ -412,15 +410,23 @@ function scoreStructuredData(structuredData) {
  */
 function scoreSocialMediaTags({ openGraphTags, twitterTags }) {
   try {
-    validateInput(openGraphTags, 'openGraphTags', 'object');
-    validateInput(twitterTags, 'twitterTags', 'object');
+    if (typeof openGraphTags !== 'object' || openGraphTags === null) {
+      global.auditcore.logger.warn('openGraphTags is not an object, defaulting to empty object');
+      openGraphTags = {};
+    }
+    if (typeof twitterTags !== 'object' || twitterTags === null) {
+      global.auditcore.logger.warn('twitterTags is not an object, defaulting to empty object');
+      twitterTags = {};
+    }
+    
     const hasOpenGraph = Object.keys(openGraphTags).length > 0;
     const hasTwitterCard = Object.keys(twitterTags).length > 0;
     const score = (hasOpenGraph || hasTwitterCard) ? 1 : 0;
     global.auditcore.logger.debug(`Social media tags score: ${score.toFixed(2)}. Has Open Graph: ${hasOpenGraph}, Has Twitter Card: ${hasTwitterCard}`);
     return score;
   } catch (error) {
-    return handleScoringError(error, 'scoreSocialMediaTags');
+    global.auditcore.logger.error(`Error in scoreSocialMediaTags: ${error.message}`);
+    return 0;
   }
 }
 

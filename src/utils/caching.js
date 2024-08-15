@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
-import { calculateSeoScore } from './seoScoring';
+import { calculateSeoScore } from './seoScoring.js';
 
 const CACHE_DIR = path.join(process.cwd(), '.cache');
 
@@ -59,13 +59,15 @@ async function setCachedData(url, data) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
   global.auditcore.logger.debug(`Attempting to write cache to: ${cachePath}`);
+  
   try {
-    const jsonString = JSON.stringify(data, (key, value) => (typeof value === 'string' ? value.normalize('NFC') : value), 2);
+    const jsonString = JSON.stringify(data, (key, value) => 
+      (typeof value === 'string' ? value.normalize('NFC') : value), 2);
     await fs.writeFile(cachePath, jsonString, 'utf8');
     global.auditcore.logger.debug(`Cache written for ${url}`);
   } catch (error) {
     global.auditcore.logger.error(`Error writing cache for ${url}:`, error);
-    throw error;
+    throw error;  // Ensure this error is propagated for visibility
   }
 }
 
@@ -197,8 +199,8 @@ async function fetchDataWithoutPuppeteer(url) {
  * @param {string} url - The URL to render and analyze.
  * @returns {Promise<Object>} The rendered and analyzed data.
  */
-export async function renderAndCacheData(url, logger) {
-  logger.debug(`Rendering and caching data for ${url}`);
+export async function renderAndCacheData(url) {
+  global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -290,10 +292,10 @@ export async function renderAndCacheData(url, logger) {
       lastCrawled: new Date().toISOString(),
     };
 
-    logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
+    global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
     return data;
   } catch (error) {
-    logger.error(`Error rendering data for ${url}:`, error);
+    global.logger.error(`Error rendering data for ${url}:`, error);
     if (browser) {
       await browser.close();
     }

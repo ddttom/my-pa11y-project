@@ -1,8 +1,7 @@
-/* eslint-disable import/extensions */
 // technicalMetrics.js
 
-import { safeIncrement } from './metricsCommon';
-import { isValidUrl } from './urlUtils';
+import { safeIncrement } from './metricsCommon.js';
+import { isValidUrl } from './urlUtils.js';
 
 /**
  * Updates security metrics based on the page's security features.
@@ -80,6 +79,10 @@ export function updateCanonicalMetrics($, testUrl, results) {
  * @param {Object} results - The results object to update.
  */
 export function updateContentAnalysis(contentAnalysis, results) {
+  if (!results.contentAnalysis) {
+    results.contentAnalysis = [];
+  }
+
   try {
     results.contentAnalysis.push(contentAnalysis);
     const wordCount = contentAnalysis.wordCount || 0;

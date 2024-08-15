@@ -1,8 +1,7 @@
 /* eslint-disable no-use-before-define */
-/* eslint-disable import/prefer-default-export */
 // reportGenerator.js
 
-import { formatCsv } from './csvFormatter';
+import { formatCsv } from './csvFormatter.js';
 
 /**
  * Memoizes a function to cache its results.
@@ -94,6 +93,16 @@ export function generateReport(results, sitemapUrl) {
     const duration = seconds + nanoseconds / 1e9;
     global.auditcore.logger.info(`Report generation completed in ${duration.toFixed(3)} seconds`);
 
+    // Log a summary of the report data
+    global.auditcore.logger.debug('Report data summary:');
+    Object.entries(results).forEach(([key, value]) => {
+      if (typeof value === 'object') {
+        global.auditcore.logger.debug(`${key}: ${JSON.stringify(value)}`);
+      } else {
+        global.auditcore.logger.debug(`${key}: ${value}`);
+      }
+    });
+
     global.auditcore.logger.debug('Report data generated successfully');
     return formatCsv(processedReportData);
   } catch (error) {
@@ -101,7 +110,6 @@ export function generateReport(results, sitemapUrl) {
     return null;
   }
 }
-
 /**
  * Gets the report sections configuration.
  * @param {Object} results - The SEO analysis results.

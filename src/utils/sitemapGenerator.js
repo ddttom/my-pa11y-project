@@ -4,7 +4,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-use-before-define */
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/prefer-default-export */
 /* eslint-disable no-console */
 // src/utils/sitemapGenerator.js
 
@@ -19,34 +18,51 @@ const gzip = promisify(createGzip);
 
 const MAX_URLS_PER_SITEMAP = 50000;
 
-export async function generateSitemap(results, outputDir, options) {
-  const baseUrl = typeof options.baseUrl === 'string' ? options.baseUrl : '';
+export async function generateSitemap(results, outputDir) {
+  const baseUrl = (() => {
+    try {
+      const sitemapUrl = new URL(global.auditcore.options.sitemap);
+      return `${sitemapUrl.protocol}//${sitemapUrl.hostname}`;
+    } catch (error) {
+      global.auditcore.logger.warn(`Failed to extract baseUrl from sitemap URL: ${error.message}`);
+      return '';
+    }
+  })();
+
+  if (!baseUrl) {
+    global.auditcore.logger.error('Base URL is required for sitemap generation');
+    return;
+  }
+
   global.auditcore.logger.info(`Generating sitemap with base URL: ${baseUrl}`);
 
   try {
     const urls = extractUrlsFromResults(results);
 
     if (urls.length === 0) {
-      global.auditcore.logger.warn('No valid URLs were found to include in the sitemap.');
+      global.auditcore.logger.warn("No valid URLs were found to include in the sitemap.");
       return null;
     }
 
-    if (urls.length > MAX_URLS_PER_SITEMAP) {
-      global.auditcore.logger.info(`Large number of URLs (${urls.length}). Splitting into multiple sitemaps.`);
-      return await generateSplitSitemaps(urls, outputDir, baseUrl);
-    }
+    global.auditcore.logger.info(`Extracted ${urls.length} unique URLs for sitemap`);
 
-    global.auditcore.logger.debug('Creating sitemap stream');
+    global.auditcore.logger.debug("Creating sitemap stream");
     const stream = new SitemapStream({ hostname: baseUrl });
-    const pipeline = stream.pipe(createGzip());
-
+    
     for (const url of urls) {
-      stream.write(url);
+      const sitemapItem = {
+        url: url.url,
+        changefreq: url.changefreq,
+        priority: typeof url.priority === 'number' ? url.priority : undefined,
+        lastmod: url.lastmod
+      };
+      stream.write(sitemapItem);
     }
     stream.end();
 
-    global.auditcore.logger.debug('Compressing sitemap');
-    const sitemapBuffer = await streamToPromise(pipeline);
+    global.auditcore.logger.debug("Compressing sitemap");
+    const sitemapBuffer = await streamToPromise(Readable.from(stream));
+  
 
     const sitemapPath = path.join(outputDir, 'sitemap.xml.gz');
     await fs.writeFile(sitemapPath, sitemapBuffer);
@@ -120,7 +136,12 @@ function extractUrlsFromResults(results) {
   if (results.contentAnalysis) {
     results.contentAnalysis.forEach((page) => {
       if (page.url) {
-        urls.add(createUrlObject(page, results));
+        urls.add({
+          url: page.url,
+          lastmod: page.lastmod || getLastModified(page.url, results),
+          changefreq: calculateChangeFreq(page, results),
+          priority: typeof page.priority === 'number' ? page.priority : undefined
+        });
       }
     });
   }

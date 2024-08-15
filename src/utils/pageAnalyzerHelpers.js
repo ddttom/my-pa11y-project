@@ -1,10 +1,9 @@
 /* eslint-disable no-await-in-loop */
-/* eslint-disable import/extensions */
 
 // pageAnalyzerHelpers.js
 
-import { getInternalLinks } from './linkAnalyzer';
-import { updateInternalLinks } from './metricsUpdater';
+import { getInternalLinks } from './linkAnalyzer.js';
+import { updateInternalLinks } from './technicalMetrics.js';
 
 /**
  * Retries an operation with a specified number of attempts and delay.
@@ -16,7 +15,9 @@ import { updateInternalLinks } from './metricsUpdater';
 async function retryOperation(operation, retryAttempts, retryDelay) {
   for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
     try {
-      return await operation();
+      const result = await operation();
+      global.auditcore.logger.debug(`Operation succeeded on attempt ${attempt}`);
+      return result;
     } catch (error) {
       if (attempt === retryAttempts) {
         global.auditcore.logger.warn(`Operation failed after ${retryAttempts} attempts: ${error.message}`);
@@ -26,7 +27,6 @@ async function retryOperation(operation, retryAttempts, retryDelay) {
       await new Promise((resolve) => { setTimeout(resolve, retryDelay); });
     }
   }
-  // Add a return statement here
   return null;
 }
 
@@ -39,11 +39,19 @@ async function retryOperation(operation, retryAttempts, retryDelay) {
  * @returns {Promise<Array>} The array of internal links.
  */
 async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
-  return retryOperation(
-    () => getInternalLinks(html, testUrl, baseUrl),
-    config.retryAttempts,
-    config.retryDelay,
-  );
+  global.auditcore.logger.debug(`Attempting to get internal links for ${testUrl}`);
+  try {
+    const links = await retryOperation(
+      () => getInternalLinks(html, testUrl, baseUrl),
+      config.retryAttempts || 3,
+      config.retryDelay || 1000,
+    );
+    global.auditcore.logger.debug(`Successfully retrieved ${links ? links.length : 0} internal links for ${testUrl}`);
+    return links;
+  } catch (error) {
+    global.auditcore.logger.error(`Failed to get internal links for ${testUrl}: ${error.message}`);
+    return null;
+  }
 }
 
 /**
@@ -54,11 +62,20 @@ async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
  * @param {Array|null} internalLinks - The array of internal links.
  */
 function updateResults(results, testUrl, pa11yResult, internalLinks) {
-  if (pa11yResult) {
-    results.pa11y.push({ url: testUrl, issues: pa11yResult.issues });
+  if (!results) {
+    global.auditcore.logger.error('Results object is undefined in updateResults');
+    return;
   }
+
+  if (pa11yResult) {
+    if (!results.pa11y) results.pa11y = [];
+    results.pa11y.push({ url: testUrl, issues: pa11yResult.issues || [] });
+    global.auditcore.logger.debug(`Updated Pa11y results for ${testUrl}`);
+  }
+
   if (internalLinks) {
     updateInternalLinks(testUrl, internalLinks, results);
+    global.auditcore.logger.debug(`Updated internal links for ${testUrl}`);
   }
 }
 
@@ -72,21 +89,28 @@ function updateResults(results, testUrl, pa11yResult, internalLinks) {
  * @returns {Object} The content analysis object.
  */
 function createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11yResult) {
-  return {
+  if (!testUrl) {
+    global.auditcore.logger.error('TestUrl is undefined in createContentAnalysis');
+    return null;
+  }
+
+  const analysis = {
     url: testUrl,
-    ...pageData,
-    jsErrors,
-    internalLinksCount: internalLinks ? internalLinks.length : 0,
-    pa11yIssuesCount: pa11yResult ? pa11yResult.issues.length : 0,
+    jsErrors: Array.isArray(jsErrors) ? jsErrors.length : 0,
+    internalLinksCount: Array.isArray(internalLinks) ? internalLinks.length : 0,
+    pa11yIssuesCount: pa11yResult && Array.isArray(pa11yResult.issues) ? pa11yResult.issues.length : 0,
   };
+
+  if (pageData && typeof pageData === 'object') {
+    Object.assign(analysis, pageData);
+  } else {
+    global.auditcore.logger.warn(`PageData is not an object for ${testUrl}`);
+  }
+
+  global.auditcore.logger.debug(`Created content analysis for ${testUrl}`);
+  return analysis;
 }
 
-/**
- * Generates an accessibility report if needed.
- * @param {Object} results - The results object containing Pa11y data.
- * @param {string} outputDir - The directory to output the report.
- * @returns {Promise<void>}
- */
 /**
  * Calculates the duration of the analysis.
  * @param {[number, number]} startTime - The start time from process.hrtime().
@@ -107,14 +131,22 @@ function calculateDuration(startTime) {
  * @returns {Object} The analysis result object.
  */
 function createAnalysisResult(testUrl, duration, contentAnalysis, pa11yResult, internalLinks) {
-  return {
+  if (!testUrl) {
+    global.auditcore.logger.error('TestUrl is undefined in createAnalysisResult');
+    return null;
+  }
+
+  const result = {
     url: testUrl,
     analysisTime: duration,
-    contentAnalysis,
+    contentAnalysis: contentAnalysis || null,
     pa11ySuccess: !!pa11yResult,
-    internalLinksSuccess: !!internalLinks,
-    metricsSuccess: true,
+    internalLinksSuccess: Array.isArray(internalLinks),
+    metricsSuccess: true, // You might want to add logic to determine this
   };
+
+  global.auditcore.logger.debug(`Created analysis result for ${testUrl}`);
+  return result;
 }
 
 // Export all helper functions

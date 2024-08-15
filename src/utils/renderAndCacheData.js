@@ -1,8 +1,7 @@
-/* eslint-disable import/prefer-default-export */
 // renderAndCacheData.js
 
 import puppeteer from 'puppeteer';
-import { calculateSeoScore } from './seoScoring';
+import { calculateSeoScore } from './seoScoring.js';
 
 /**
  * Renders a page using Puppeteer and collects various data.

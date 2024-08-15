@@ -4,8 +4,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { formatCsv } from './csvFormatter';
-import { generateReport } from './reportGenerator';
+import { formatCsv } from './csvFormatter.js';
+import { generateReport } from './reportGenerator.js';
 
 /**
  * Saves content to a file.
@@ -49,6 +49,10 @@ export async function saveResults(results, outputDir, sitemapUrl) {
   global.auditcore.logger.info(`Saving results to: ${outputDir}`);
 
   const saveOperations = [
+    {
+      name: 'Diagnostics',
+      func: () => saveDiagnostics(results, outputDir),
+    },
     {
       name: 'Pa11y results',
       func: () => savePa11yResults(results, outputDir),
@@ -137,7 +141,7 @@ async function savePa11yResults(results, outputDir) {
   await saveRawPa11yResult(results, outputDir);
   const pa11yCsv = formatCsv(
     flattenPa11yResults(results.pa11y),
-    ['url', 'type', 'code', 'message', 'context', 'selector', 'error'],
+    ['pageUrl', 'type', 'code', 'message', 'context', 'selector', 'error'],
   );
   await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
   global.auditcore.logger.debug('Pa11y results saved');
@@ -149,16 +153,19 @@ async function savePa11yResults(results, outputDir) {
  * @returns {Array} Flattened Pa11y results.
  */
 function flattenPa11yResults(pa11yResults) {
+  if (!pa11yResults) {
+    return [];
+  }
   return pa11yResults.flatMap((result) => (result.issues
     ? result.issues.map((issue) => ({
-      url: result.url,
+      pageUrl: result.pageUrl,
       type: issue.type,
       code: issue.code,
       message: issue.message,
       context: issue.context,
       selector: issue.selector,
     }))
-    : [{ url: result.url, error: result.error }]));
+    : [{ pageUrl: result.pageUrl, error: result.error }]));
 }
 
 /**
@@ -511,6 +518,32 @@ async function saveSeoScoresSummary(results, outputDir) {
   global.auditcore.logger.debug('SEO scores summary saved');
 }
 
+
+/**
+ * Saves the full results object to a diagnostics JSON file.
+ * @param {Object} results - The full results object.
+ * @param {string} outputDir - The directory to save the file.
+ * @returns {Promise<void>}
+ */
+async function saveDiagnostics(results, outputDir) {
+  try {
+    const filename = 'diagnostics.json';
+    const filePath = path.join(outputDir, filename);
+    
+    // Create a clean version of results without circular references
+    const cleanResults = JSON.parse(JSON.stringify(results, (key, value) => {
+      if (key === 'parent' || key === 'children') {
+        return undefined; // Exclude parent and children to avoid circular references
+      }
+      return value;
+    }));
+
+    await fs.writeFile(filePath, JSON.stringify(cleanResults, null, 2));
+    global.auditcore.logger.info(`Full diagnostics saved to ${filePath}`);
+  } catch (error) {
+    global.auditcore.logger.error('Error saving diagnostics:', error);
+  }
+}
 /**
  * Saves raw Pa11y results to a JSON file.
  * @param {Object} results - The analysis results.
@@ -521,17 +554,47 @@ async function saveRawPa11yResult(results, outputDir) {
   try {
     const filename = 'pa11y_raw_results.json';
     const filePath = path.join(outputDir, filename);
-    const pa11yResults = results.pa11y.map((result) => ({
-      url: result.url,
-      issues: result.issues,
-    }));
+
+    global.auditcore.logger.debug('Starting saveRawPa11yResult function');
+    global.auditcore.logger.debug(`Results object keys: ${Object.keys(results)}`);
+    global.auditcore.logger.debug(`Pa11y results type: ${typeof results.pa11y}`);
+
+    if (!results || !results.pa11y || !Array.isArray(results.pa11y)) {
+      global.auditcore.logger.warn('Pa11y results are missing or not in the expected format');
+      global.auditcore.logger.debug(`results: ${JSON.stringify(results)}`);
+      await fs.writeFile(filePath, JSON.stringify([], null, 2));
+      global.auditcore.logger.debug(`Empty pa11y results saved to ${filePath}`);
+      return;
+    }
+
+    global.auditcore.logger.debug(`Processing ${results.pa11y.length} Pa11y results`);
+
+    const pa11yResults = results.pa11y.map((result, index) => {
+      global.auditcore.logger.debug(`Processing result ${index + 1}/${results.pa11y.length}`);
+      global.auditcore.logger.debug(`Result type: ${typeof result}`);
+      
+      if (!result || typeof result !== 'object') {
+        global.auditcore.logger.warn(`Invalid Pa11y result entry at index ${index}:`, result);
+        return null;
+      }
+
+  
+      return {
+        url: result.pageUrl || 'Unknown URL',
+        issues: Array.isArray(result.issues) ? result.issues : [],
+      };
+    }).filter(Boolean);
+
+    global.auditcore.logger.debug(`Processed ${pa11yResults.length} valid Pa11y results`);
+    global.auditcore.logger.debug(`First result (if exists): ${JSON.stringify(pa11yResults[0], null, 2)}`);
+
     await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
-    global.auditcore.logger.debug(`Raw pa11y results saved to ${filePath}`);
+    global.auditcore.logger.info(`Raw pa11y results saved to ${filePath}`);
   } catch (error) {
     global.auditcore.logger.error('Error saving raw pa11y results:', error);
+    global.auditcore.logger.error('Error stack:', error.stack);
   }
 }
-
 /**
  * Analyzes common Pa11y issues.
  * @param {Array} pa11yResults - The Pa11y results to analyze.

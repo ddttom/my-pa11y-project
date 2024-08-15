@@ -11,7 +11,7 @@ import fs from 'fs/promises';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import RateLimiter from 'limiter';
-import { fixUrl } from './urlUtils';
+import { fixUrl } from './urlUtils.js';
 
 const gunzip = promisify(zlib.gunzip);
 const { RateLimiter: Limiter } = RateLimiter;
