@@ -1,7 +1,6 @@
-/* eslint-disable import/extensions */
 // contentMetrics.js
 
-import { safeIncrement, estimatePixelWidth } from './metricsCommon.mjs';
+import { safeIncrement, estimatePixelWidth } from './metricsCommon';
 
 const TITLE_MIN_LENGTH = 30;
 const TITLE_MAX_LENGTH = 60;
@@ -13,13 +12,8 @@ const HEADING_MAX_LENGTH = 70;
  * Updates title metrics based on the page's title.
  * @param {Object} $ - The Cheerio instance.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateTitleMetrics($, results) {
-  if (!$ || !results || !logger) {
-    throw new Error('Invalid parameters for updateTitleMetrics');
-  }
-
   try {
     const title = $('title').text().trim();
     if (!title) {
@@ -41,13 +35,9 @@ export function updateTitleMetrics($, results) {
  * Updates meta description metrics based on the page's meta description.
  * @param {Object} $ - The Cheerio instance.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
+
  */
 export function updateMetaDescriptionMetrics($, results) {
-  if (!$ || !results || !logger) {
-    throw new Error('Invalid parameters for updateMetaDescriptionMetrics');
-  }
-
   try {
     const metaDescription = $('meta[name="description"]').attr('content');
     if (!metaDescription) {
@@ -69,13 +59,8 @@ export function updateMetaDescriptionMetrics($, results) {
  * Updates heading metrics based on the page's headings.
  * @param {Object} $ - The Cheerio instance.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateHeadingMetrics($, results) {
-  if (!$ || !results || !logger) {
-    throw new Error('Invalid parameters for updateHeadingMetrics');
-  }
-
   try {
     const h1s = $('h1');
     if (h1s.length === 0) safeIncrement(results.h1Metrics, 'missing');

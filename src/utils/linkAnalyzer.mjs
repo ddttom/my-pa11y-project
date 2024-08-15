@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
-/* eslint-disable import/extensions */
+
 // linkAnalyzer.js
 
 import cheerio from 'cheerio';
-import { fixUrl } from './urlUtils.mjs';
+import { fixUrl } from './urlUtils';
 
 /**
  * Extracts internal links from HTML content.

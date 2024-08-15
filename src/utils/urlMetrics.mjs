@@ -1,8 +1,8 @@
 /* eslint-disable import/extensions */
 // urlMetrics.js
 
-import { isValidUrl } from './urlUtils.mjs';
-import { safeIncrement } from './metricsCommon.mjs';
+import { isValidUrl } from './urlUtils';
+import { safeIncrement } from './metricsCommon';
 
 const URL_MAX_LENGTH = 115;
 
@@ -13,10 +13,9 @@ const URL_MAX_LENGTH = 115;
  * @param {string} html - The HTML content of the page.
  * @param {number} statusCode - The HTTP status code of the response.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results) {
-  if (!isValidUrl(testUrl) || !isValidUrl(baseUrl) || typeof html !== 'string' || !Number.isInteger(statusCode) || !results || !logger) {
+  if (!isValidUrl(testUrl) || !isValidUrl(baseUrl) || typeof html !== 'string' || !Number.isInteger(statusCode) || !results) {
     throw new Error('Invalid parameters for updateUrlMetrics');
   }
 
@@ -50,13 +49,8 @@ export function updateUrlMetrics(testUrl, baseUrl, html, statusCode, results) {
  * Updates response code metrics based on the HTTP status code.
  * @param {number} statusCode - The HTTP status code.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateResponseCodeMetrics(statusCode, results) {
-  if (!Number.isInteger(statusCode) || !results || !logger) {
-    throw new Error('Invalid parameters for updateResponseCodeMetrics');
-  }
-
   try {
     safeIncrement(results.responseCodeMetrics, statusCode);
     global.auditcore.logger.debug(`Updated response code metrics for status ${statusCode}`);

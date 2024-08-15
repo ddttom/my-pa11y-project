@@ -7,14 +7,15 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { createGzip } from 'zlib';
+import { createGzip, gunzip } from 'zlib';
 import axios from 'axios';
 import { parseString } from 'xml2js';
 import { promisify } from 'util';
 import { SitemapStream, streamToPromise } from 'sitemap';
+import { UrlProcessor } from './urlProcessor';
 
 const parseXml = promisify(parseString);
-// const gunzipAsync = promisify(gunzip);
+const gunzipAsync = promisify(gunzip);
 const MAX_URLS_PER_SITEMAP = 50000;
 
 /**
@@ -22,7 +23,6 @@ const MAX_URLS_PER_SITEMAP = 50000;
  * @param {Object} results - The analysis results.
  * @param {string} outputDir - The directory to save the sitemap.
  * @param {Object} options - The options for sitemap generation.
- * @param {Object} logger - The logger object.
  * @returns {Promise<string|null>} The path to the generated sitemap, or null if no URLs were found.
  * @throws {Error} If there's an error during sitemap generation.
  */
@@ -71,7 +71,6 @@ export async function generateSitemap(results, outputDir, options) {
  * @param {Array} urls - The URLs to include in the sitemaps.
  * @param {string} outputDir - The directory to save the sitemaps.
  * @param {string} baseUrl - The base URL for the sitemaps.
- * @param {Object} logger - The logger object.
  * @returns {Promise<string>} The path to the generated sitemap index.
  * @throws {Error} If there's an error during sitemap generation.
  */
@@ -123,7 +122,6 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl) {
 /**
  * Extracts URLs from the analysis results.
  * @param {Object} results - The analysis results.
- * @param {Object} logger - The logger object.
  * @returns {Array} An array of URL objects.
  */
 function extractUrlsFromResults(results) {
@@ -275,7 +273,6 @@ function chunkArray(array, size) {
  * Fetches URLs from a sitemap.
  * @param {string} sitemapUrl - The URL of the sitemap.
  * @param {number} limit - The maximum number of URLs to fetch (-1 for no limit).
- * @param {Object} logger - The logger object.
  * @returns {Promise<Array>} An array of URL objects.
  * @throws {Error} If there's an error fetching or parsing the sitemap.
  */

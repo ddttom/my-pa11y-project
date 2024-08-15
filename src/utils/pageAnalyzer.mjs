@@ -1,20 +1,18 @@
 /* eslint-disable import/prefer-default-export */
-/* eslint-disable import/extensions */
 /* eslint-disable max-len */
 // pageAnalyzer.js
 
 import cheerio from 'cheerio';
 import {
   runPa11yWithRetry,
-} from './pa11yRunner.mjs';
+} from './pa11yRunner';
 import {
   getInternalLinksWithRetry,
   updateResults,
   createContentAnalysis,
-  generateAccessibilityReportIfNeeded,
   calculateDuration,
   createAnalysisResult,
-} from './pageAnalyzerHelpers.mjs';
+} from './pageAnalyzerHelpers';
 import {
   updateContentAnalysis,
   updateTitleMetrics,
@@ -25,7 +23,7 @@ import {
   updateSecurityMetrics,
   updateHreflangMetrics,
   updateCanonicalMetrics,
-} from './metricsUpdater.mjs';
+} from './metricsUpdater';
 
 const defaultConfig = {
   runPa11y: true,
@@ -77,7 +75,6 @@ const memoizedCheerioLoad = memoize(cheerio.load);
  * @param {string} baseUrl - The base URL of the website.
  * @param {Object} headers - The HTTP headers of the page response.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
 async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
@@ -101,7 +98,6 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
  * @param {string} testUrl - The URL of the page being tested.
  * @param {string} html - The HTML content of the page.
  * @param {Object} config - The configuration options.
- * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The Pa11y test result.
  */
 async function runPa11yAnalysis(testUrl, html, config) {
@@ -129,7 +125,6 @@ async function runPa11yAnalysis(testUrl, html, config) {
  * @param {Object} params.results - The results object to update.
  * @param {Object} params.headers - The HTTP headers of the page response.
  * @param {Object} params.pageData - Additional data about the page.
- * @param {Object} params.logger - The logger object.
  * @param {Object} [params.config={}] - Configuration options for the analysis.
  * @param {string} params.outputDir - The directory to output reports.
  * @returns {Promise<Object>} The analysis results.
@@ -142,9 +137,7 @@ export async function analyzePageContent({
   results,
   headers,
   pageData,
-  logger,
   config = {},
-  outputDir,
 }) {
   const startTime = process.hrtime();
   global.auditcore.logger.info(`Analyzing content for ${testUrl}`);
@@ -167,10 +160,6 @@ export async function analyzePageContent({
 
     const contentAnalysis = createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11yResult);
     updateContentAnalysis(contentAnalysis, results);
-
-    if (analysisConfig.generateAccessibilityReport && results.pa11y.length > 0) {
-      await generateAccessibilityReportIfNeeded(results, outputDir);
-    }
 
     const duration = calculateDuration(startTime);
     global.auditcore.logger.info(`Content analysis completed for ${testUrl} in ${duration.toFixed(3)} seconds`);

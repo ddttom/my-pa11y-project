@@ -1,12 +1,11 @@
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable no-await-in-loop */
-/* eslint-disable import/extensions */
 // performanceAnalyzer.js
 
 // performanceAnalyzer.js
 
 import puppeteer from 'puppeteer';
-import { globalOptions, performanceOptions } from '../config/options.mjs';
+import { globalOptions, performanceOptions } from '../config/options';
 
 const { MAX_RETRIES, INITIAL_BACKOFF } = globalOptions;
 
@@ -31,14 +30,13 @@ async function attemptAnalysis(url) {
 
     global.auditcore.logger.debug('Collecting performance metrics');
     const performanceMetrics = await page.evaluate(() => {
-      const { timing } = performance;
+      const navigationTiming = performance.getEntriesByType('navigation')[0];
       const paint = performance.getEntriesByType('paint');
       const tti = performance.getEntriesByType('measure').find((entry) => entry.name === 'TTI');
       const lcp = performance.getEntriesByType('largest-contentful-paint').pop();
-
       return {
-        loadTime: timing.loadEventEnd - timing.navigationStart,
-        domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+        loadTime: navigationTiming.loadEventEnd,
+        domContentLoaded: navigationTiming.domContentLoadedEventEnd,
         firstPaint: paint[0] ? paint[0].startTime : null,
         firstContentfulPaint: paint[1] ? paint[1].startTime : null,
         timeToInteractive: tti ? tti.duration : null,
@@ -60,7 +58,6 @@ async function attemptAnalysis(url) {
 /**
  * Analyzes the performance of a web page.
  * @param {string} url - The URL of the page to analyze.
- * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The performance metrics.
  */
 export async function analyzePerformance(url) {

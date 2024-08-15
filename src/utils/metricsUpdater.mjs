@@ -1,28 +1,22 @@
-/* eslint-disable import/extensions */
 // metricsUpdater.js
 
-import { updateUrlMetrics, updateResponseCodeMetrics } from './urlMetrics.mjs';
-import { updateTitleMetrics, updateMetaDescriptionMetrics, updateHeadingMetrics } from './contentMetrics.mjs';
-import { updateImageMetrics, updateLinkMetrics } from './mediaMetrics.mjs';
+import { updateUrlMetrics, updateResponseCodeMetrics } from './urlMetrics';
+import { updateTitleMetrics, updateMetaDescriptionMetrics, updateHeadingMetrics } from './contentMetrics';
+import { updateImageMetrics, updateLinkMetrics } from './mediaMetrics';
 import {
   updateSecurityMetrics,
   updateHreflangMetrics,
   updateCanonicalMetrics,
   updateContentAnalysis,
   updateInternalLinks,
-} from './technicalMetrics.mjs';
+} from './technicalMetrics';
 
 /**
  * Updates all metrics for a given page.
  * @param {Object} pageData - The page data object containing all necessary information.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateAllMetrics(pageData, results) {
-  if (!pageData || !results || !logger) {
-    throw new Error('Invalid parameters for updateAllMetrics');
-  }
-
   try {
     const {
       url, baseUrl, html, statusCode, $, headers, contentAnalysis, internalLinks,

@@ -2,11 +2,11 @@
 // setup.js
 
 import fs from 'fs/promises';
-import { ensureCacheDir } from './caching.mjs';
+import { ensureCacheDir } from './caching';
 
 async function createDirectories(outputDir, options) {
   await fs.mkdir(outputDir, { recursive: true });
-  await ensureCacheDir(options, auditcore.logger);
+  await ensureCacheDir(options);
 }
 
 // eslint-disable-next-line import/prefer-default-export

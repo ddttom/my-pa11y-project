@@ -1,4 +1,4 @@
-
+/* eslint-disable no-use-before-define */
 // caching.mjs
 
 import fs from 'fs/promises';
@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
-import { calculateSeoScore } from './seoScoring.mjs';
+import { calculateSeoScore } from './seoScoring';
 
 const CACHE_DIR = path.join(process.cwd(), '.cache');
 
@@ -195,7 +195,6 @@ async function fetchDataWithoutPuppeteer(url) {
 /**
  * Renders a page using Puppeteer and collects various data.
  * @param {string} url - The URL to render and analyze.
- * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The rendered and analyzed data.
  */
 export async function renderAndCacheData(url, logger) {
@@ -229,49 +228,47 @@ export async function renderAndCacheData(url, logger) {
     const statusCode = response.status();
 
     // Collect page data
-    const pageData = await page.evaluate(() => {
-      return {
-        title: document.title,
-        metaDescription: document.querySelector('meta[name="description"]')?.content || '',
-        h1: document.querySelector('h1')?.textContent || '',
-        wordCount: document.body.innerText.trim().split(/\s+/).length,
-        hasResponsiveMetaTag: !!document.querySelector('meta[name="viewport"]'),
-        images: Array.from(document.images).map(img => ({
-          src: img.src,
-          alt: img.alt || '',
-        })),
-        internalLinks: document.querySelectorAll('a[href^="/"], a[href^="' + window.location.origin + '"]').length,
-        structuredData: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map(script => script.textContent),
-        openGraphTags: Array.from(document.querySelectorAll('meta[property^="og:"]')).map(tag => ({
-          [tag.getAttribute('property')]: tag.getAttribute('content'),
-        })),
-        twitterTags: Array.from(document.querySelectorAll('meta[name^="twitter:"]')).map(tag => ({
-          [tag.getAttribute('name')]: tag.getAttribute('content'),
-        })),
-        h1Count: document.querySelectorAll('h1').length,
-        h2Count: document.querySelectorAll('h2').length,
-        h3Count: document.querySelectorAll('h3').length,
-        h4Count: document.querySelectorAll('h4').length,
-        h5Count: document.querySelectorAll('h5').length,
-        h6Count: document.querySelectorAll('h6').length,
-        scriptsCount: document.scripts.length,
-        stylesheetsCount: document.styleSheets.length,
-        htmlLang: document.documentElement.lang,
-        canonicalUrl: document.querySelector('link[rel="canonical"]')?.href,
-        formsCount: document.forms.length,
-        tablesCount: document.querySelectorAll('table').length,
-        pageSize: document.documentElement.outerHTML.length,
-      };
-    });
+    const pageData = await page.evaluate(() => ({
+      title: document.title,
+      metaDescription: document.querySelector('meta[name="description"]')?.content || '',
+      h1: document.querySelector('h1')?.textContent || '',
+      wordCount: document.body.innerText.trim().split(/\s+/).length,
+      hasResponsiveMetaTag: !!document.querySelector('meta[name="viewport"]'),
+      images: Array.from(document.images).map((img) => ({
+        src: img.src,
+        alt: img.alt || '',
+      })),
+      internalLinks: document.querySelectorAll(`a[href^="/"], a[href^="${window.location.origin}"]`).length,
+      structuredData: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map((script) => script.textContent),
+      openGraphTags: Array.from(document.querySelectorAll('meta[property^="og:"]')).map((tag) => ({
+        [tag.getAttribute('property')]: tag.getAttribute('content'),
+      })),
+      twitterTags: Array.from(document.querySelectorAll('meta[name^="twitter:"]')).map((tag) => ({
+        [tag.getAttribute('name')]: tag.getAttribute('content'),
+      })),
+      h1Count: document.querySelectorAll('h1').length,
+      h2Count: document.querySelectorAll('h2').length,
+      h3Count: document.querySelectorAll('h3').length,
+      h4Count: document.querySelectorAll('h4').length,
+      h5Count: document.querySelectorAll('h5').length,
+      h6Count: document.querySelectorAll('h6').length,
+      scriptsCount: document.scripts.length,
+      stylesheetsCount: document.styleSheets.length,
+      htmlLang: document.documentElement.lang,
+      canonicalUrl: document.querySelector('link[rel="canonical"]')?.href,
+      formsCount: document.forms.length,
+      tablesCount: document.querySelectorAll('table').length,
+      pageSize: document.documentElement.outerHTML.length,
+    }));
 
     // Performance metrics
     const performanceMetrics = await page.evaluate(() => {
-      const { timing } = performance;
+      const navigationTiming = performance.getEntriesByType('navigation')[0];
       return {
-        loadTime: timing.loadEventEnd - timing.navigationStart,
-        domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
-        firstPaint: performance.getEntriesByType('paint').find(entry => entry.name === 'first-paint')?.startTime,
-        firstContentfulPaint: performance.getEntriesByType('paint').find(entry => entry.name === 'first-contentful-paint')?.startTime,
+        loadTime: navigationTiming.loadEventEnd - navigationTiming.startTime,
+        domContentLoaded: navigationTiming.domContentLoadedEventEnd - navigationTiming.startTime,
+        firstPaint: performance.getEntriesByType('paint').find((entry) => entry.name === 'first-paint')?.startTime,
+        firstContentfulPaint: performance.getEntriesByType('paint').find((entry) => entry.name === 'first-contentful-paint')?.startTime,
       };
     });
 
@@ -335,15 +332,16 @@ function analyzeContentFreshness(data) {
     }
   } else {
     // If we can't determine the last modified date, use the last crawled date
-    if (freshness.daysSinceLastCrawled <= 7) {
-      freshness.freshnessStatus = 'Potentially Fresh';
-    } else if (freshness.daysSinceLastCrawled <= 30) {
-      freshness.freshnessStatus = 'Potentially Moderately Fresh';
-    } else {
-      freshness.freshnessStatus = 'Potentially Stale';
-    }
+    freshness.freshnessStatus = (() => {
+      if (freshness.daysSinceLastCrawled <= 7) {
+        return 'Potentially Fresh';
+      }
+      if (freshness.daysSinceLastCrawled <= 30) {
+        return 'Potentially Moderately Fresh';
+      }
+      return 'Potentially Stale';
+    })();
   }
 
   return freshness;
 }
-

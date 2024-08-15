@@ -26,7 +26,6 @@ const SEO_WEIGHTS = {
 /**
  * Calculates the SEO score for a given page.
  * @param {Object} pageData - The data for the page being scored.
- * @param {Object} logger - The logger object.
  * @returns {Object} The SEO score and details.
  */
 export function calculateSeoScore(pageData) {
@@ -135,7 +134,6 @@ function validateInput(value, name, type) {
 /**
  * Scores the title optimization.
  * @param {string} title - The page title.
- * @param {Object} logger - The logger object.
  * @returns {number} The title optimization score.
  */
 function scoreTitleOptimization(title) {
@@ -152,7 +150,6 @@ function scoreTitleOptimization(title) {
 /**
  * Scores the meta description.
  * @param {string} metaDescription - The meta description.
- * @param {Object} logger - The logger object.
  * @returns {number} The meta description score.
  */
 function scoreMetaDescription(metaDescription) {
@@ -169,7 +166,6 @@ function scoreMetaDescription(metaDescription) {
 /**
  * Scores the URL structure.
  * @param {string} url - The URL to score.
- * @param {Object} logger - The logger object.
  * @returns {number} The URL structure score.
  */
 function scoreUrlStructure(url) {
@@ -218,7 +214,6 @@ function scoreUrlStructure(url) {
 /**
  * Scores the H1 optimization.
  * @param {string} h1 - The H1 heading.
- * @param {Object} logger - The logger object.
  * @returns {number} The H1 optimization score.
  */
 function scoreH1Optimization(h1) {
@@ -235,7 +230,6 @@ function scoreH1Optimization(h1) {
 /**
  * Scores the content length.
  * @param {number} wordCount - The word count of the content.
- * @param {Object} logger - The logger object.
  * @returns {number} The content length score.
  */
 function scoreContentLength(wordCount) {
@@ -252,7 +246,6 @@ function scoreContentLength(wordCount) {
 /**
  * Scores the content quality.
  * @param {Object} pageData - The page data.
- * @param {Object} logger - The logger object.
  * @returns {number} The content quality score.
  */
 function scoreContentQuality(pageData) {
@@ -309,7 +302,6 @@ function extractMainKeyword(title, metaDescription, h1) {
 /**
  * Scores the internal linking.
  * @param {number} internalLinksCount - The number of internal links.
- * @param {Object} logger - The logger object.
  * @returns {number} The internal linking score.
  */
 function scoreInternalLinking(internalLinksCount) {
@@ -326,7 +318,6 @@ function scoreInternalLinking(internalLinksCount) {
 /**
  * Scores the image optimization.
  * @param {Array} images - The images on the page.
- * @param {Object} logger - The logger object.
  * @returns {number} The image optimization score.
  */
 function scoreImageOptimization(images) {
@@ -348,7 +339,6 @@ function scoreImageOptimization(images) {
 /**
  * Scores the page speed.
  * @param {Object} performanceMetrics - The performance metrics of the page.
- * @param {Object} logger - The logger object.
  * @returns {number} The page speed score.
  */
 function scorePageSpeed(performanceMetrics) {
@@ -368,7 +358,6 @@ function scorePageSpeed(performanceMetrics) {
 /**
  * Scores the mobile optimization.
  * @param {boolean} hasResponsiveMetaTag - Whether the page has a responsive meta tag.
- * @param {Object} logger - The logger object.
  * @returns {number} The mobile optimization score.
  */
 function scoreMobileOptimization(hasResponsiveMetaTag) {
@@ -385,7 +374,6 @@ function scoreMobileOptimization(hasResponsiveMetaTag) {
 /**
  * Scores the security factors.
  * @param {string} url - The URL of the page.
- * @param {Object} logger - The logger object.
  * @returns {number} The security factors score.
  */
 function scoreSecurityFactors(url) {
@@ -402,7 +390,6 @@ function scoreSecurityFactors(url) {
 /**
  * Scores the structured data.
  * @param {Array} structuredData - The structured data on the page.
- * @param {Object} logger - The logger object.
  * @returns {number} The structured data score.
  */
 function scoreStructuredData(structuredData) {
@@ -421,7 +408,6 @@ function scoreStructuredData(structuredData) {
  * @param {Object} param0 - Object containing openGraphTags and twitterTags.
  * @param {Object} param0.openGraphTags - The Open Graph tags.
  * @param {Object} param0.twitterTags - The Twitter Card tags.
- * @param {Object} logger - The logger object.
  * @returns {number} The social media tags score.
  */
 function scoreSocialMediaTags({ openGraphTags, twitterTags }) {
@@ -456,7 +442,6 @@ function scoreRange(value, min, max, inverse = false) {
 /**
  * Handles errors in scoring functions.
  * @param {Error} error - The error that occurred.
- * @param {Object} logger - The logger object.
  * @param {string} functionName - The name of the function where the error occurred.
  * @returns {number} A default score of 0.
  */

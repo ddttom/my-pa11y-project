@@ -5,11 +5,11 @@
 // urlProcessor.js
 
 import PriorityQueue from 'priorityqueuejs';
-import { getOrRenderData } from './caching.mjs';
-import { analyzePageContent } from './pageAnalyzer.mjs';
-import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.mjs';
-import { analyzePerformance } from './performanceAnalyzer.mjs';
-import { calculateSeoScore } from './seoScoring.mjs';
+import { getOrRenderData } from './caching';
+import { analyzePageContent } from './pageAnalyzer';
+import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater';
+import { analyzePerformance } from './performanceAnalyzer';
+import { calculateSeoScore } from './seoScoring';
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,
@@ -33,7 +33,6 @@ export class UrlProcessor {
    */
   constructor(options) {
     this.options = { ...DEFAULT_CONFIG, ...options };
-    this.logger = logger;
     this.results = {
       performanceAnalysis: [],
       seoScores: [],
@@ -113,7 +112,6 @@ export class UrlProcessor {
         this.results,
         headers,
         pageData,
-        this.logger,
         {
           runPa11y: this.options.runPa11y,
           pa11yTimeout: this.options.pa11yTimeout,
@@ -122,7 +120,6 @@ export class UrlProcessor {
           retryAttempts: this.options.maxRetries,
           retryDelay: this.options.retryDelay,
         },
-        this.options.outputDir,
       );
 
       if (result.pa11ySuccess) {

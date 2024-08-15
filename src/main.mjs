@@ -5,17 +5,105 @@
 
 import path from 'path';
 import fs from 'fs/promises';
-import { validateAndPrepare } from './utils/setup.mjs';
-import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.mjs';
-import { postProcessResults, saveResults } from './utils/results.mjs';
-import { generateSitemap } from './utils/sitemapGenerator.mjs';
+import { validateAndPrepare } from './utils/setup';
+import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap';
+import { postProcessResults, saveResults } from './utils/results';
+import { generateSitemap } from './utils/sitemapGenerator';
 import {
   checkIsShuttingDown,
   setupShutdownHandler,
-} from './utils/shutdownHandler.mjs';
+} from './utils/shutdownHandler';
 
-export function initializeResults() {
-  // ... (keep the existing initializeResults function unchanged)
+function initializeResults() {
+  return {
+    pa11y: [],
+    internalLinks: [],
+    contentAnalysis: [],
+    orphanedUrls: new Set(),
+    urlMetrics: {
+      total: 0,
+      internal: 0,
+      external: 0,
+      internalIndexable: 0,
+      internalNonIndexable: 0,
+      nonAscii: 0,
+      uppercase: 0,
+      underscores: 0,
+      containsSpace: 0,
+      overLength: 0,
+    },
+    responseCodeMetrics: {},
+    titleMetrics: {
+      missing: 0,
+      duplicate: 0,
+      tooLong: 0,
+      tooShort: 0,
+      pixelWidth: {},
+    },
+    metaDescriptionMetrics: {
+      missing: 0,
+      duplicate: 0,
+      tooLong: 0,
+      tooShort: 0,
+      pixelWidth: {},
+    },
+    h1Metrics: {
+      missing: 0,
+      duplicate: 0,
+      tooLong: 0,
+      multiple: 0,
+    },
+    h2Metrics: {
+      missing: 0,
+      duplicate: 0,
+      tooLong: 0,
+      multiple: 0,
+      nonSequential: 0,
+    },
+    imageMetrics: {
+      total: 0,
+      missingAlt: 0,
+      missingAltAttribute: 0,
+      altTextTooLong: 0,
+    },
+    linkMetrics: {
+      pagesWithoutInternalOutlinks: 0,
+      pagesWithHighExternalOutlinks: 0,
+      internalOutlinksWithoutAnchorText: 0,
+      nonDescriptiveAnchorText: 0,
+    },
+    securityMetrics: {
+      httpUrls: 0,
+      missingHstsHeader: 0,
+      missingContentSecurityPolicy: 0,
+      missingXFrameOptions: 0,
+      missingXContentTypeOptions: 0,
+    },
+    hreflangMetrics: {
+      pagesWithHreflang: 0,
+      missingReturnLinks: 0,
+      incorrectLanguageCodes: 0,
+    },
+    canonicalMetrics: {
+      missing: 0,
+      selfReferencing: 0,
+      nonSelf: 0,
+    },
+    contentMetrics: {
+      lowContent: 0,
+      duplicate: 0,
+    },
+    seoScores: [],
+    performanceAnalysis: [],
+    failedUrls: [],
+    images: [],
+    videos: [],
+    structuredData: [],
+    openGraphTags: [],
+    twitterTags: [],
+    lastModified: {},
+    changeFrequency: {},
+  };
 }
 
 async function handleInvalidUrls(invalidUrls, outputDir) {
@@ -27,22 +115,11 @@ async function handleInvalidUrls(invalidUrls, outputDir) {
   }
 }
 
-async function generateReports(results, outputDir) {
-  // Implement additional report generation here
-  // For example, you could generate a summary report, detailed analysis report, etc.
-  global.auditcore.logger.info('Generating additional reports...');
-  // Example:
-  // await generateSummaryReport(results, outputDir);
-  // await generateDetailedAnalysisReport(results, outputDir);
-  global.auditcore.logger.info('Additional reports generated successfully');
-}
-
 export async function runTestsOnSitemap() {
-
-  sitemapUrl = global.auditcore.options.sitemap;
-  outputDir = global.auditcore.options.output;
-  options = global.auditcore.options;
-  limit = global.auditcore.options.limit;
+  const sitemapUrl = global.auditcore.options.sitemap;
+  const outputDir = global.auditcore.options.output;
+  const { options } = global.auditcore.options;
+  const { limit } = global.auditcore.options;
 
   const startTime = process.hrtime();
   global.auditcore.logger.info(`Starting process for sitemap or page: ${sitemapUrl}`);
@@ -56,7 +133,6 @@ export async function runTestsOnSitemap() {
     const { validUrls, invalidUrls } = await getUrlsFromSitemap(
       sitemapUrl,
       limit,
-      logger,
     );
 
     global.global.auditcore.logger.info(
@@ -97,11 +173,6 @@ export async function runTestsOnSitemap() {
       } else {
         global.auditcore.logger.warn('No sitemap was generated due to lack of valid URLs.');
       }
-    }
-
-    // Generate additional reports
-    if (!checkIsShuttingDown()) {
-      await generateReports(results, outputDir);
     }
 
     const [seconds, nanoseconds] = process.hrtime(startTime);

@@ -1,18 +1,18 @@
 /* eslint-disable import/extensions */
 // technicalMetrics.js
 
-import { safeIncrement } from './metricsCommon.mjs';
-import { isValidUrl } from './urlUtils.mjs';
+import { safeIncrement } from './metricsCommon';
+import { isValidUrl } from './urlUtils';
 
 /**
  * Updates security metrics based on the page's security features.
  * @param {string} testUrl - The URL being tested.
  * @param {Object} headers - The response headers.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
+
  */
 export function updateSecurityMetrics(testUrl, headers, results) {
-  if (!isValidUrl(testUrl) || !headers || !results || !logger) {
+  if (!isValidUrl(testUrl) || !headers || !results) {
     throw new Error('Invalid parameters for updateSecurityMetrics');
   }
 
@@ -32,13 +32,8 @@ export function updateSecurityMetrics(testUrl, headers, results) {
  * Updates hreflang metrics based on the page's hreflang tags.
  * @param {Object} $ - The Cheerio instance.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateHreflangMetrics($, results) {
-  if (!$ || !results || !logger) {
-    throw new Error('Invalid parameters for updateHreflangMetrics');
-  }
-
   try {
     const hreflangTags = $('link[rel="alternate"][hreflang]');
     if (hreflangTags.length > 0) {
@@ -55,10 +50,9 @@ export function updateHreflangMetrics($, results) {
  * @param {Object} $ - The Cheerio instance.
  * @param {string} testUrl - The URL being tested.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateCanonicalMetrics($, testUrl, results) {
-  if (!$ || !isValidUrl(testUrl) || !results || !logger) {
+  if (!$ || !isValidUrl(testUrl) || !results) {
     throw new Error('Invalid parameters for updateCanonicalMetrics');
   }
 
@@ -84,13 +78,8 @@ export function updateCanonicalMetrics($, testUrl, results) {
  * Updates content analysis metrics.
  * @param {Object} contentAnalysis - The content analysis object.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateContentAnalysis(contentAnalysis, results) {
-  if (!contentAnalysis || !results || !logger) {
-    throw new Error('Invalid parameters for updateContentAnalysis');
-  }
-
   try {
     results.contentAnalysis.push(contentAnalysis);
     const wordCount = contentAnalysis.wordCount || 0;
@@ -108,10 +97,9 @@ export function updateContentAnalysis(contentAnalysis, results) {
  * @param {string} testUrl - The URL being tested.
  * @param {Array} internalLinks - The array of internal links.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateInternalLinks(testUrl, internalLinks, results) {
-  if (!isValidUrl(testUrl) || !Array.isArray(internalLinks) || !results || !logger) {
+  if (!isValidUrl(testUrl) || !Array.isArray(internalLinks) || !results) {
     throw new Error('Invalid parameters for updateInternalLinks');
   }
 

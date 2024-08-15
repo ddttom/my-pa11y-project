@@ -1,14 +1,12 @@
-/* eslint-disable import/extensions */
 /* eslint-disable import/prefer-default-export */
 // renderAndCacheData.js
 
 import puppeteer from 'puppeteer';
-import { calculateSeoScore } from './seoScoring.mjs';
+import { calculateSeoScore } from './seoScoring';
 
 /**
  * Renders a page using Puppeteer and collects various data.
  * @param {string} url - The URL to render and analyze.
- * @param {Object} logger - The logger object.
  * @returns {Promise<Object>} The rendered and analyzed data.
  */
 async function renderAndCacheData(url) {
@@ -77,15 +75,15 @@ async function renderAndCacheData(url) {
 
     // Performance metrics
     const performanceMetrics = await page.evaluate(() => {
-      const { timing } = performance;
+      const navigationEntry = performance.getEntriesByType('navigation')[0];
+      const paintEntries = performance.getEntriesByType('paint');
       return {
-        loadTime: timing.loadEventEnd - timing.navigationStart,
-        domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
-        firstPaint: performance.getEntriesByType('paint').find((entry) => entry.name === 'first-paint')?.startTime,
-        firstContentfulPaint: performance.getEntriesByType('paint').find((entry) => entry.name === 'first-contentful-paint')?.startTime,
+        loadTime: navigationEntry.loadEventEnd,
+        domContentLoaded: navigationEntry.domContentLoadedEventEnd,
+        firstPaint: paintEntries.find((entry) => entry.name === 'first-paint')?.startTime,
+        firstContentfulPaint: paintEntries.find((entry) => entry.name === 'first-contentful-paint')?.startTime,
       };
     });
-
     await browser.close();
 
     const data = {

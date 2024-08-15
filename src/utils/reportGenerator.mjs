@@ -1,10 +1,8 @@
 /* eslint-disable no-use-before-define */
 /* eslint-disable import/prefer-default-export */
-/* eslint-disable import/extensions */
-/* eslint-disable max-len */
 // reportGenerator.js
 
-import { formatCsv } from './csvFormatter.mjs';
+import { formatCsv } from './csvFormatter';
 
 /**
  * Memoizes a function to cache its results.
@@ -79,7 +77,6 @@ function sanitizeForCsv(value) {
  * Generates an SEO analysis report.
  * @param {Object} results - The SEO analysis results.
  * @param {string} sitemapUrl - The URL of the analyzed sitemap.
- * @param {Object} logger - The logger object.
  * @returns {string|null} The generated report as a CSV string, or null if an error occurred.
  */
 export function generateReport(results, sitemapUrl) {
@@ -136,7 +133,6 @@ function getReportSections(results, sitemapUrl) {
 /**
  * Generates report sections based on the configuration.
  * @param {Array} reportSections - The report sections configuration.
- * @param {Object} logger - The logger object.
  * @returns {Array} The generated report data.
  */
 function generateReportSections(reportSections) {
@@ -386,7 +382,9 @@ function generateOrphanedUrlsAnalysis(results) {
  * @returns {Array} The Pa11y analysis section data.
  */
 function generatePa11yAnalysis(results) {
-  const totalIssues = results.pa11y.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
+  const totalIssues = results.pa11y.reduce((sum, result) => (
+    sum + (result.issues?.length || 0)
+  ), 0);
   return [
     ['Accessibility Analysis', 'Count'],
     ['Total Pa11y issues', totalIssues],
@@ -400,7 +398,9 @@ function generatePa11yAnalysis(results) {
  * @returns {Array} The JavaScript errors analysis section data.
  */
 function generateJavaScriptErrorsAnalysis(results) {
-  const pagesWithJsErrors = results.contentAnalysis.filter((page) => page.jsErrors && page.jsErrors.length > 0).length;
+  const pagesWithJsErrors = results.contentAnalysis.filter(
+    (page) => page.jsErrors?.length > 0,
+  ).length;
   return [
     ['JavaScript Errors Analysis', 'Count'],
     ['Pages with JavaScript errors', pagesWithJsErrors],
@@ -414,7 +414,8 @@ function generateJavaScriptErrorsAnalysis(results) {
  * @returns {Array} The SEO score analysis section data.
  */
 function generateSeoScoreAnalysis(results) {
-  const averageScore = results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length;
+  const totalScore = results.seoScores.reduce((sum, score) => sum + score.score, 0);
+  const averageScore = totalScore / results.seoScores.length;
   return [
     ['SEO Score Analysis', 'Score'],
     ['Average SEO Score', averageScore.toFixed(2)],
@@ -428,7 +429,11 @@ function generateSeoScoreAnalysis(results) {
  * @returns {Array} The performance analysis section data.
  */
 function generatePerformanceAnalysis(results) {
-  const avgLoadTime = results.performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / results.performanceAnalysis.length;
+  const totalLoadTime = results.performanceAnalysis.reduce(
+    (sum, perf) => sum + perf.loadTime,
+    0,
+  );
+  const avgLoadTime = totalLoadTime / results.performanceAnalysis.length;
   return [
     ['Performance Analysis', 'Time (ms)'],
     ['Average Load Time', avgLoadTime.toFixed(2)],

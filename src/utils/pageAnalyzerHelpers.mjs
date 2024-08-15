@@ -3,16 +3,14 @@
 
 // pageAnalyzerHelpers.js
 
-import { getInternalLinks } from './linkAnalyzer.mjs';
-import { analyzeAccessibilityResults, generateAccessibilityReport } from './pa11yRunner.mjs';
-import { updateInternalLinks } from './metricsUpdater.mjs';
+import { getInternalLinks } from './linkAnalyzer';
+import { updateInternalLinks } from './metricsUpdater';
 
 /**
  * Retries an operation with a specified number of attempts and delay.
  * @param {Function} operation - The operation to retry.
  * @param {number} retryAttempts - The number of retry attempts.
  * @param {number} retryDelay - The delay between retries in milliseconds.
- * @param {Object} logger - The logger object.
  * @returns {Promise<*>} The result of the operation.
  */
 async function retryOperation(operation, retryAttempts, retryDelay) {
@@ -38,7 +36,6 @@ async function retryOperation(operation, retryAttempts, retryDelay) {
  * @param {string} testUrl - The URL of the page being tested.
  * @param {string} baseUrl - The base URL of the website.
  * @param {Object} config - Configuration options.
- * @param {Object} logger - The logger object.
  * @returns {Promise<Array>} The array of internal links.
  */
 async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
@@ -46,7 +43,6 @@ async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
     () => getInternalLinks(html, testUrl, baseUrl),
     config.retryAttempts,
     config.retryDelay,
-    logger,
   );
 }
 
@@ -89,16 +85,8 @@ function createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11y
  * Generates an accessibility report if needed.
  * @param {Object} results - The results object containing Pa11y data.
  * @param {string} outputDir - The directory to output the report.
- * @param {Object} logger - The logger object.
  * @returns {Promise<void>}
  */
-async function generateAccessibilityReportIfNeeded(results, outputDir) {
-  // eslint-disable-next-line no-unused-vars
-  const analysisResults = analyzeAccessibilityResults(results);
-  const reportPath = await generateAccessibilityReport(results, outputDir);
-  global.auditcore.logger.info(`Accessibility report generated at: ${reportPath}`);
-}
-
 /**
  * Calculates the duration of the analysis.
  * @param {[number, number]} startTime - The start time from process.hrtime().
@@ -135,7 +123,6 @@ export {
   getInternalLinksWithRetry,
   updateResults,
   createContentAnalysis,
-  generateAccessibilityReportIfNeeded,
   calculateDuration,
   createAnalysisResult,
 };

@@ -1,5 +1,4 @@
 /* eslint-disable max-len */
-/* eslint-disable import/extensions */
 // index.js
 
 /**
@@ -10,8 +9,7 @@
 
 import { program } from 'commander';
 import winston from 'winston';
-import { runTestsOnSitemap } from './src/main.mjs';
-import { displayCachingOptions } from './src/utils/caching.mjs';
+import { runTestsOnSitemap } from './src/main';
 
 // Create the global auditcore object
 const auditcore = {
@@ -28,7 +26,9 @@ auditcore.logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`),
+    winston.format.printf(
+      ({ timestamp, level, message }) => `${timestamp} ${level}: ${message}`,
+    ),
   ),
   transports: [
     new winston.transports.Console(),
@@ -49,7 +49,11 @@ program
   .option('--no-cache', 'Disable caching, always fetch fresh data')
   .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
   .option('--force-delete-cache', 'Force delete existing cache before starting')
-  .option('--log-level <level>', 'Set logging level (error, warn, info, verbose, debug)', 'info')
+  .option(
+    '--log-level <level>',
+    'Set logging level (error, warn, info, verbose, debug)',
+    'info',
+  )
 
   .parse(process.argv);
 
@@ -58,7 +62,9 @@ auditcore.options = program.opts();
 
 // Input validation for required options
 if (!auditcore.options.sitemap || !auditcore.options.output) {
-  global.auditcore.logger.error('Error: Sitemap URL and output directory are required.');
+  global.auditcore.logger.error(
+    'Error: Sitemap URL and output directory are required.',
+  );
   process.exit(1);
 }
 
@@ -76,17 +82,25 @@ global.auditcore.logger.info('-------------------------');
 global.auditcore.logger.info(`Sitemap URL: ${auditcore.options.sitemap}`);
 global.auditcore.logger.info(`Output Directory: ${auditcore.options.output}`);
 global.auditcore.logger.info(`Limit: ${auditcore.options.limit}`);
-global.auditcore.logger.info(`Puppeteer: ${auditcore.options.puppeteer ? 'Enabled' : 'Disabled'}`);
-global.auditcore.logger.info(`Cache Only: ${auditcore.options.cacheOnly ? 'Enabled' : 'Disabled'}`);
-global.auditcore.logger.info(`Cache: ${auditcore.options.cache ? 'Enabled' : 'Disabled'}`);
-global.auditcore.logger.info(`Force Delete Cache: ${auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`);
+global.auditcore.logger.info(
+  `Puppeteer: ${auditcore.options.puppeteer ? 'Enabled' : 'Disabled'}`,
+);
+global.auditcore.logger.info(
+  `Cache Only: ${auditcore.options.cacheOnly ? 'Enabled' : 'Disabled'}`,
+);
+global.auditcore.logger.info(
+  `Cache: ${auditcore.options.cache ? 'Enabled' : 'Disabled'}`,
+);
+global.auditcore.logger.info(
+  `Force Delete Cache: ${auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`,
+);
 global.auditcore.logger.info(`Log Level: ${auditcore.options.logLevel}`);
 
 global.auditcore.logger.info('Starting the crawl process...');
 
-
 try {
-  runTestsOnSitemap().then(() => {
+  runTestsOnSitemap()
+    .then(() => {
       global.auditcore.logger.info('Script completed successfully');
     })
     .catch((error) => {

@@ -6,7 +6,6 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable no-console */
-/* eslint-disable import/extensions */
 // src/utils/sitemapGenerator.js
 
 import fs from 'fs/promises';

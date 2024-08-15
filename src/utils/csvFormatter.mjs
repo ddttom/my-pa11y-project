@@ -18,7 +18,6 @@ function escapeCell(cell) {
  * Formats data into CSV string.
  * @param {Array} data - The data to format.
  * @param {Array<string>} [headers] - Optional headers for the CSV.
- * @param {Object} logger - The logger object.
  * @param {string} [delimiter=','] - The delimiter to use (default: comma).
  * @returns {string} The formatted CSV string.
  * @throws {Error} If input is invalid.

@@ -1,8 +1,6 @@
-/* eslint-disable import/extensions */
 // mediaMetrics.js
 
-import { safeIncrement } from './metricsCommon.mjs';
-import { isValidUrl } from './urlUtils.mjs';
+import { safeIncrement } from './metricsCommon';
 
 const ALT_TEXT_MAX_LENGTH = 100;
 const MAX_EXTERNAL_LINKS = 100;
@@ -11,13 +9,8 @@ const MAX_EXTERNAL_LINKS = 100;
  * Updates image metrics based on the page's images.
  * @param {Object} $ - The Cheerio instance.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateImageMetrics($, results) {
-  if (!$ || !results || !logger) {
-    throw new Error('Invalid parameters for updateImageMetrics');
-  }
-
   try {
     $('img').each((i, el) => {
       safeIncrement(results.imageMetrics, 'total');
@@ -43,13 +36,8 @@ export function updateImageMetrics($, results) {
  * @param {Object} $ - The Cheerio instance.
  * @param {string} baseUrl - The base URL of the website.
  * @param {Object} results - The results object to update.
- * @param {Object} logger - The logger object.
  */
 export function updateLinkMetrics($, baseUrl, results) {
-  if (!$ || !isValidUrl(baseUrl) || !results || !logger) {
-    throw new Error('Invalid parameters for updateLinkMetrics');
-  }
-
   try {
     const internalLinkElements = $(`a[href^="/"], a[href^="${baseUrl}"]`);
     const externalLinks = $('a').not(internalLinkElements);

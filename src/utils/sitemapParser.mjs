@@ -2,7 +2,6 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-use-before-define */
-/* eslint-disable import/extensions */
 // sitemapParser.js
 
 import axios from 'axios';
@@ -12,7 +11,7 @@ import fs from 'fs/promises';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import RateLimiter from 'limiter';
-import { fixUrl } from './urlUtils.mjs';
+import { fixUrl } from './urlUtils';
 
 const gunzip = promisify(zlib.gunzip);
 const { RateLimiter: Limiter } = RateLimiter;
