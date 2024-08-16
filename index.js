@@ -25,7 +25,7 @@ program
     '-l, --limit <number>',
     'Limit the number of URLs to test. Use -1 to test all URLs.',
     parseInt,
-    2,
+    -1,
   )
   .option('--cache-only', 'Use only cached data, do not fetch new data')
   .option('--no-cache', 'Disable caching, always fetch fresh data')
@@ -34,7 +34,7 @@ program
   .option(
     '--log-level <level>',
     'Set logging level (error, warn, info, verbose, debug)',
-    'info',
+    'warn',
   )
   .parse(process.argv);
 
@@ -72,7 +72,7 @@ global.auditcore.logger = winston.createLogger({
 
 global.auditcore.options.limit = parseInt(global.auditcore.options.limit, 10);
 if (Number.isNaN(global.auditcore.options.limit)) {
-  global.auditcore.options.limit = 2;
+  global.auditcore.options.limit = -1;
 }
 
 global.auditcore.logger.level = global.auditcore.options.logLevel;

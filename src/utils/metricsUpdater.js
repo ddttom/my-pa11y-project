@@ -108,26 +108,35 @@ export function updateHreflangMetrics($, results, url) {
   };
 }
 
-export function updateCanonicalMetrics($, results, url) {
+export async function updateCanonicalMetrics($, testUrl, results) {
   const canonicalUrl = $('link[rel="canonical"]').attr('href');
-  
-  results.canonicalMetrics = results.canonicalMetrics || {};
-  results.canonicalMetrics[url] = {
-    hasCanonical: canonicalUrl ? 1 : 0,
-    isSelfReferential: canonicalUrl === url ? 1 : 0
-  };
+  results.canonicalMetrics[testUrl] = results.canonicalMetrics[testUrl] || {};
+  results.canonicalMetrics[testUrl].hasCanonical = !!canonicalUrl;
+  results.canonicalMetrics[testUrl].isSelfReferential = canonicalUrl === testUrl;
 }
-
-export function updateContentMetrics(content, results, url) {
-  const wordCount = content.split(/\s+/).length;
+export async function updateContentMetrics($, results, testUrl) {
+  global.auditcore.logger.debug(`[START] Updating content metrics for ${testUrl}`);
   
-  results.contentMetrics = results.contentMetrics || {};
-  results.contentMetrics[url] = {
-    wordCount,
-    hasLongParagraphs: content.split('\n\n').some(p => p.split(/\s+/).length > 300) ? 1 : 0,
-  };
-}
+  try {
+    const content = $('body').text();
+    const wordCount = content.trim().split(/\s+/).length;
 
+    results.contentMetrics = results.contentMetrics || {};
+    results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
+    
+    results.contentMetrics[testUrl] = {
+      wordCount,
+      hasLongParagraphs: $('p').toArray().some(p => $(p).text().split(/\s+/).length > 300),
+    };
+
+    global.auditcore.logger.debug(`Content metrics updated for ${testUrl}: ${JSON.stringify(results.contentMetrics[testUrl])}`);
+  } catch (error) {
+    global.auditcore.logger.error(`[ERROR] Error updating content metrics for ${testUrl}:`, error);
+    global.auditcore.logger.debug(`Error stack: ${error.stack}`);
+  }
+
+  global.auditcore.logger.debug(`[END] Updating content metrics for ${testUrl}`);
+}
 export function updateUrlMetrics(url, baseUrl, html, statusCode, results) {
   results.urlMetrics = results.urlMetrics || {
     total: 0,

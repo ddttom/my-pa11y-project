@@ -1,3 +1,5 @@
+// pageAnalyzer.js
+
 import cheerio from 'cheerio';
 import {
   runPa11yWithRetry,
@@ -18,6 +20,7 @@ import {
   updateSecurityMetrics,
   updateHreflangMetrics,
   updateCanonicalMetrics,
+  updateContentMetrics,
 } from './metricsUpdater.js';
 
 function validateInput(testUrl, html, baseUrl) {
@@ -42,6 +45,7 @@ const memoizedCheerioLoad = memoize(cheerio.load);
 async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
   global.auditcore.logger.info(`[START] Running metrics analysis for ${testUrl}`);
   try {
+    // Initialize all metric objects
     results.urlMetrics = results.urlMetrics || {};
     results.responseCodeMetrics = results.responseCodeMetrics || {};
     results.titleMetrics = results.titleMetrics || {};
@@ -55,6 +59,20 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     results.canonicalMetrics = results.canonicalMetrics || {};
     results.contentMetrics = results.contentMetrics || {};
 
+    // Initialize metric objects for this specific URL
+    results.urlMetrics[testUrl] = results.urlMetrics[testUrl] || {};
+    results.responseCodeMetrics[testUrl] = results.responseCodeMetrics[testUrl] || {};
+    results.titleMetrics[testUrl] = results.titleMetrics[testUrl] || {};
+    results.metaDescriptionMetrics[testUrl] = results.metaDescriptionMetrics[testUrl] || {};
+    results.h1Metrics[testUrl] = results.h1Metrics[testUrl] || {};
+    results.h2Metrics[testUrl] = results.h2Metrics[testUrl] || {};
+    results.imageMetrics[testUrl] = results.imageMetrics[testUrl] || {};
+    results.linkMetrics[testUrl] = results.linkMetrics[testUrl] || {};
+    results.securityMetrics[testUrl] = results.securityMetrics[testUrl] || {};
+    results.hreflangMetrics[testUrl] = results.hreflangMetrics[testUrl] || {};
+    results.canonicalMetrics[testUrl] = results.canonicalMetrics[testUrl] || {};
+    results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
+
     await updateTitleMetrics($, results, testUrl);
     await updateMetaDescriptionMetrics($, results, testUrl);
     await updateHeadingMetrics($, results, testUrl);
@@ -63,6 +81,9 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     await updateSecurityMetrics(testUrl, headers, results);
     await updateHreflangMetrics($, results, testUrl);
     await updateCanonicalMetrics($, testUrl, results);
+    
+    // Add this line to update content metrics
+    await updateContentMetrics($, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
     metricsToCheck.forEach(metric => {
@@ -76,7 +97,24 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     global.auditcore.logger.info(`[END] Metrics analysis completed successfully for ${testUrl}`);
   } catch (error) {
     global.auditcore.logger.error(`[ERROR] Error in runMetricsAnalysis for ${testUrl}:`, error);
+    global.auditcore.logger.debug(`Error stack: ${error.stack}`);
   }
+}
+function updateResults(results, testUrl, pa11yResult, internalLinks) {
+  global.auditcore.logger.info(`[START] Updating results for ${testUrl}`);
+  
+  results.urlMetrics = results.urlMetrics || {};
+  results.urlMetrics[testUrl] = results.urlMetrics[testUrl] || {};
+  results.urlMetrics[testUrl].internalLinks = internalLinks ? internalLinks.length : 0;
+
+  results.responseCodeMetrics = results.responseCodeMetrics || {};
+  results.responseCodeMetrics[testUrl] = results.responseCodeMetrics[testUrl] || {};
+  results.responseCodeMetrics[testUrl].statusCode = pa11yResult ? 200 : null;
+
+  results.contentMetrics = results.contentMetrics || {};
+  results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
+
+  global.auditcore.logger.info(`[END] Results updated for ${testUrl}`);
 }
 
 async function runPa11yAnalysis(testUrl, html, config) {
@@ -84,6 +122,10 @@ async function runPa11yAnalysis(testUrl, html, config) {
   global.auditcore.logger.debug(`Pa11y options: ${JSON.stringify(config)}`);
 
   try {
+    if (!config || typeof config !== 'object') {
+      throw new Error('Invalid config object provided to runPa11yAnalysis');
+    }
+
     const pa11yOptions = {
       html,
       timeout: config.pa11yTimeout,
@@ -104,22 +146,6 @@ async function runPa11yAnalysis(testUrl, html, config) {
     global.auditcore.logger.error(`Error stack: ${error.stack}`);
     return { url: testUrl, error: error.message, stack: error.stack };
   }
-}
-function updateResults(results, testUrl, pa11yResult, internalLinks) {
-  global.auditcore.logger.info(`[START] Updating results for ${testUrl}`);
-  
-  results.urlMetrics = results.urlMetrics || {};
-  results.urlMetrics[testUrl] = results.urlMetrics[testUrl] || {};
-  results.urlMetrics[testUrl].internalLinks = internalLinks ? internalLinks.length : 0;
-
-  results.responseCodeMetrics = results.responseCodeMetrics || {};
-  results.responseCodeMetrics[testUrl] = results.responseCodeMetrics[testUrl] || {};
-  results.responseCodeMetrics[testUrl].statusCode = pa11yResult ? 200 : null;
-
-  results.contentMetrics = results.contentMetrics || {};
-  results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
-
-  global.auditcore.logger.info(`[END] Results updated for ${testUrl}`);
 }
 
 async function analyzePageContent({
@@ -169,7 +195,7 @@ async function analyzePageContent({
   }
 }
 
-export async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config) {
+async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config) {
   if (!url) {
     global.auditcore.logger.error('Attempting to process undefined URL');
     return { error: 'Undefined URL' };
@@ -202,4 +228,5 @@ export {
   runMetricsAnalysis,
   runPa11yAnalysis,
   updateResults,
+  processUrl
 };
