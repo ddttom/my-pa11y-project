@@ -1,6 +1,7 @@
 /* eslint-disable no-plusplus */
 /* eslint-disable max-len */
 /* eslint-disable no-await-in-loop */
+
 // urlProcessor.js
 
 import { getOrRenderData } from './caching.js';
@@ -8,6 +9,7 @@ import { processUrl } from './pageAnalyzer.js';
 import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js';
 import { analyzePerformance } from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
+import { writeToInvalidUrlFile } from './urlUtils.js';
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,
@@ -150,6 +152,11 @@ export class UrlProcessor {
    * @param {Error} error - The error that occurred.
    */
   handleProcessingFailure(testUrl, error) {
+    const invalidUrl = {
+      url: testUrl,
+      reason: error.message,
+    };
+    writeToInvalidUrlFile(invalidUrl);
     global.auditcore.logger.error(`Failed to process ${testUrl} after ${this.options.maxRetries} attempts. Last error: ${error.message}`);
     this.results.failedUrls.push({ url: testUrl || 'undefined', error: error.message });
   }

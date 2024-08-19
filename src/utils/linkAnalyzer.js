@@ -1,8 +1,9 @@
-/* eslint-disable no-console */
+import { writeToInvalidUrlFile } from './urlUtils.js';
 
 // linkAnalyzer.js
 
 import cheerio from 'cheerio';
+
 import { fixUrl } from './urlUtils.js';
 
 /**
@@ -21,7 +22,7 @@ export function getInternalLinks(html, pageUrl, baseUrl) {
   try {
     const $ = cheerio.load(html);
     const links = new Set();
-
+    
     $('a').each((i, element) => {
       const href = $(element).attr('href');
       if (href) {
@@ -37,6 +38,12 @@ export function getInternalLinks(html, pageUrl, baseUrl) {
           }
         } catch (urlError) {
           console.warn(`Invalid URL found: ${href}`);
+          const invalidUrl = {
+            url: href,
+            reason: 'Bad internal link',
+            sourceUrl: pageUrl,
+          };
+          writeToInvalidUrlFile(invalidUrl);
         }
       }
     });
@@ -78,7 +85,7 @@ export function getExternalLinks(html, pageUrl, baseUrl) {
             });
           }
         } catch (urlError) {
-          console.warn(`Invalid URL found: ${href}`);
+          global.auditcore.logger.warn(`Invalid URL found: ${href}`);
         }
       }
     });
