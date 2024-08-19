@@ -1,33 +1,17 @@
-// results.js
-
 import fs from 'fs/promises';
 import path from 'path';
 import { formatCsv } from './csvFormatter.js';
-import { generateReport } from './reportGenerator.js';
 
-/**
- * Saves content to a file.
- * @param {string} filePath - The path to save the file.
- * @param {string} content - The content to save.
- * @returns {Promise<void>}
- * @throws {Error} If there's an error saving the file.
- */
 async function saveFile(filePath, content) {
   try {
     await fs.writeFile(filePath, content, 'utf8');
     global.auditcore.logger.info(`File saved successfully: ${filePath}`);
   } catch (error) {
     global.auditcore.logger.error(`Error saving file ${filePath}:`, error);
-    throw error; // Re-throw to allow caller to handle
+    throw error;
   }
 }
 
-/**
- * Post-processes the analysis results.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
 export async function postProcessResults(results, outputDir) {
   global.auditcore.logger.info('Post-processing results');
   const commonPa11yIssues = analyzeCommonPa11yIssues(results.pa11y);
@@ -36,68 +20,21 @@ export async function postProcessResults(results, outputDir) {
   global.auditcore.logger.info('Results post-processing completed');
 }
 
-/**
- * Saves all analysis results to the specified output directory.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @param {string} sitemapUrl - The URL of the analyzed sitemap.
- * @returns {Promise<void>}
- */
 export async function saveResults(results, outputDir, sitemapUrl) {
   global.auditcore.logger.info(`Saving results to: ${outputDir}`);
 
   const saveOperations = [
-    {
-      name: 'Results',
-      func: () => saveDiagnostics(results, outputDir),
-    },  {
-      name: 'Image information',
-      func: () => saveImageInfo(results.contentAnalysis, outputDir),
-    },{
-      name: 'Image information',
-      func: async () => {
-        const imageInfo = await saveImageInfo(results.contentAnalysis, outputDir);
-        global.auditcore.logger.info(`Total images: ${imageInfo.totalImages}, Images without alt: ${imageInfo.imagesWithoutAlt}`);
-        return imageInfo;
-      },
-    },
-
-    {
-      name: 'Pa11y results',
-      func: () => savePa11yResults(results, outputDir),
-    },
-    {
-      name: 'Internal links',
-      func: () => saveInternalLinks(results, outputDir),
-    },
-    {
-      name: 'Images without alt',
-      func: () => saveImagesWithoutAlt(results.contentAnalysis, outputDir),
-    },
-    {
-      name: 'Content analysis',
-      func: () => saveContentAnalysis(results, outputDir),
-    },
-    {
-      name: 'Orphaned URLs',
-      func: () => saveOrphanedUrls(results, outputDir),
-    },
-    {
-      name: 'SEO report',
-      func: () => saveSeoReport(results, outputDir, sitemapUrl),
-    },
-    {
-      name: 'SEO scores',
-      func: () => saveSeoScores(results, outputDir),
-    },
-    {
-      name: 'Performance analysis',
-      func: () => savePerformanceAnalysis(results, outputDir),
-    },
-    {
-      name: 'SEO scores summary',
-      func: () => saveSeoScoresSummary(results, outputDir),
-    },
+    { name: 'Results', func: () => saveDiagnostics(results, outputDir) },
+    { name: 'Image information', func: () => saveImageInfo(results.contentAnalysis, outputDir) },
+    { name: 'Pa11y results', func: () => savePa11yResults(results, outputDir) },
+    { name: 'Internal links', func: () => saveInternalLinks(results, outputDir) },
+    { name: 'Images without alt', func: () => saveImagesWithoutAlt(results.contentAnalysis, outputDir) },
+    { name: 'Content analysis', func: () => saveContentAnalysis(results, outputDir) },
+    { name: 'Orphaned URLs', func: () => saveOrphanedUrls(results, outputDir) },
+    { name: 'SEO report', func: () => saveSeoReport(results, outputDir, sitemapUrl) },
+    { name: 'SEO scores', func: () => saveSeoScores(results, outputDir) },
+    { name: 'Performance analysis', func: () => savePerformanceAnalysis(results, outputDir) },
+    { name: 'SEO scores summary', func: () => saveSeoScoresSummary(results, outputDir) },
   ];
 
   const saveResultsList = await Promise.allSettled(
@@ -140,12 +77,6 @@ export async function saveResults(results, outputDir, sitemapUrl) {
   global.auditcore.logger.info(`All results saved to ${outputDir}`);
 }
 
-/**
- * Saves Pa11y results to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
 async function savePa11yResults(results, outputDir) {
   global.auditcore.logger.debug('Starting savePa11yResults function');
   
@@ -173,13 +104,6 @@ function flattenPa11yResults(pa11yResults) {
     return [];
   }
 
-  /**
- * Flattens Pa11y results for CSV formatting.
- * @param {Array} pa11yResults - The Pa11y results to flatten.
- * @returns {Array} Flattened Pa11y results.
- */
-
-
   return pa11yResults.flatMap((result) => {
     if (result.error) {
       return [{ pageUrl: result.url, error: result.error }];
@@ -199,12 +123,6 @@ function flattenPa11yResults(pa11yResults) {
   });
 }
 
-/**
- * Saves internal links to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
 async function saveInternalLinks(results, outputDir) {
   const internalLinksCsv = formatCsv(
     flattenInternalLinks(results.internalLinks),
@@ -217,11 +135,6 @@ async function saveInternalLinks(results, outputDir) {
   global.auditcore.logger.debug('Internal links results saved');
 }
 
-/**
- * Flattens internal links for CSV formatting.
- * @param {Array} internalLinks - The internal links to flatten.
- * @returns {Array} Flattened internal links.
- */
 function flattenInternalLinks(internalLinks) {
   return internalLinks.flatMap((result) => (result.checkedLinks
     ? result.checkedLinks.map((link) => ({
@@ -233,12 +146,6 @@ function flattenInternalLinks(internalLinks) {
     : [{ source: result.url, error: result.error }]));
 }
 
-/**
- * Saves images without alt text to a file.
- * @param {Array} contentAnalysis - The content analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<number>} The number of images without alt text saved.
- */
 async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
   const totalImages = contentAnalysis.reduce((sum, page) => sum + (page.images ? page.images.length : 0), 0);
   global.auditcore.logger.info(`Total images scanned: ${totalImages}`);
@@ -272,41 +179,12 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
   return imagesWithoutAlt.length;
 }
 
-/**
- * Saves content analysis results to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
-// results.js
-
 async function saveContentAnalysis(results, outputDir) {
   const headers = [
-    'URL',
-    'Word Count',
-    'H1 Count',
-    'H2 Count',
-    'H3 Count',
-    'H4 Count',
-    'H5 Count',
-    'H6 Count',
-    'Missing Headers',
-    'Zero H1',
-    'Images Count',
-    'Internal Links Count',
-    'External Links Count',
-    'Title',
-    'Meta Description',
-    'H1',
-    'Has Responsive Meta Tag',
-    'Scripts Count',
-    'Stylesheets Count',
-    'HTML Lang',
-    'Canonical URL',
-    'Forms Count',
-    'Tables Count',
-    'Page Size',
-    'JS Errors Count',
+    'URL', 'Word Count', 'H1 Count', 'H2 Count', 'H3 Count', 'H4 Count', 'H5 Count', 'H6 Count',
+    'Missing Headers', 'Zero H1', 'Images Count', 'Internal Links Count', 'External Links Count',
+    'Title', 'Meta Description', 'H1', 'Has Responsive Meta Tag', 'Scripts Count', 'Stylesheets Count',
+    'HTML Lang', 'Canonical URL', 'Forms Count', 'Tables Count', 'Page Size', 'JS Errors Count',
     'Pa11y Issues Count'
   ];
 
@@ -351,12 +229,7 @@ async function saveContentAnalysis(results, outputDir) {
     global.auditcore.logger.error(`Error saving content_analysis.csv: ${error.message}`);
   }
 }
-/**
- * Saves orphaned URLs to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<number>} The number of orphaned URLs saved.
- */
+
 async function saveOrphanedUrls(results, outputDir) {
   if (results.orphanedUrls && results.orphanedUrls.size > 0) {
     const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({
@@ -374,30 +247,311 @@ async function saveOrphanedUrls(results, outputDir) {
   return 0;
 }
 
-/**
- * Saves the SEO report to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @param {string} sitemapUrl - The URL of the analyzed sitemap.
- * @returns {Promise<void>}
- */
 async function saveSeoReport(results, outputDir, sitemapUrl) {
-  const report = generateReport(results, sitemapUrl);
+  const report = generateUpdatedReport(results, sitemapUrl);
   await saveFile(path.join(outputDir, 'seo_report.csv'), report);
   global.auditcore.logger.debug('SEO report saved');
 }
 
-/**
- * Saves SEO scores to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
+function generateUpdatedReport(results, sitemapUrl) {
+  const totalUrls = results.contentAnalysis.length;
+  const analysis = analyzeContentData(results.contentAnalysis);
+
+  const reportSections = [
+    generateHeader(sitemapUrl),
+    generateSummary(results, totalUrls),
+    generateUrlAnalysis(results.urlMetrics, totalUrls),
+    generatePageTitleAnalysis(analysis, totalUrls),
+    generateMetaDescriptionAnalysis(analysis, totalUrls),
+    generateHeadingAnalysis(analysis, totalUrls),
+    generateImageAnalysis(analysis),
+    generateLinkAnalysis(results.linkMetrics, totalUrls),
+    generateSecurityAnalysis(results.securityMetrics, totalUrls),
+    generateHreflangAnalysis(results.hreflangMetrics, totalUrls),
+    generateCanonicalAnalysis(results.canonicalMetrics, totalUrls),
+    generateContentAnalysis(analysis, totalUrls),
+    generateOrphanedUrlsAnalysis(results.orphanedUrls, totalUrls),
+    generateAccessibilityAnalysis(results.pa11y),
+    generateJavaScriptErrorsAnalysis(analysis, totalUrls),
+    generateSeoScoreAnalysis(results.seoScores),
+    generatePerformanceAnalysis(results.performanceAnalysis),
+    generateRecommendations(analysis, results),
+  ];
+
+  return formatCsv(reportSections.flat());
+}
+
+function analyzeContentData(contentAnalysis) {
+  return contentAnalysis.reduce((acc, page) => {
+    const titleLength = page.title ? page.title.length : 0;
+    const metaDescLength = page.metaDescription ? page.metaDescription.length : 0;
+    
+    acc.titleOverLength += titleLength > 60 ? 1 : 0;
+    acc.titleUnderLength += titleLength < 30 && titleLength > 0 ? 1 : 0;
+    acc.missingTitles += titleLength === 0 ? 1 : 0;
+    
+    acc.metaDescOverLength += metaDescLength > 155 ? 1 : 0;
+    acc.metaDescUnderLength += metaDescLength < 70 && metaDescLength > 0 ? 1 : 0;
+    acc.missingMetaDesc += metaDescLength === 0 ? 1 : 0;
+    
+    acc.missingH1 += page.h1Count === 0 ? 1 : 0;
+    acc.multipleH1 += page.h1Count > 1 ? 1 : 0;
+    
+    acc.totalImages += page.imagesCount || 0;
+    acc.imagesWithoutAlt += page.imagesWithoutAlt || 0;
+    
+    acc.lowContentPages += page.wordCount < 300 ? 1 : 0;
+    acc.totalWordCount += page.wordCount || 0;
+    
+    acc.pagesWithJsErrors += page.jsErrors > 0 ? 1 : 0;
+    
+    return acc;
+  }, {
+    titleOverLength: 0,
+    titleUnderLength: 0,
+    missingTitles: 0,
+    metaDescOverLength: 0,
+    metaDescUnderLength: 0,
+    missingMetaDesc: 0,
+    missingH1: 0,
+    multipleH1: 0,
+    totalImages: 0,
+    imagesWithoutAlt: 0,
+    lowContentPages: 0,
+    totalWordCount: 0,
+    pagesWithJsErrors: 0,
+  });
+}
+
+function generateHeader(sitemapUrl) {
+  return [
+    ['SEO Analysis Report'],
+    ['Date', new Date().toLocaleDateString()],
+    ['Time', new Date().toLocaleTimeString()],
+    ['Sitemap URL', sitemapUrl],
+    [],
+  ];
+}
+
+function generateSummary(results, totalUrls) {
+  const responseCategories = categorizeResponseCodes(results.responseCodeMetrics);
+  return [
+    ['Summary', 'Count', 'Percentage'],
+    ['Total URLs', totalUrls, '100%'],
+    ['Internal URLs', results.urlMetrics.internal, `${(results.urlMetrics.internal / totalUrls * 100).toFixed(2)}%`],
+    ['External URLs', results.urlMetrics.external, `${(results.urlMetrics.external / totalUrls * 100).toFixed(2)}%`],
+    ['Indexable URLs', results.urlMetrics.internalIndexable, `${(results.urlMetrics.internalIndexable / totalUrls * 100).toFixed(2)}%`],
+    ['Non-Indexable URLs', results.urlMetrics.internalNonIndexable, `${(results.urlMetrics.internalNonIndexable / totalUrls * 100).toFixed(2)}%`],
+    [],
+    ['Response Codes', 'Count', 'Percentage'],
+    ['2xx (Success)', responseCategories['2xx'], `${(responseCategories['2xx'] / totalUrls * 100).toFixed(2)}%`],
+    ['3xx (Redirection)', responseCategories['3xx'], `${(responseCategories['3xx'] / totalUrls * 100).toFixed(2)}%`],
+    ['4xx (Client Error)', responseCategories['4xx'], `${(responseCategories['4xx'] / totalUrls * 100).toFixed(2)}%`],
+    ['5xx (Server Error)', responseCategories['5xx'], `${(responseCategories['5xx'] / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateUrlAnalysis(urlMetrics, totalUrls) {
+  return [
+    ['URL Analysis', 'Count', 'Percentage'],
+    ['URLs with non-ASCII characters', urlMetrics.nonAscii, `${(urlMetrics.nonAscii / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with uppercase characters', urlMetrics.uppercase, `${(urlMetrics.uppercase / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with underscores', urlMetrics.underscores, `${(urlMetrics.underscores / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with spaces', urlMetrics.containsSpace, `${(urlMetrics.containsSpace / totalUrls * 100).toFixed(2)}%`],
+    ['URLs over 115 characters', urlMetrics.overLength, `${(urlMetrics.overLength / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generatePageTitleAnalysis(analysis, totalUrls) {
+  return [
+    ['Page Title Analysis', 'Count', 'Percentage'],
+    ['Missing titles', analysis.missingTitles, `${(analysis.missingTitles / totalUrls * 100).toFixed(2)}%`],
+    ['Titles over 60 characters', analysis.titleOverLength, `${(analysis.titleOverLength / totalUrls * 100).toFixed(2)}%`],
+    ['Titles under 30 characters', analysis.titleUnderLength, `${(analysis.titleUnderLength / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateMetaDescriptionAnalysis(analysis, totalUrls) {
+  return [
+    ['Meta Description Analysis', 'Count', 'Percentage'],
+    ['Missing meta descriptions', analysis.missingMetaDesc, `${(analysis.missingMetaDesc / totalUrls * 100).toFixed(2)}%`],
+    ['Meta descriptions over 155 characters', analysis.metaDescOverLength, `${(analysis.metaDescOverLength / totalUrls * 100).toFixed(2)}%`],
+    ['Meta descriptions under 70 characters', analysis.metaDescUnderLength, `${(analysis.metaDescUnderLength / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateHeadingAnalysis(analysis, totalUrls) {
+  return [
+    ['Heading Analysis', 'Count', 'Percentage'],
+    ['Missing H1', analysis.missingH1, `${(analysis.missingH1 / totalUrls * 100).toFixed(2)}%`],
+    ['Multiple H1s', analysis.multipleH1, `${(analysis.multipleH1 / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateImageAnalysis(analysis) {
+  return [
+    ['Image Analysis', 'Count', 'Percentage'],
+    ['Total images', analysis.totalImages, '100%'],
+    ['Images missing alt text', analysis.imagesWithoutAlt, `${(analysis.imagesWithoutAlt / analysis.totalImages * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateLinkAnalysis(linkMetrics, totalUrls) {
+  return [
+    ['Link Analysis', 'Count', 'Percentage'],
+    ['Pages without internal links', linkMetrics.pagesWithoutInternalOutlinks || 0, `${((linkMetrics.pagesWithoutInternalOutlinks || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Pages with high number of external links', linkMetrics.pagesWithHighExternalOutlinks || 0, `${((linkMetrics.pagesWithHighExternalOutlinks || 0) / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateSecurityAnalysis(securityMetrics, totalUrls) {
+  return [
+    ['Security Analysis', 'Count', 'Percentage'],
+    ['HTTP URLs (non-secure)', securityMetrics.httpUrls || 0, `${((securityMetrics.httpUrls || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Missing HSTS header', securityMetrics.missingHstsHeader || 0, `${((securityMetrics.missingHstsHeader || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Missing Content Security Policy', securityMetrics.missingContentSecurityPolicy || 0, `${((securityMetrics.missingContentSecurityPolicy || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Missing X-Frame-Options header', securityMetrics.missingXFrameOptions || 0, `${((securityMetrics.missingXFrameOptions || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Missing X-Content-Type-Options header', securityMetrics.missingXContentTypeOptions || 0, `${((securityMetrics.missingXContentTypeOptions || 0) / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateHreflangAnalysis(hreflangMetrics, totalUrls) {
+  return [
+    ['Hreflang Analysis', 'Count', 'Percentage'],
+    ['Pages with hreflang', hreflangMetrics.pagesWithHreflang || 0, `${((hreflangMetrics.pagesWithHreflang || 0) / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateCanonicalAnalysis(canonicalMetrics, totalUrls) {
+  return [
+    ['Canonical Analysis', 'Count', 'Percentage'],
+    ['Pages with canonical tags', canonicalMetrics.selfReferencing + canonicalMetrics.nonSelf || 0, `${(((canonicalMetrics.selfReferencing + canonicalMetrics.nonSelf) / totalUrls) * 100).toFixed(2)}%`],
+    ['Self-referencing canonicals', canonicalMetrics.selfReferencing || 0, `${((canonicalMetrics.selfReferencing / totalUrls) * 100).toFixed(2)}%`],
+    ['Non-self canonicals', canonicalMetrics.nonSelf || 0, `${((canonicalMetrics.nonSelf / totalUrls) * 100).toFixed(2)}%`],
+    ['Missing canonical tags', canonicalMetrics.missing || 0, `${((canonicalMetrics.missing / totalUrls) * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateContentAnalysis(analysis, totalUrls) {
+  return [
+    ['Content Analysis', 'Count', 'Percentage'],
+    ['Low content pages', analysis.lowContentPages, `${(analysis.lowContentPages / totalUrls * 100).toFixed(2)}%`],
+    ['Average word count', Math.round(analysis.totalWordCount / totalUrls), 'N/A'],
+    [],
+  ];
+}
+
+function generateOrphanedUrlsAnalysis(orphanedUrls, totalUrls) {
+  const orphanedCount = orphanedUrls ? orphanedUrls.size : 0;
+  return [
+    ['Orphaned URLs Analysis', 'Count', 'Percentage'],
+    ['Orphaned URLs', orphanedCount, `${(orphanedCount / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateAccessibilityAnalysis(pa11yResults) {
+  const totalIssues = pa11yResults.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
+  const issueTypes = pa11yResults.reduce((types, result) => {
+    if (result.issues) {
+      result.issues.forEach(issue => {
+        types[issue.type] = (types[issue.type] || 0) + 1;
+      });
+    }
+    return types;
+  }, {});
+
+  const rows = [
+    ['Accessibility Analysis', 'Count'],
+    ['Total Pa11y issues', totalIssues],
+  ];
+
+  Object.entries(issueTypes).forEach(([type, count]) => {
+    rows.push([`${type} issues`, count]);
+  });
+
+  rows.push([]);
+  return rows;
+}
+
+function generateJavaScriptErrorsAnalysis(analysis, totalUrls) {
+  return [
+    ['JavaScript Errors Analysis', 'Count', 'Percentage'],
+    ['Pages with JavaScript errors', analysis.pagesWithJsErrors, `${(analysis.pagesWithJsErrors / totalUrls * 100).toFixed(2)}%`],
+    [],
+  ];
+}
+
+function generateSeoScoreAnalysis(seoScores) {
+  const scores = seoScores.map(score => score.score);
+  const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  return [
+    ['SEO Score Analysis', 'Score'],
+    ['Average SEO Score', averageScore.toFixed(2)],
+    ['Lowest SEO Score', Math.min(...scores)],
+    ['Highest SEO Score', Math.max(...scores)],
+    [],
+  ];
+}
+
+function generatePerformanceAnalysis(performanceAnalysis) {
+  const avgLoadTime = performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / performanceAnalysis.length;
+  const avgFirstPaint = performanceAnalysis.reduce((sum, perf) => sum + perf.firstPaint, 0) / performanceAnalysis.length;
+  const avgFirstContentfulPaint = performanceAnalysis.reduce((sum, perf) => sum + perf.firstContentfulPaint, 0) / performanceAnalysis.length;
+
+  return [
+    ['Performance Analysis', 'Time (ms)'],
+    ['Average Load Time', avgLoadTime.toFixed(2)],
+    ['Average First Paint', avgFirstPaint.toFixed(2)],
+    ['Average First Contentful Paint', avgFirstContentfulPaint.toFixed(2)],
+    [],
+  ];
+}
+
+function generateRecommendations(analysis, results) {
+  const recommendations = [];
+
+  if (analysis.missingTitles > 0) recommendations.push('Add title tags to pages missing them');
+  if (analysis.titleOverLength > 0) recommendations.push('Shorten title tags that are over 60 characters');
+  if (analysis.missingMetaDesc > 0) recommendations.push('Add meta descriptions to pages missing them');
+  if (analysis.missingH1 > 0) recommendations.push('Add H1 tags to pages missing them');
+  if (analysis.imagesWithoutAlt > 0) recommendations.push('Add alt text to images missing it');
+  if (results.securityMetrics.httpUrls > 0) recommendations.push('Migrate all pages to HTTPS');
+  if (analysis.lowContentPages > 0) recommendations.push('Improve content on pages with low word count');
+
+  return [
+    ['Top SEO Recommendations'],
+    ...recommendations.map(rec => [rec]),
+    [],
+  ];
+}
+
+function categorizeResponseCodes(responseCodeMetrics) {
+  const categories = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 };
+  Object.entries(responseCodeMetrics).forEach(([code, count]) => {
+    const codeNum = parseInt(code, 10);
+    if (codeNum >= 200 && codeNum < 300) categories['2xx'] += count;
+    else if (codeNum >= 300 && codeNum < 400) categories['3xx'] += count;
+    else if (codeNum >= 400 && codeNum < 500) categories['4xx'] += count;
+    else if (codeNum >= 500 && codeNum < 600) categories['5xx'] += count;
+  });
+  return categories;
+}
+
 async function saveSeoScores(results, outputDir) {
   const seoScoresFormatted = results.seoScores.map((score) => ({
     url: score.url || '',
-    score:
-      typeof score.score === 'number' ? Number(score.score.toFixed(2)) : 'N/A',
+    score: typeof score.score === 'number' ? Number(score.score.toFixed(2)) : 'N/A',
     ...Object.fromEntries(
       Object.entries(score.details || {}).map(([key, value]) => [
         `details.${key}`,
@@ -407,19 +561,10 @@ async function saveSeoScores(results, outputDir) {
   }));
 
   const headers = [
-    'url',
-    'score',
-    'details.titleOptimization',
-    'details.metaDescriptionOptimization',
-    'details.urlStructure',
-    'details.h1Optimization',
-    'details.contentLength',
-    'details.internalLinking',
-    'details.imageOptimization',
-    'details.pageSpeed',
-    'details.mobileOptimization',
-    'details.securityFactors',
-    'details.structuredData',
+    'url', 'score', 'details.titleOptimization', 'details.metaDescriptionOptimization',
+    'details.urlStructure', 'details.h1Optimization', 'details.contentLength',
+    'details.internalLinking', 'details.imageOptimization', 'details.pageSpeed',
+    'details.mobileOptimization', 'details.securityFactors', 'details.structuredData',
     'details.socialMediaTags',
   ];
 
@@ -428,12 +573,6 @@ async function saveSeoScores(results, outputDir) {
   global.auditcore.logger.debug('SEO scores saved');
 }
 
-/**
- * Saves performance analysis results to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<number>} The number of performance analysis results saved.
- */
 async function savePerformanceAnalysis(results, outputDir) {
   const getPerformanceComment = (metric, value) => {
     if (value === null || value === undefined) return 'N/A';
@@ -517,12 +656,6 @@ async function savePerformanceAnalysis(results, outputDir) {
   return roundedPerformanceAnalysis.length;
 }
 
-/**
- * Saves SEO scores summary to a file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
 async function saveSeoScoresSummary(results, outputDir) {
   const getScoreComment = (score) => {
     if (score >= 90) return 'Excellent';
@@ -607,18 +740,11 @@ async function saveSeoScoresSummary(results, outputDir) {
   global.auditcore.logger.debug('SEO scores summary saved');
 }
 
-/**
- * Saves the full results object to a diagnostics JSON file.
- * @param {Object} results - The full results object.
- * @param {string} outputDir - The directory to save the file.
- * @returns {Promise<void>}
- */
 async function saveDiagnostics(results, outputDir) {
   try {
     const filename = 'results.json';
     const filePath = path.join(outputDir, filename);
     
-    // Create a meta object with generation time and options
     const meta = {
       generatedAt: new Date().toISOString(),
       options: {
@@ -626,19 +752,16 @@ async function saveDiagnostics(results, outputDir) {
         output: global.auditcore.options.output,
         limit: global.auditcore.options.limit,
         logLevel: global.auditcore.options.logLevel,
-        // Add any other relevant options here
       }
     };
 
-    // Create a clean version of results without circular references
     const cleanResults = JSON.parse(JSON.stringify(results, (key, value) => {
       if (key === 'parent' || key === 'children') {
-        return undefined; // Exclude parent and children to avoid circular references
+        return undefined;
       }
       return value;
     }));
 
-    // Combine meta and results into a single object
     const diagnosticsData = {
       meta: meta,
       results: cleanResults
@@ -652,12 +775,6 @@ async function saveDiagnostics(results, outputDir) {
   }
 }
 
-/**
- * Saves raw Pa11y results to a JSON file.
- * @param {Object} results - The analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
 async function saveRawPa11yResult(results, outputDir) {
   try {
     const filename = 'pa11y_raw_results.json';
@@ -702,11 +819,6 @@ async function saveRawPa11yResult(results, outputDir) {
   }
 }
 
-/**
- * Analyzes common Pa11y issues.
- * @param {Array} pa11yResults - The Pa11y results to analyze.
- * @returns {Array} Common Pa11y issues.
- */
 function analyzeCommonPa11yIssues(pa11yResults) {
   const issueCounts = pa11yResults.reduce((counts, result) => {
     if (result.issues) {
@@ -727,12 +839,6 @@ function analyzeCommonPa11yIssues(pa11yResults) {
     }));
 }
 
-/**
- * Saves common Pa11y issues to a file.
- * @param {Array} commonIssues - The common Pa11y issues to save.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<void>}
- */
 async function saveCommonPa11yIssues(commonIssues, outputDir) {
   if (commonIssues.length > 0) {
     const csvData = formatCsv(
@@ -749,12 +855,6 @@ async function saveCommonPa11yIssues(commonIssues, outputDir) {
   }
 }
 
-/**
- * Filters out repeated Pa11y issues.
- * @param {Array} pa11yResults - The Pa11y results to filter.
- * @param {Array} commonIssues - The common Pa11y issues.
- * @returns {Array} Filtered Pa11y results.
- */
 function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
   const commonIssueKeys = new Set(
     commonIssues.map((issue) => `${issue.code}-${issue.message}`),
@@ -769,12 +869,6 @@ function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
   }));
 }
 
-/**
- * Saves all image information to a CSV file.
- * @param {Array} contentAnalysis - The content analysis results.
- * @param {string} outputDir - The directory to save results to.
- * @returns {Promise<number>} The number of images saved.
- */
 async function saveImageInfo(contentAnalysis, outputDir) {
   global.auditcore.logger.debug(`Starting saveImageInfo function`);
   global.auditcore.logger.debug(`Content analysis length: ${contentAnalysis.length}`);
@@ -849,6 +943,7 @@ async function saveImageInfo(contentAnalysis, outputDir) {
     imagesWithoutAlt: imagesWithoutAlt.length 
   };
 }
+
 export {
   saveFile,
   savePa11yResults,
@@ -864,4 +959,6 @@ export {
   analyzeCommonPa11yIssues,
   saveCommonPa11yIssues,
   filterRepeatedPa11yIssues,
+  generateUpdatedReport,
+  analyzeContentData,
 };

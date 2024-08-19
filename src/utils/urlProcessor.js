@@ -164,7 +164,7 @@ export class UrlProcessor {
 
     for (let i = 0; i < totalTests; i++) {
       const { url, lastmod } = urls[i];
-      global.auditcore.logger.info(`Starting processing of URL ${i + 1} of ${totalTests}: ${url}`);
+      console.info(`Starting processing of URL ${i + 1} of ${totalTests}: ${url}`);
       await this.processUrl(url, lastmod, i, totalTests);
     }
 

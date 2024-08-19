@@ -199,8 +199,8 @@ export async function runTestsOnSitemap() {
       `Found ${validUrls.length} valid URL(s) and ${invalidUrls.length} invalid URL(s)`,
     );
 
-    global.auditcore.logger.debug(`Valid URLs: ${JSON.stringify(validUrls)}`);
-    global.auditcore.logger.debug(`Invalid URLs: ${JSON.stringify(invalidUrls)}`);
+//    global.auditcore.logger.debug(`Valid URLs: ${JSON.stringify(validUrls)}`);
+ //   global.auditcore.logger.debug(`Invalid URLs: ${JSON.stringify(invalidUrls)}`);
 
     if (invalidUrls.length > 0) {
       await handleInvalidUrls(invalidUrls, outputDir);
