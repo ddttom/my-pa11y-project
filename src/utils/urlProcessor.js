@@ -79,6 +79,11 @@ export class UrlProcessor {
           global.auditcore.logger.info(`Successfully received 200 status for ${testUrl}`);
           await this.processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod);
         } else {
+          const invalidUrl = {
+            url: testUrl,
+            reason: `Non-200 status code (${statusCode})`,
+          };
+          writeToInvalidUrlFile(invalidUrl);
           global.auditcore.logger.warn(`Non-200 status code (${statusCode}) for ${testUrl}, skipping content analysis`);
         }
 
