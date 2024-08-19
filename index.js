@@ -7,7 +7,7 @@ import { runTestsOnSitemap } from './src/main.js';
 
 const logFiles = ['error.log', 'combined.log'];
 
-const DEFAULT_LIMIT = 5;
+const DEFAULT_LIMIT = -1;
 
 // Clear log files before starting, only if they exist
 logFiles.forEach((file) => {
