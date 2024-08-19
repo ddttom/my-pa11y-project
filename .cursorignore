@@ -1,0 +1,19 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+/results
+/data
+/logs
+/venv
+/node_modules
+/dist
+/build
+/public
+/static
+/uploads
+/node_modules
+/node_modules/
+/node_modules/node_modules/
+/node_modules/node_modules/node_modules/
+/node_modules/node_modules/node_modules/node_modules/
+/node_modules/node_modules/node_modules/node_modules/node_modules/
+/node_modules/node_modules/node_modules/node_modules/node_modules/node_modules/
+/node_modules/node_modules/node_modules/node_modules/node_modules/node_modules/node_modules/

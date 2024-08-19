@@ -7,6 +7,8 @@ import { runTestsOnSitemap } from './src/main.js';
 
 const logFiles = ['error.log', 'combined.log'];
 
+const DEFAULT_LIMIT = 5;
+
 // Clear log files before starting, only if they exist
 logFiles.forEach((file) => {
   if (fs.existsSync(file)) {
@@ -24,8 +26,8 @@ program
   .option(
     '-l, --limit <number>',
     'Limit the number of URLs to test. Use -1 to test all URLs.',
-    parseInt,
-    -1,
+    (value) => parseInt(value, 10),
+    DEFAULT_LIMIT
   )
   .option('--cache-only', 'Use only cached data, do not fetch new data')
   .option('--no-cache', 'Disable caching, always fetch fresh data')
@@ -34,7 +36,7 @@ program
   .option(
     '--log-level <level>',
     'Set logging level (error, warn, info, verbose, debug)',
-    'warn',
+    'warn'
   )
   .parse(process.argv);
 
@@ -70,9 +72,9 @@ global.auditcore.logger = winston.createLogger({
   ],
 });
 
-global.auditcore.options.limit = parseInt(global.auditcore.options.limit, 10);
-if (Number.isNaN(global.auditcore.options.limit)) {
-  global.auditcore.options.limit = -1;
+// Ensure the limit is correctly set
+if (isNaN(global.auditcore.options.limit)) {
+  global.auditcore.options.limit = DEFAULT_LIMIT;
 }
 
 global.auditcore.logger.level = global.auditcore.options.logLevel;

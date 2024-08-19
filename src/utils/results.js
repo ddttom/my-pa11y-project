@@ -48,9 +48,20 @@ export async function saveResults(results, outputDir, sitemapUrl) {
 
   const saveOperations = [
     {
-      name: 'Diagnostics',
+      name: 'Results',
       func: () => saveDiagnostics(results, outputDir),
+    },  {
+      name: 'Image information',
+      func: () => saveImageInfo(results.contentAnalysis, outputDir),
+    },{
+      name: 'Image information',
+      func: async () => {
+        const imageInfo = await saveImageInfo(results.contentAnalysis, outputDir);
+        global.auditcore.logger.info(`Total images: ${imageInfo.totalImages}, Images without alt: ${imageInfo.imagesWithoutAlt}`);
+        return imageInfo;
+      },
     },
+
     {
       name: 'Pa11y results',
       func: () => savePa11yResults(results, outputDir),
@@ -136,34 +147,56 @@ export async function saveResults(results, outputDir, sitemapUrl) {
  * @returns {Promise<void>}
  */
 async function savePa11yResults(results, outputDir) {
+  global.auditcore.logger.debug('Starting savePa11yResults function');
+  
   await saveRawPa11yResult(results, outputDir);
+  
+  const flattenedResults = flattenPa11yResults(results.pa11y);
+  
+  if (flattenedResults.length === 0) {
+    global.auditcore.logger.info('No Pa11y issues found to save');
+    return;
+  }
+
   const pa11yCsv = formatCsv(
-    flattenPa11yResults(results.pa11y),
+    flattenedResults,
     ['pageUrl', 'type', 'code', 'message', 'context', 'selector', 'error'],
   );
+  
   await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
-  global.auditcore.logger.debug('Pa11y results saved');
+  global.auditcore.logger.info(`Pa11y results saved: ${flattenedResults.length} issues`);
 }
 
-/**
+function flattenPa11yResults(pa11yResults) {
+  if (!pa11yResults || !Array.isArray(pa11yResults)) {
+    global.auditcore.logger.warn('Pa11y results are missing or not in the expected format');
+    return [];
+  }
+
+  /**
  * Flattens Pa11y results for CSV formatting.
  * @param {Array} pa11yResults - The Pa11y results to flatten.
  * @returns {Array} Flattened Pa11y results.
  */
-function flattenPa11yResults(pa11yResults) {
-  if (!pa11yResults) {
-    return [];
-  }
-  return pa11yResults.flatMap((result) => (result.issues
-    ? result.issues.map((issue) => ({
+
+
+  return pa11yResults.flatMap((result) => {
+    if (result.error) {
+      return [{ pageUrl: result.url, error: result.error }];
+    }
+    if (!result.issues || !Array.isArray(result.issues)) {
+      global.auditcore.logger.warn(`No issues found for ${result.url}`);
+      return [];
+    }
+    return result.issues.map((issue) => ({
       pageUrl: result.pageUrl,
       type: issue.type,
       code: issue.code,
       message: issue.message,
       context: issue.context,
       selector: issue.selector,
-    }))
-    : [{ pageUrl: result.pageUrl, error: result.error }]));
+    }));
+  });
 }
 
 /**
@@ -207,8 +240,12 @@ function flattenInternalLinks(internalLinks) {
  * @returns {Promise<number>} The number of images without alt text saved.
  */
 async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
+  const totalImages = contentAnalysis.reduce((sum, page) => sum + (page.images ? page.images.length : 0), 0);
+  global.auditcore.logger.info(`Total images scanned: ${totalImages}`);
+  global.auditcore.logger.debug(`Pages scanned: ${contentAnalysis.map(page => page.url).join(', ')}`);
+
   const imagesWithoutAlt = contentAnalysis.flatMap(
-    (page) => page.imagesWithoutAlt || [],
+    (page) => page.imagesWithoutAlt || []
   );
 
   if (imagesWithoutAlt.length > 0) {
@@ -227,9 +264,9 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
       path.join(outputDir, 'images_without_alt.csv'),
       imagesWithoutAltCsv,
     );
-    global.auditcore.logger.info(`${imagesWithoutAlt.length} images without alt text saved`);
+    global.auditcore.logger.info(`${imagesWithoutAlt.length} out of ${totalImages} images are without alt text`);
   } else {
-    global.auditcore.logger.info('No images without alt text found');
+    global.auditcore.logger.info(`All ${totalImages} images have alt text`);
   }
 
   return imagesWithoutAlt.length;
@@ -241,25 +278,79 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
  * @param {string} outputDir - The directory to save results to.
  * @returns {Promise<void>}
  */
-async function saveContentAnalysis(results, outputDir) {
-  const contentAnalysisCsv = formatCsv(
-    results.contentAnalysis,
-    [
-      'url',
-      'wordCount',
-      'h1Count',
-      'imagesCount',
-      'internalLinksCount',
-      'externalLinksCount',
-    ],
-  );
-  await saveFile(
-    path.join(outputDir, 'content_analysis.csv'),
-    contentAnalysisCsv,
-  );
-  global.auditcore.logger.debug('Content analysis saved');
-}
+// results.js
 
+async function saveContentAnalysis(results, outputDir) {
+  const headers = [
+    'URL',
+    'Word Count',
+    'H1 Count',
+    'H2 Count',
+    'H3 Count',
+    'H4 Count',
+    'H5 Count',
+    'H6 Count',
+    'Missing Headers',
+    'Zero H1',
+    'Images Count',
+    'Internal Links Count',
+    'External Links Count',
+    'Title',
+    'Meta Description',
+    'H1',
+    'Has Responsive Meta Tag',
+    'Scripts Count',
+    'Stylesheets Count',
+    'HTML Lang',
+    'Canonical URL',
+    'Forms Count',
+    'Tables Count',
+    'Page Size',
+    'JS Errors Count',
+    'Pa11y Issues Count'
+  ];
+
+  const contentAnalysisData = results.contentAnalysis.map(page => ({
+    URL: page.url,
+    'Word Count': page.wordCount,
+    'H1 Count': page.h1Count,
+    'H2 Count': page.h2Count,
+    'H3 Count': page.h3Count,
+    'H4 Count': page.h4Count,
+    'H5 Count': page.h5Count,
+    'H6 Count': page.h6Count,
+    'Missing Headers': page.missingHeaders,
+    'Zero H1': page.zeroH1,
+    'Images Count': page.imagesCount,
+    'Internal Links Count': page.internalLinksCount,
+    'External Links Count': page.externalLinksCount,
+    'Title': page.title,
+    'Meta Description': page.metaDescription,
+    'H1': page.h1,
+    'Has Responsive Meta Tag': page.hasResponsiveMetaTag,
+    'Scripts Count': page.scriptsCount,
+    'Stylesheets Count': page.stylesheetsCount,
+    'HTML Lang': page.htmlLang,
+    'Canonical URL': page.canonicalUrl,
+    'Forms Count': page.formsCount,
+    'Tables Count': page.tablesCount,
+    'Page Size': page.pageSize,
+    'JS Errors Count': page.jsErrors,
+    'Pa11y Issues Count': page.pa11yIssuesCount
+  }));
+
+  const contentAnalysisCsv = formatCsv(contentAnalysisData, headers);
+  
+  try {
+    await saveFile(
+      path.join(outputDir, 'content_analysis.csv'),
+      contentAnalysisCsv
+    );
+    global.auditcore.logger.info(`Content analysis saved to content_analysis.csv`);
+  } catch (error) {
+    global.auditcore.logger.error(`Error saving content_analysis.csv: ${error.message}`);
+  }
+}
 /**
  * Saves orphaned URLs to a file.
  * @param {Object} results - The analysis results.
@@ -371,327 +462,406 @@ async function savePerformanceAnalysis(results, outputDir) {
         entry.domContentLoaded !== null && entry.domContentLoaded !== undefined
           ? Number(entry.domContentLoaded.toFixed(2))
           : null,
-          domContentLoadedComment: getPerformanceComment(
-            'domContentLoaded',
-            entry.domContentLoaded,
-          ),
-          firstPaint:
-            entry.firstPaint !== null && entry.firstPaint !== undefined
-              ? Number(entry.firstPaint.toFixed(2))
-              : null,
-          firstPaintComment: getPerformanceComment('firstPaint', entry.firstPaint),
-          firstContentfulPaint:
-            entry.firstContentfulPaint !== null
-            && entry.firstContentfulPaint !== undefined
-              ? Number(entry.firstContentfulPaint.toFixed(2))
-              : null,
-          firstContentfulPaintComment: getPerformanceComment(
-            'firstContentfulPaint',
-            entry.firstContentfulPaint,
-          ),
-        }),
-      );
-    
-      const csvData = [
-        [
-          'url',
-          'loadTime',
-          'loadTimeComment',
-          'domContentLoaded',
-          'domContentLoadedComment',
-          'firstPaint',
-          'firstPaintComment',
-          'firstContentfulPaint',
-          'firstContentfulPaintComment',
-        ],
-        ...roundedPerformanceAnalysis.map((entry) => [
-          entry.url,
-          entry.loadTime,
-          entry.loadTimeComment,
-          entry.domContentLoaded,
-          entry.domContentLoadedComment,
-          entry.firstPaint,
-          entry.firstPaintComment,
-          entry.firstContentfulPaint,
-          entry.firstContentfulPaintComment,
-        ]),
-      ];
-    
-      const performanceAnalysisCsv = formatCsv(csvData);
-      await saveFile(
-        path.join(outputDir, 'performance_analysis.csv'),
-        performanceAnalysisCsv,
-      );
-      global.auditcore.logger.debug('Performance analysis saved');
-      return roundedPerformanceAnalysis.length;
-    }
-    
-    /**
-     * Saves SEO scores summary to a file.
-     * @param {Object} results - The analysis results.
-     * @param {string} outputDir - The directory to save results to.
-     * @returns {Promise<void>}
-     */
-    async function saveSeoScoresSummary(results, outputDir) {
-      const getScoreComment = (score) => {
-        if (score >= 90) return 'Excellent';
-        if (score >= 80) return 'Good';
-        if (score >= 70) return 'Fair';
-        if (score >= 60) return 'Needs Improvement';
-        return 'Poor';
-      };
-    
-      const sumScores = results.seoScores.reduce(
-        (sum, score) => {
-          if (score && typeof score === 'object') {
-            sum.totalScore += score.score || 0;
-            if (score.details && typeof score.details === 'object') {
-              Object.entries(score.details).forEach(([key, value]) => {
-                sum.details[key] = (sum.details[key] || 0) + (value || 0);
-              });
-            }
-          }
-          return sum;
-        },
-        { totalScore: 0, details: {} },
-      );
-    
-      const urlCount = results.seoScores.length;
-      const averageScores = {
-        overallScore: sumScores.totalScore / urlCount,
-        details: Object.fromEntries(
-          Object.entries(sumScores.details).map(([key, value]) => [
-            key,
-            value / urlCount,
-          ]),
-        ),
-      };
-    
-      const summaryData = [['Metric', 'Average Score', 'Comment']];
-    
-      const addMetricToSummary = (metricName, score) => {
-        const formattedScore = (score * 100).toFixed(2);
-        summaryData.push([
-          metricName,
-          formattedScore,
-          getScoreComment(parseFloat(formattedScore)),
-        ]);
-      };
-    
-      addMetricToSummary('Overall SEO Score', averageScores.overallScore / 100);
-    
-      const detailKeys = [
-        'titleOptimization',
-        'metaDescriptionOptimization',
-        'urlStructure',
-        'h1Optimization',
-        'contentLength',
-        'internalLinking',
-        'imageOptimization',
-        'pageSpeed',
-        'mobileOptimization',
-        'securityFactors',
-        'structuredData',
-        'socialMediaTags',
-      ];
-    
-      detailKeys.forEach((key) => {
-        if (averageScores.details[key] !== undefined) {
-          addMetricToSummary(
-            key
-              .replace(/([A-Z])/g, ' $1')
-              .replace(/^./, (str) => str.toUpperCase()),
-            averageScores.details[key],
-          );
-        } else {
-          global.auditcore.logger.warn(`Detail key '${key}' not found in average scores.`);
-        }
-      });
-    
-      const seoScoresSummaryCsv = formatCsv(summaryData, '');
-      await saveFile(
-        path.join(outputDir, 'seo_scores_summary.csv'),
-        seoScoresSummaryCsv,
-      );
-      global.auditcore.logger.debug('SEO scores summary saved');
-    }
-    
-    /**
-     * Saves the full results object to a diagnostics JSON file.
-     * @param {Object} results - The full results object.
-     * @param {string} outputDir - The directory to save the file.
-     * @returns {Promise<void>}
-     */
-    async function saveDiagnostics(results, outputDir) {
-      try {
-        const filename = 'diagnostics.json';
-        const filePath = path.join(outputDir, filename);
-        
-        // Create a meta object with generation time and options
-        const meta = {
-          generatedAt: new Date().toISOString(),
-          options: {
-            sitemap: global.auditcore.options.sitemap,
-            output: global.auditcore.options.output,
-            limit: global.auditcore.options.limit,
-            logLevel: global.auditcore.options.logLevel,
-            // Add any other relevant options here
-          }
-        };
-    
-        // Create a clean version of results without circular references
-        const cleanResults = JSON.parse(JSON.stringify(results, (key, value) => {
-          if (key === 'parent' || key === 'children') {
-            return undefined; // Exclude parent and children to avoid circular references
-          }
-          return value;
-        }));
-    
-        // Combine meta and results into a single object
-        const diagnosticsData = {
-          meta: meta,
-          results: cleanResults
-        };
-    
-        await fs.writeFile(filePath, JSON.stringify(diagnosticsData, null, 2));
-        global.auditcore.logger.info(`Full diagnostics saved to ${filePath}`);
-      } catch (error) {
-        global.auditcore.logger.error('Error saving diagnostics:', error);
-        global.auditcore.logger.debug('Error stack:', error.stack);
-      }
-    }
-    
-    /**
-     * Saves raw Pa11y results to a JSON file.
-     * @param {Object} results - The analysis results.
-     * @param {string} outputDir - The directory to save results to.
-     * @returns {Promise<void>}
-     */
-    async function saveRawPa11yResult(results, outputDir) {
-      try {
-        const filename = 'pa11y_raw_results.json';
-        const filePath = path.join(outputDir, filename);
-    
-        global.auditcore.logger.debug('Starting saveRawPa11yResult function');
-        global.auditcore.logger.debug(`Results object keys: ${Object.keys(results)}`);
-        global.auditcore.logger.debug(`Pa11y results type: ${typeof results.pa11y}`);
-    
-        if (!results || !results.pa11y || !Array.isArray(results.pa11y)) {
-          global.auditcore.logger.warn('Pa11y results are missing or not in the expected format');
-          global.auditcore.logger.debug(`results: ${JSON.stringify(results)}`);
-          await fs.writeFile(filePath, JSON.stringify([], null, 2));
-          global.auditcore.logger.debug(`Empty pa11y results saved to ${filePath}`);
-          return;
-        }
-    
-        global.auditcore.logger.debug(`Processing ${results.pa11y.length} Pa11y results`);
-    
-        const pa11yResults = results.pa11y.map((result, index) => {
-          global.auditcore.logger.debug(`Processing result ${index + 1}/${results.pa11y.length}`);
-          global.auditcore.logger.debug(`Result type: ${typeof result}`);
-          
-          if (!result || typeof result !== 'object') {
-            global.auditcore.logger.warn(`Invalid Pa11y result entry at index ${index}:`, result);
-            return null;
-          }
-    
-          return {
-            url: result.pageUrl || 'Unknown URL',
-            issues: Array.isArray(result.issues) ? result.issues : [],
-          };
-        }).filter(Boolean);
-    
-        global.auditcore.logger.debug(`Processed ${pa11yResults.length} valid Pa11y results`);
-        global.auditcore.logger.debug(`First result (if exists): ${JSON.stringify(pa11yResults[0], null, 2)}`);
-    
-        await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
-        global.auditcore.logger.info(`Raw pa11y results saved to ${filePath}`);
-      } catch (error) {
-        global.auditcore.logger.error('Error saving raw pa11y results:', error);
-        global.auditcore.logger.error('Error stack:', error.stack);
-      }
-    }
-    
-    /**
-     * Analyzes common Pa11y issues.
-     * @param {Array} pa11yResults - The Pa11y results to analyze.
-     * @returns {Array} Common Pa11y issues.
-     */
-    function analyzeCommonPa11yIssues(pa11yResults) {
-      const issueCounts = pa11yResults.reduce((counts, result) => {
-        if (result.issues) {
-          result.issues.forEach((issue) => {
-            const issueKey = `${issue.code}-${issue.message}`;
-            counts[issueKey] = (counts[issueKey] || 0) + 1;
+      domContentLoadedComment: getPerformanceComment(
+        'domContentLoaded',
+        entry.domContentLoaded,
+      ),
+      firstPaint:
+        entry.firstPaint !== null && entry.firstPaint !== undefined
+          ? Number(entry.firstPaint.toFixed(2))
+          : null,
+      firstPaintComment: getPerformanceComment('firstPaint', entry.firstPaint),
+      firstContentfulPaint:
+        entry.firstContentfulPaint !== null
+        && entry.firstContentfulPaint !== undefined
+          ? Number(entry.firstContentfulPaint.toFixed(2))
+          : null,
+      firstContentfulPaintComment: getPerformanceComment(
+        'firstContentfulPaint',
+        entry.firstContentfulPaint,
+      ),
+    }),
+  );
+
+  const csvData = [
+    [
+      'url',
+      'loadTime',
+      'loadTimeComment',
+      'domContentLoaded',
+      'domContentLoadedComment',
+      'firstPaint',
+      'firstPaintComment',
+      'firstContentfulPaint',
+      'firstContentfulPaintComment',
+    ],
+    ...roundedPerformanceAnalysis.map((entry) => [
+      entry.url,
+      entry.loadTime,
+      entry.loadTimeComment,
+      entry.domContentLoaded,
+      entry.domContentLoadedComment,
+      entry.firstPaint,
+      entry.firstPaintComment,
+      entry.firstContentfulPaint,
+      entry.firstContentfulPaintComment,
+    ]),
+  ];
+
+  const performanceAnalysisCsv = formatCsv(csvData);
+  await saveFile(
+    path.join(outputDir, 'performance_analysis.csv'),
+    performanceAnalysisCsv,
+  );
+  global.auditcore.logger.debug('Performance analysis saved');
+  return roundedPerformanceAnalysis.length;
+}
+
+/**
+ * Saves SEO scores summary to a file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @returns {Promise<void>}
+ */
+async function saveSeoScoresSummary(results, outputDir) {
+  const getScoreComment = (score) => {
+    if (score >= 90) return 'Excellent';
+    if (score >= 80) return 'Good';
+    if (score >= 70) return 'Fair';
+    if (score >= 60) return 'Needs Improvement';
+    return 'Poor';
+  };
+
+  const sumScores = results.seoScores.reduce(
+    (sum, score) => {
+      if (score && typeof score === 'object') {
+        sum.totalScore += score.score || 0;
+        if (score.details && typeof score.details === 'object') {
+          Object.entries(score.details).forEach(([key, value]) => {
+            sum.details[key] = (sum.details[key] || 0) + (value || 0);
           });
         }
-        return counts;
-      }, {});
-    
-      return Object.entries(issueCounts)
-        .filter(([, count]) => count > 1)
-        .map(([key, count]) => ({
-          code: key.split('-')[0],
-          message: key.split('-')[1],
-          count,
-        }));
-    }
-    
-    /**
-     * Saves common Pa11y issues to a file.
-     * @param {Array} commonIssues - The common Pa11y issues to save.
-     * @param {string} outputDir - The directory to save results to.
-     * @returns {Promise<void>}
-     */
-    async function saveCommonPa11yIssues(commonIssues, outputDir) {
-      if (commonIssues.length > 0) {
-        const csvData = formatCsv(
-          commonIssues,
-          ['code', 'message', 'count'],
-        );
-        await saveFile(
-          path.join(outputDir, 'common_pa11y_issues.csv'),
-          csvData,
-        );
-        global.auditcore.logger.debug('Common Pa11y issues saved');
-      } else {
-        global.auditcore.logger.debug('No common Pa11y issues found');
       }
-    }
-    
-    /**
-     * Filters out repeated Pa11y issues.
-     * @param {Array} pa11yResults - The Pa11y results to filter.
-     * @param {Array} commonIssues - The common Pa11y issues.
-     * @returns {Array} Filtered Pa11y results.
-     */
-    function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
-      const commonIssueKeys = new Set(
-        commonIssues.map((issue) => `${issue.code}-${issue.message}`),
+      return sum;
+    },
+    { totalScore: 0, details: {} },
+  );
+
+  const urlCount = results.seoScores.length;
+  const averageScores = {
+    overallScore: sumScores.totalScore / urlCount,
+    details: Object.fromEntries(
+      Object.entries(sumScores.details).map(([key, value]) => [
+        key,
+        value / urlCount,
+      ]),
+    ),
+  };
+
+  const summaryData = [['Metric', 'Average Score', 'Comment']];
+
+  const addMetricToSummary = (metricName, score) => {
+    const formattedScore = (score * 100).toFixed(2);
+    summaryData.push([
+      metricName,
+      formattedScore,
+      getScoreComment(parseFloat(formattedScore)),
+    ]);
+  };
+
+  addMetricToSummary('Overall SEO Score', averageScores.overallScore / 100);
+
+  const detailKeys = [
+    'titleOptimization',
+    'metaDescriptionOptimization',
+    'urlStructure',
+    'h1Optimization',
+    'contentLength',
+    'internalLinking',
+    'imageOptimization',
+    'pageSpeed',
+    'mobileOptimization',
+    'securityFactors',
+    'structuredData',
+    'socialMediaTags',
+  ];
+
+  detailKeys.forEach((key) => {
+    if (averageScores.details[key] !== undefined) {
+      addMetricToSummary(
+        key
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/^./, (str) => str.toUpperCase()),
+        averageScores.details[key],
       );
-      return pa11yResults.map((result) => ({
-        ...result,
-        issues: result.issues
-          ? result.issues.filter(
-            (issue) => !commonIssueKeys.has(`${issue.code}-${issue.message}`),
-          )
-          : [],
-      }));
+    } else {
+      global.auditcore.logger.warn(`Detail key '${key}' not found in average scores.`);
+    }
+  });
+
+  const seoScoresSummaryCsv = formatCsv(summaryData, '');
+  await saveFile(
+    path.join(outputDir, 'seo_scores_summary.csv'),
+    seoScoresSummaryCsv,
+  );
+  global.auditcore.logger.debug('SEO scores summary saved');
+}
+
+/**
+ * Saves the full results object to a diagnostics JSON file.
+ * @param {Object} results - The full results object.
+ * @param {string} outputDir - The directory to save the file.
+ * @returns {Promise<void>}
+ */
+async function saveDiagnostics(results, outputDir) {
+  try {
+    const filename = 'results.json';
+    const filePath = path.join(outputDir, filename);
+    
+    // Create a meta object with generation time and options
+    const meta = {
+      generatedAt: new Date().toISOString(),
+      options: {
+        sitemap: global.auditcore.options.sitemap,
+        output: global.auditcore.options.output,
+        limit: global.auditcore.options.limit,
+        logLevel: global.auditcore.options.logLevel,
+        // Add any other relevant options here
+      }
+    };
+
+    // Create a clean version of results without circular references
+    const cleanResults = JSON.parse(JSON.stringify(results, (key, value) => {
+      if (key === 'parent' || key === 'children') {
+        return undefined; // Exclude parent and children to avoid circular references
+      }
+      return value;
+    }));
+
+    // Combine meta and results into a single object
+    const diagnosticsData = {
+      meta: meta,
+      results: cleanResults
+    };
+
+    await fs.writeFile(filePath, JSON.stringify(diagnosticsData, null, 2));
+    global.auditcore.logger.info(`Full diagnostics saved to ${filePath}`);
+  } catch (error) {
+    global.auditcore.logger.error('Error saving diagnostics:', error);
+    global.auditcore.logger.debug('Error stack:', error.stack);
+  }
+}
+
+/**
+ * Saves raw Pa11y results to a JSON file.
+ * @param {Object} results - The analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @returns {Promise<void>}
+ */
+async function saveRawPa11yResult(results, outputDir) {
+  try {
+    const filename = 'pa11y_raw_results.json';
+    const filePath = path.join(outputDir, filename);
+
+    global.auditcore.logger.debug('Starting saveRawPa11yResult function');
+    global.auditcore.logger.debug(`Results object keys: ${Object.keys(results)}`);
+    global.auditcore.logger.debug(`Pa11y results type: ${typeof results.pa11y}`);
+
+    if (!results || !results.pa11y || !Array.isArray(results.pa11y)) {
+      global.auditcore.logger.warn('Pa11y results are missing or not in the expected format');
+      global.auditcore.logger.debug(`results: ${JSON.stringify(results)}`);
+      await fs.writeFile(filePath, JSON.stringify([], null, 2));
+      global.auditcore.logger.debug(`Empty pa11y results saved to ${filePath}`);
+      return;
+    }
+
+    global.auditcore.logger.debug(`Processing ${results.pa11y.length} Pa11y results`);
+
+    const pa11yResults = results.pa11y.map((result, index) => {
+      global.auditcore.logger.debug(`Processing result ${index + 1}/${results.pa11y.length}`);
+      global.auditcore.logger.debug(`Result type: ${typeof result}`);
+      
+      if (!result || typeof result !== 'object') {
+        global.auditcore.logger.warn(`Invalid Pa11y result entry at index ${index}:`, result);
+        return null;
+      }
+
+      return {
+        url: result.pageUrl || 'Unknown URL',
+        issues: Array.isArray(result.issues) ? result.issues : [],
+      };
+    }).filter(Boolean);
+
+    global.auditcore.logger.debug(`Processed ${pa11yResults.length} valid Pa11y results`);
+
+    await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
+    global.auditcore.logger.info(`Raw pa11y results saved to ${filePath}`);
+  } catch (error) {
+    global.auditcore.logger.error('Error saving raw pa11y results:', error);
+    global.auditcore.logger.error('Error stack:', error.stack);
+  }
+}
+
+/**
+ * Analyzes common Pa11y issues.
+ * @param {Array} pa11yResults - The Pa11y results to analyze.
+ * @returns {Array} Common Pa11y issues.
+ */
+function analyzeCommonPa11yIssues(pa11yResults) {
+  const issueCounts = pa11yResults.reduce((counts, result) => {
+    if (result.issues) {
+      result.issues.forEach((issue) => {
+        const issueKey = `${issue.code}-${issue.message}`;
+        counts[issueKey] = (counts[issueKey] || 0) + 1;
+      });
+    }
+    return counts;
+  }, {});
+
+  return Object.entries(issueCounts)
+    .filter(([, count]) => count > 1)
+    .map(([key, count]) => ({
+      code: key.split('-')[0],
+      message: key.split('-')[1],
+      count,
+    }));
+}
+
+/**
+ * Saves common Pa11y issues to a file.
+ * @param {Array} commonIssues - The common Pa11y issues to save.
+ * @param {string} outputDir - The directory to save results to.
+ * @returns {Promise<void>}
+ */
+async function saveCommonPa11yIssues(commonIssues, outputDir) {
+  if (commonIssues.length > 0) {
+    const csvData = formatCsv(
+      commonIssues,
+      ['code', 'message', 'count'],
+    );
+    await saveFile(
+      path.join(outputDir, 'common_pa11y_issues.csv'),
+      csvData,
+    );
+    global.auditcore.logger.debug('Common Pa11y issues saved');
+  } else {
+    global.auditcore.logger.debug('No common Pa11y issues found');
+  }
+}
+
+/**
+ * Filters out repeated Pa11y issues.
+ * @param {Array} pa11yResults - The Pa11y results to filter.
+ * @param {Array} commonIssues - The common Pa11y issues.
+ * @returns {Array} Filtered Pa11y results.
+ */
+function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
+  const commonIssueKeys = new Set(
+    commonIssues.map((issue) => `${issue.code}-${issue.message}`),
+  );
+  return pa11yResults.map((result) => ({
+    ...result,
+    issues: result.issues
+      ? result.issues.filter(
+        (issue) => !commonIssueKeys.has(`${issue.code}-${issue.message}`),
+      )
+      : [],
+  }));
+}
+
+/**
+ * Saves all image information to a CSV file.
+ * @param {Array} contentAnalysis - The content analysis results.
+ * @param {string} outputDir - The directory to save results to.
+ * @returns {Promise<number>} The number of images saved.
+ */
+async function saveImageInfo(contentAnalysis, outputDir) {
+  global.auditcore.logger.debug(`Starting saveImageInfo function`);
+  global.auditcore.logger.debug(`Content analysis length: ${contentAnalysis.length}`);
+
+  const allImages = [];
+  const imagesWithoutAlt = [];
+
+  contentAnalysis.forEach((page, index) => {
+    global.auditcore.logger.debug(`Processing page ${index}: ${page.url}`);
+    
+    if (!page.images || !Array.isArray(page.images)) {
+      global.auditcore.logger.warn(`No images array found for page: ${page.url}`);
+      return;
     }
     
-    export {
-      saveFile,
-      savePa11yResults,
-      saveInternalLinks,
-      saveImagesWithoutAlt,
-      saveContentAnalysis,
-      saveOrphanedUrls,
-      saveSeoReport,
-      saveSeoScores,
-      savePerformanceAnalysis,
-      saveSeoScoresSummary,
-      saveRawPa11yResult,
-      analyzeCommonPa11yIssues,
-      saveCommonPa11yIssues,
-      filterRepeatedPa11yIssues,
-    };
+    global.auditcore.logger.debug(`Found ${page.images.length} images for page: ${page.url}`);
+    
+    page.images.forEach((img) => {
+      const imageInfo = {
+        pageUrl: page.url,
+        imageSrc: img.src,
+        altText: img.alt || '',
+        width: img.width || '',
+        height: img.height || ''
+      };
+      allImages.push(imageInfo);
+      
+      if (!img.alt || img.alt.trim() === '') {
+        imagesWithoutAlt.push(imageInfo);
+      }
+    });
+  });
+
+  global.auditcore.logger.debug(`Total images found: ${allImages.length}`);
+  global.auditcore.logger.debug(`Images without alt text: ${imagesWithoutAlt.length}`);
+
+  if (allImages.length > 0) {
+    const headers = ['Page URL', 'Image Source', 'Alt Text', 'Width', 'Height'];
+    const imageInfoCsv = formatCsv(allImages, headers);
+    
+    try {
+      await saveFile(path.join(outputDir, 'image_info.csv'), imageInfoCsv);
+      global.auditcore.logger.info(`${allImages.length} images information saved to image_info.csv`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving image_info.csv: ${error.message}`);
+    }
+  } else {
+    global.auditcore.logger.warn('No images found to save');
+  }
+
+  if (imagesWithoutAlt.length > 0) {
+    const headers = ['Page URL', 'Image Source', 'Width', 'Height'];
+    const imagesWithoutAltCsv = formatCsv(imagesWithoutAlt.map(img => ({
+      pageUrl: img.pageUrl,
+      imageSrc: img.imageSrc,
+      width: img.width,
+      height: img.height
+    })), headers);
+
+    try {
+      await saveFile(path.join(outputDir, 'images_without_alt.csv'), imagesWithoutAltCsv);
+      global.auditcore.logger.info(`${imagesWithoutAlt.length} images without alt text saved to images_without_alt.csv`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving images_without_alt.csv: ${error.message}`);
+    }
+  } else {
+    global.auditcore.logger.info('All images have alt text');
+  }
+
+  return { 
+    totalImages: allImages.length, 
+    imagesWithoutAlt: imagesWithoutAlt.length 
+  };
+}
+export {
+  saveFile,
+  savePa11yResults,
+  saveInternalLinks,
+  saveImagesWithoutAlt,
+  saveContentAnalysis,
+  saveOrphanedUrls,
+  saveSeoReport,
+  saveSeoScores,
+  savePerformanceAnalysis,
+  saveSeoScoresSummary,
+  saveRawPa11yResult,
+  analyzeCommonPa11yIssues,
+  saveCommonPa11yIssues,
+  filterRepeatedPa11yIssues,
+};

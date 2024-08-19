@@ -72,6 +72,8 @@ export function updateImageMetrics($, results, url) {
     missingAlt: images.length - imagesWithAlt.length,
     altTooLong: imagesWithAlt.filter((i, el) => $(el).attr('alt').length > 100).length
   };
+
+  global.auditcore.logger.debug(`Image metrics for ${url}: ${JSON.stringify(results.imageMetrics[url])}`);
 }
 
 export function updateLinkMetrics($, baseUrl, results, url) {

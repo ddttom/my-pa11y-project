@@ -44,7 +44,8 @@ export async function generateSitemap(results, outputDir) {
       return null;
     }
 
-    global.auditcore.logger.info(`Extracted ${urls.length} unique URLs for sitemap`);
+    global.auditcore.logger.info(`Processing ${urls.length} unique URLs for sitemap`);
+    global.auditcore.logger.debug('URLs to be included in sitemap:', urls.map(u => u.url));
 
     global.auditcore.logger.debug("Creating sitemap stream");
     const stream = new SitemapStream({ hostname: baseUrl });
@@ -57,6 +58,7 @@ export async function generateSitemap(results, outputDir) {
         lastmod: url.lastmod
       };
       stream.write(sitemapItem);
+      // global.auditcore.logger.debug(`Added to sitemap: ${url.url}`);
     }
     stream.end();
 
@@ -121,23 +123,35 @@ async function generateSplitSitemaps(urls, outputDir, baseUrl) {
 }
 
 function extractUrlsFromResults(results) {
-  const urls = new Set();
+  const urlMap = new Map();
 
   global.auditcore.logger.debug('Extracting URLs from results');
 
+  function addOrUpdateUrl(url, data) {
+    if (urlMap.has(url)) {
+      global.auditcore.logger.debug(`Updating existing URL: ${url}`);
+      const existingData = urlMap.get(url);
+      urlMap.set(url, { ...existingData, ...data });
+    } else {
+      global.auditcore.logger.debug(`Adding new URL: ${url}`);
+      urlMap.set(url, createUrlObject({ url, ...data }, results));
+    }
+  }
+
   // Extract from internalLinks
   if (results.internalLinks) {
+    global.auditcore.logger.debug('Extracting from internalLinks');
     results.internalLinks.forEach((link) => {
-      if (link.url) urls.add(createUrlObject(link, results));
+      if (link.url) addOrUpdateUrl(link.url, link);
     });
   }
 
   // Extract from contentAnalysis
   if (results.contentAnalysis) {
+    global.auditcore.logger.debug('Extracting from contentAnalysis');
     results.contentAnalysis.forEach((page) => {
       if (page.url) {
-        urls.add({
-          url: page.url,
+        addOrUpdateUrl(page.url, {
           lastmod: page.lastmod || getLastModified(page.url, results),
           changefreq: calculateChangeFreq(page, results),
           priority: typeof page.priority === 'number' ? page.priority : undefined
@@ -148,20 +162,21 @@ function extractUrlsFromResults(results) {
 
   // Extract from seoScores
   if (results.seoScores) {
+    global.auditcore.logger.debug('Extracting from seoScores');
     results.seoScores.forEach((score) => {
       if (score.url) {
-        const existingUrl = Array.from(urls).find((u) => u.url === score.url);
-        if (existingUrl) {
-          existingUrl.priority = (score.score / 100).toFixed(1);
-        } else {
-          urls.add(createUrlObject({ url: score.url, score: score.score }, results));
-        }
+        addOrUpdateUrl(score.url, { 
+          priority: (score.score / 100).toFixed(1)
+        });
       }
     });
   }
 
-  global.auditcore.logger.info(`Extracted ${urls.size} unique URLs for sitemap`);
-  return Array.from(urls);
+  const uniqueUrls = Array.from(urlMap.values());
+  global.auditcore.logger.debug(`Extracted ${uniqueUrls.length} unique URLs for sitemap`);
+  global.auditcore.logger.debug('Extracted URLs:', uniqueUrls.map(u => u.url));
+
+  return uniqueUrls;
 }
 
 function createUrlObject(page, results) {

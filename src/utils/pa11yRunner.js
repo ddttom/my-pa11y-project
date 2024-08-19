@@ -15,8 +15,6 @@ const { MAX_RETRIES, RETRY_DELAY } = globalOptions;
  */
 export async function runPa11yWithRetry(testUrl, options) {
   global.auditcore.logger.debug(`[START] runPa11yWithRetry for ${testUrl}`);
-  global.auditcore.logger.debug(`Pa11y options: ${JSON.stringify(options)}`);
-
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
       global.auditcore.logger.debug(`Pa11y test attempt ${attempt} for ${testUrl}`);
@@ -55,8 +53,6 @@ export async function runPa11yTest(testUrl, html, results) {
       ...pa11yOptions,
       html,
     };
-
-    global.auditcore.logger.debug('Pa11y options:', JSON.stringify(options, null, 2));
 
     const pa11yResult = await runPa11yWithRetry(testUrl, options);
 

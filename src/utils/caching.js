@@ -1,5 +1,4 @@
-/* eslint-disable no-use-before-define */
-// caching.mjs
+// caching.js
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -67,7 +66,7 @@ async function setCachedData(url, data) {
     global.auditcore.logger.debug(`Cache written for ${url}`);
   } catch (error) {
     global.auditcore.logger.error(`Error writing cache for ${url}:`, error);
-    throw error;  // Ensure this error is propagated for visibility
+    throw error;
   }
 }
 
@@ -171,17 +170,18 @@ async function fetchDataWithoutPuppeteer(url) {
       tablesCount: $('table').length,
       pageSize: html.length,
       lastModified,
+      testUrl: url,
     };
 
     const data = {
       html,
-      jsErrors: [], // We can't capture JS errors without Puppeteer
+      jsErrors: [],
       statusCode: response.status,
       headers: response.headers,
       pageData,
       seoScore: calculateSeoScore({
         ...pageData,
-        url,
+        testUrl: url,
         jsErrors: [],
       }),
       lastCrawled: new Date().toISOString(),
@@ -194,11 +194,7 @@ async function fetchDataWithoutPuppeteer(url) {
     throw error;
   }
 }
-/**
- * Renders a page using Puppeteer and collects various data.
- * @param {string} url - The URL to render and analyze.
- * @returns {Promise<Object>} The rendered and analyzed data.
- */
+
 export async function renderAndCacheData(url) {
   global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
   let browser;
@@ -209,7 +205,6 @@ export async function renderAndCacheData(url) {
     });
     const page = await browser.newPage();
 
-    // Set up console log capturing
     const jsErrors = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
@@ -217,7 +212,6 @@ export async function renderAndCacheData(url) {
       }
     });
 
-    // Set up response interception for headers
     let headers = {};
     page.on('response', (response) => {
       if (response.url() === url) {
@@ -229,7 +223,6 @@ export async function renderAndCacheData(url) {
     const html = await page.content();
     const statusCode = response.status();
 
-    // Collect page data
     const pageData = await page.evaluate(() => ({
       title: document.title,
       metaDescription: document.querySelector('meta[name="description"]')?.content || '',
@@ -263,7 +256,6 @@ export async function renderAndCacheData(url) {
       pageSize: document.documentElement.outerHTML.length,
     }));
 
-    // Performance metrics
     const performanceMetrics = await page.evaluate(() => {
       const navigationTiming = performance.getEntriesByType('navigation')[0];
       return {
@@ -281,11 +273,14 @@ export async function renderAndCacheData(url) {
       jsErrors,
       statusCode,
       headers,
-      pageData,
+      pageData: {
+        ...pageData,
+        testUrl: url,
+      },
       performanceMetrics,
       seoScore: calculateSeoScore({
         ...pageData,
-        url,
+        testUrl: url,
         jsErrors,
         performanceMetrics,
       }),
@@ -295,7 +290,7 @@ export async function renderAndCacheData(url) {
     global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
     return data;
   } catch (error) {
-    global.logger.error(`Error rendering data for ${url}:`, error);
+    global.auditcore.logger.error(`Error rendering data for ${url}:`, error);
     if (browser) {
       await browser.close();
     }
@@ -333,7 +328,6 @@ function analyzeContentFreshness(data) {
       freshness.freshnessStatus = 'Stale';
     }
   } else {
-    // If we can't determine the last modified date, use the last crawled date
     freshness.freshnessStatus = (() => {
       if (freshness.daysSinceLastCrawled <= 7) {
         return 'Potentially Fresh';
