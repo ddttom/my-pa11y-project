@@ -1,13 +1,7 @@
-/* eslint-disable no-use-before-define */
 // reportGenerator.js
 
 import { formatCsv } from './csvFormatter.js';
 
-/**
- * Memoizes a function to cache its results.
- * @param {Function} fn - The function to memoize.
- * @returns {Function} The memoized function.
- */
 const memoize = (fn) => {
   const cache = new Map();
   return (...args) => {
@@ -19,11 +13,6 @@ const memoize = (fn) => {
   };
 };
 
-/**
- * Categorizes response codes into groups.
- * @param {Object} responseCodeMetrics - The response code metrics.
- * @returns {Object} Categorized response codes.
- */
 function categorizeResponseCodes(responseCodeMetrics) {
   const categories = {
     '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0,
@@ -42,16 +31,12 @@ function categorizeResponseCodes(responseCodeMetrics) {
 
 const memoizedCategorizeResponseCodes = memoize(categorizeResponseCodes);
 
-/**
- * Validates the results object for required properties.
- * @param {Object} results - The results object to validate.
- * @throws {Error} If required properties are missing.
- */
 function validateResults(results) {
   const requiredProperties = [
     'urlMetrics', 'responseCodeMetrics', 'titleMetrics', 'metaDescriptionMetrics',
     'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics',
     'hreflangMetrics', 'canonicalMetrics', 'contentMetrics', 'seoScores', 'performanceAnalysis',
+    'pa11y', 'contentAnalysis'
   ];
   const missingProperties = requiredProperties.filter((prop) => !(prop in results));
 
@@ -60,11 +45,6 @@ function validateResults(results) {
   }
 }
 
-/**
- * Sanitizes a value for CSV output.
- * @param {*} value - The value to sanitize.
- * @returns {*} The sanitized value.
- */
 function sanitizeForCsv(value) {
   if (typeof value === 'string') {
     return value.replace(/^[=+@-]/, '\'$&');
@@ -72,12 +52,6 @@ function sanitizeForCsv(value) {
   return value;
 }
 
-/**
- * Generates an SEO analysis report.
- * @param {Object} results - The SEO analysis results.
- * @param {string} sitemapUrl - The URL of the analyzed sitemap.
- * @returns {string|null} The generated report as a CSV string, or null if an error occurred.
- */
 export function generateReport(results, sitemapUrl) {
   global.auditcore.logger.info('Generating SEO report');
   const startTime = process.hrtime();
@@ -99,12 +73,7 @@ export function generateReport(results, sitemapUrl) {
     return null;
   }
 }
-/**
- * Gets the report sections configuration.
- * @param {Object} results - The SEO analysis results.
- * @param {string} sitemapUrl - The URL of the analyzed sitemap.
- * @returns {Array} The report sections configuration.
- */
+
 function getReportSections(results, sitemapUrl) {
   return [
     { name: 'Header', generator: generateHeader, args: [sitemapUrl] },
@@ -120,18 +89,14 @@ function getReportSections(results, sitemapUrl) {
     { name: 'Canonical Analysis', generator: generateCanonicalAnalysis, args: [results] },
     { name: 'Content Analysis', generator: generateContentAnalysis, args: [results] },
     { name: 'Orphaned URLs Analysis', generator: generateOrphanedUrlsAnalysis, args: [results] },
-    { name: 'Pa11y Analysis', generator: generatePa11yAnalysis, args: [results] },
+    { name: 'Accessibility Analysis', generator: generateAccessibilityAnalysis, args: [results] },
     { name: 'JavaScript Errors Analysis', generator: generateJavaScriptErrorsAnalysis, args: [results] },
     { name: 'SEO Score Analysis', generator: generateSeoScoreAnalysis, args: [results] },
     { name: 'Performance Analysis', generator: generatePerformanceAnalysis, args: [results] },
+    { name: 'Recommendations', generator: generateRecommendations, args: [results] },
   ];
 }
 
-/**
- * Generates report sections based on the configuration.
- * @param {Array} reportSections - The report sections configuration.
- * @returns {Array} The generated report data.
- */
 function generateReportSections(reportSections) {
   let completedSections = 0;
   const totalSections = reportSections.length;
@@ -150,11 +115,6 @@ function generateReportSections(reportSections) {
   });
 }
 
-/**
- * Processes the report data by rounding numeric values and sanitizing.
- * @param {Array} reportData - The raw report data.
- * @returns {Array} The processed report data.
- */
 function processReportData(reportData) {
   return reportData.map((row) => row.map((cell) => {
     const roundedCell = typeof cell === 'number' ? Number(cell.toFixed(2)) : cell;
@@ -162,278 +122,259 @@ function processReportData(reportData) {
   }));
 }
 
-/**
- * Generates the header section of the report.
- * @param {string} sitemapUrl - The URL of the analyzed sitemap.
- * @returns {Array} The header section data.
- */
 function generateHeader(sitemapUrl) {
   return [
     ['SEO Analysis Report'],
     ['Date', new Date().toLocaleDateString()],
     ['Time', new Date().toLocaleTimeString()],
     ['Sitemap URL', sitemapUrl],
-    [], // Empty row for spacing
+    [],
   ];
 }
-/**
- * Generates the summary section of the report.
- * @param {Object} results - The SEO analysis results.
- * @param {Object} responseCategories - The categorized response codes.
- * @returns {Array} The summary section data.
- */
+
 function generateSummary(results, responseCategories) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Summary', 'Count'],
-    ['Total URLs', results.urlMetrics.total],
-    ['Internal URLs', results.urlMetrics.internal],
-    ['External URLs', results.urlMetrics.external],
-    ['Indexable URLs', results.urlMetrics.internalIndexable],
-    ['Non-Indexable URLs', results.urlMetrics.internalNonIndexable],
+    ['Summary', 'Count', 'Percentage'],
+    ['Total URLs', totalPages, '100%'],
+    ['Internal URLs', results.urlMetrics.internal, `${(results.urlMetrics.internal / totalPages * 100).toFixed(2)}%`],
+    ['External URLs', results.urlMetrics.external, `${(results.urlMetrics.external / totalPages * 100).toFixed(2)}%`],
+    ['Indexable URLs', results.urlMetrics.internalIndexable, `${(results.urlMetrics.internalIndexable / totalPages * 100).toFixed(2)}%`],
+    ['Non-Indexable URLs', results.urlMetrics.internalNonIndexable, `${(results.urlMetrics.internalNonIndexable / totalPages * 100).toFixed(2)}%`],
     [],
-    ['Response Codes', 'Count'],
-    ['2xx (Success)', responseCategories['2xx']],
-    ['3xx (Redirection)', responseCategories['3xx']],
-    ['4xx (Client Error)', responseCategories['4xx']],
-    ['5xx (Server Error)', responseCategories['5xx']],
+    ['Response Codes', 'Count', 'Percentage'],
+    ['2xx (Success)', responseCategories['2xx'], `${(responseCategories['2xx'] / totalPages * 100).toFixed(2)}%`],
+    ['3xx (Redirection)', responseCategories['3xx'], `${(responseCategories['3xx'] / totalPages * 100).toFixed(2)}%`],
+    ['4xx (Client Error)', responseCategories['4xx'], `${(responseCategories['4xx'] / totalPages * 100).toFixed(2)}%`],
+    ['5xx (Server Error)', responseCategories['5xx'], `${(responseCategories['5xx'] / totalPages * 100).toFixed(2)}%`],
     [],
   ];
 }
 
-/**
- * Generates the URL analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The URL analysis section data.
- */
 function generateUrlAnalysis(results) {
+  const totalUrls = results.urlMetrics.total;
   return [
-    ['URL Analysis', 'Count'],
-    ['URLs with non-ASCII characters', results.urlMetrics.nonAscii],
-    ['URLs with uppercase characters', results.urlMetrics.uppercase],
-    ['URLs with underscores', results.urlMetrics.underscores],
-    ['URLs with spaces', results.urlMetrics.containsSpace],
-    ['URLs over 115 characters', results.urlMetrics.overLength],
+    ['URL Analysis', 'Count', 'Percentage'],
+    ['URLs with non-ASCII characters', results.urlMetrics.nonAscii, `${(results.urlMetrics.nonAscii / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with uppercase characters', results.urlMetrics.uppercase, `${(results.urlMetrics.uppercase / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with underscores', results.urlMetrics.underscores, `${(results.urlMetrics.underscores / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with spaces', results.urlMetrics.containsSpace, `${(results.urlMetrics.containsSpace / totalUrls * 100).toFixed(2)}%`],
+    ['URLs over 115 characters', results.urlMetrics.overLength, `${(results.urlMetrics.overLength / totalUrls * 100).toFixed(2)}%`],
     [],
   ];
 }
+function safePercentage(count, total) {
+  if (total === 0 || typeof count !== 'number') return 'N/A';
+  return `${((count / total) * 100).toFixed(2)}%`;
+}
 
-/**
- * Generates the page title analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The page title analysis section data.
- */
 function generatePageTitleAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Page Title Analysis', 'Count'],
-    ['Missing titles', results.titleMetrics.missing],
-    ['Duplicate titles', results.titleMetrics.duplicate],
-    ['Titles over 60 characters', results.titleMetrics.tooLong],
-    ['Titles under 30 characters', results.titleMetrics.tooShort],
+    ['Page Title Analysis', 'Count', 'Percentage'],
+    ['Missing titles', results.titleMetrics.missing || 0, safePercentage(results.titleMetrics.missing, totalPages)],
+    ['Duplicate titles', results.titleMetrics.duplicate || 0, safePercentage(results.titleMetrics.duplicate, totalPages)],
+    ['Titles over 60 characters', results.titleMetrics.tooLong || 0, safePercentage(results.titleMetrics.tooLong, totalPages)],
+    ['Titles under 30 characters', results.titleMetrics.tooShort || 0, safePercentage(results.titleMetrics.tooShort, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the meta description analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The meta description analysis section data.
- */
 function generateMetaDescriptionAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Meta Description Analysis', 'Count'],
-    ['Missing meta descriptions', results.metaDescriptionMetrics.missing],
-    ['Duplicate meta descriptions', results.metaDescriptionMetrics.duplicate],
-    ['Meta descriptions over 155 characters', results.metaDescriptionMetrics.tooLong],
-    ['Meta descriptions under 70 characters', results.metaDescriptionMetrics.tooShort],
+    ['Meta Description Analysis', 'Count', 'Percentage'],
+    ['Missing meta descriptions', results.metaDescriptionMetrics.missing || 0, safePercentage(results.metaDescriptionMetrics.missing, totalPages)],
+    ['Duplicate meta descriptions', results.metaDescriptionMetrics.duplicate || 0, safePercentage(results.metaDescriptionMetrics.duplicate, totalPages)],
+    ['Meta descriptions over 155 characters', results.metaDescriptionMetrics.tooLong || 0, safePercentage(results.metaDescriptionMetrics.tooLong, totalPages)],
+    ['Meta descriptions under 70 characters', results.metaDescriptionMetrics.tooShort || 0, safePercentage(results.metaDescriptionMetrics.tooShort, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the heading analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The heading analysis section data.
- */
 function generateHeadingAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Heading Analysis', 'Count'],
-    ['Missing H1', results.h1Metrics.missing],
-    ['Multiple H1s', results.h1Metrics.multiple],
-    ['H1s over 70 characters', results.h1Metrics.tooLong],
-    ['Missing H2', results.h2Metrics.missing],
-    ['Non-sequential H2s', results.h2Metrics.nonSequential],
+    ['Heading Analysis', 'Count', 'Percentage'],
+    ['Missing H1', results.h1Metrics.missing || 0, safePercentage(results.h1Metrics.missing, totalPages)],
+    ['Multiple H1s', results.h1Metrics.multiple || 0, safePercentage(results.h1Metrics.multiple, totalPages)],
+    ['H1s over 70 characters', results.h1Metrics.tooLong || 0, safePercentage(results.h1Metrics.tooLong, totalPages)],
+    ['Missing H2', results.h2Metrics.missing || 0, safePercentage(results.h2Metrics.missing, totalPages)],
+    ['Non-sequential H2s', results.h2Metrics.nonSequential || 0, safePercentage(results.h2Metrics.nonSequential, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the image analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The image analysis section data.
- */
 function generateImageAnalysis(results) {
+  const totalImages = results.imageMetrics.total || 0;
   return [
-    ['Image Analysis', 'Count'],
-    ['Total images', results.imageMetrics.total],
-    ['Images missing alt text', results.imageMetrics.missingAlt],
-    ['Images with empty alt attribute', results.imageMetrics.missingAltAttribute],
-    ['Images with alt text over 100 characters', results.imageMetrics.altTextTooLong],
+    ['Image Analysis', 'Count', 'Percentage'],
+    ['Total images', totalImages, '100%'],
+    ['Images missing alt text', results.imageMetrics.missingAlt || 0, safePercentage(results.imageMetrics.missingAlt, totalImages)],
+    ['Images with empty alt attribute', results.imageMetrics.missingAltAttribute || 0, safePercentage(results.imageMetrics.missingAltAttribute, totalImages)],
+    ['Images with alt text over 100 characters', results.imageMetrics.altTextTooLong || 0, safePercentage(results.imageMetrics.altTextTooLong, totalImages)],
     [],
   ];
 }
 
-/**
- * Generates the link analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The link analysis section data.
- */
 function generateLinkAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Link Analysis', 'Count'],
-    ['Pages without internal links', results.linkMetrics.pagesWithoutInternalOutlinks],
-    ['Pages with high number of external links', results.linkMetrics.pagesWithHighExternalOutlinks],
-    ['Internal links without anchor text', results.linkMetrics.internalOutlinksWithoutAnchorText],
-    ['Non-descriptive anchor text', results.linkMetrics.nonDescriptiveAnchorText],
+    ['Link Analysis', 'Count', 'Percentage'],
+    ['Pages without internal links', results.linkMetrics.pagesWithoutInternalOutlinks || 0, safePercentage(results.linkMetrics.pagesWithoutInternalOutlinks, totalPages)],
+    ['Pages with high number of external links', results.linkMetrics.pagesWithHighExternalOutlinks || 0, safePercentage(results.linkMetrics.pagesWithHighExternalOutlinks, totalPages)],
+    ['Internal links without anchor text', results.linkMetrics.internalOutlinksWithoutAnchorText || 0, safePercentage(results.linkMetrics.internalOutlinksWithoutAnchorText, totalPages)],
+    ['Non-descriptive anchor text', results.linkMetrics.nonDescriptiveAnchorText || 0, safePercentage(results.linkMetrics.nonDescriptiveAnchorText, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the security analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The security analysis section data.
- */
 function generateSecurityAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Security Analysis', 'Count'],
-    ['HTTP URLs (non-secure)', results.securityMetrics.httpUrls],
-    ['Missing HSTS header', results.securityMetrics.missingHstsHeader],
-    ['Missing Content Security Policy', results.securityMetrics.missingContentSecurityPolicy],
-    ['Missing X-Frame-Options header', results.securityMetrics.missingXFrameOptions],
-    ['Missing X-Content-Type-Options header', results.securityMetrics.missingXContentTypeOptions],
+    ['Security Analysis', 'Count', 'Percentage'],
+    ['HTTP URLs (non-secure)', results.securityMetrics.httpUrls || 0, safePercentage(results.securityMetrics.httpUrls, totalPages)],
+    ['Missing HSTS header', results.securityMetrics.missingHstsHeader || 0, safePercentage(results.securityMetrics.missingHstsHeader, totalPages)],
+    ['Missing Content Security Policy', results.securityMetrics.missingContentSecurityPolicy || 0, safePercentage(results.securityMetrics.missingContentSecurityPolicy, totalPages)],
+    ['Missing X-Frame-Options header', results.securityMetrics.missingXFrameOptions || 0, safePercentage(results.securityMetrics.missingXFrameOptions, totalPages)],
+    ['Missing X-Content-Type-Options header', results.securityMetrics.missingXContentTypeOptions || 0, safePercentage(results.securityMetrics.missingXContentTypeOptions, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the hreflang analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The hreflang analysis section data.
- */
 function generateHreflangAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Hreflang Analysis', 'Count'],
-    ['Pages with hreflang', results.hreflangMetrics.pagesWithHreflang],
-    ['Missing return links', results.hreflangMetrics.missingReturnLinks],
-    ['Incorrect language codes', results.hreflangMetrics.incorrectLanguageCodes],
+    ['Hreflang Analysis', 'Count', 'Percentage'],
+    ['Pages with hreflang', results.hreflangMetrics.pagesWithHreflang || 0, safePercentage(results.hreflangMetrics.pagesWithHreflang, totalPages)],
+    ['Missing return links', results.hreflangMetrics.missingReturnLinks || 0, safePercentage(results.hreflangMetrics.missingReturnLinks, totalPages)],
+    ['Incorrect language codes', results.hreflangMetrics.incorrectLanguageCodes || 0, safePercentage(results.hreflangMetrics.incorrectLanguageCodes, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the canonical analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The canonical analysis section data.
- */
 function generateCanonicalAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
+  const pagesWithCanonical = (results.canonicalMetrics.selfReferencing || 0) + (results.canonicalMetrics.nonSelf || 0);
   return [
-    ['Canonical Analysis', 'Count'],
-    ['Pages with canonical tags', results.canonicalMetrics.selfReferencing + results.canonicalMetrics.nonSelf],
-    ['Self-referencing canonicals', results.canonicalMetrics.selfReferencing],
-    ['Non-self canonicals', results.canonicalMetrics.nonSelf],
-    ['Missing canonical tags', results.canonicalMetrics.missing],
+    ['Canonical Analysis', 'Count', 'Percentage'],
+    ['Pages with canonical tags', pagesWithCanonical, safePercentage(pagesWithCanonical, totalPages)],
+    ['Self-referencing canonicals', results.canonicalMetrics.selfReferencing || 0, safePercentage(results.canonicalMetrics.selfReferencing, totalPages)],
+    ['Non-self canonicals', results.canonicalMetrics.nonSelf || 0, safePercentage(results.canonicalMetrics.nonSelf, totalPages)],
+    ['Missing canonical tags', results.canonicalMetrics.missing || 0, safePercentage(results.canonicalMetrics.missing, totalPages)],
     [],
   ];
 }
 
-/**
- * Generates the content analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The content analysis section data.
- */
 function generateContentAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
   return [
-    ['Content Analysis', 'Count'],
-    ['Low content pages', results.contentMetrics.lowContent],
-    ['Duplicate content pages', results.contentMetrics.duplicate],
+    ['Content Analysis', 'Count', 'Percentage'],
+    ['Low content pages', results.contentMetrics.lowContent || 0, safePercentage(results.contentMetrics.lowContent, totalPages)],
+    ['Duplicate content pages', results.contentMetrics.duplicate || 0, safePercentage(results.contentMetrics.duplicate, totalPages)],
+    ['Average word count', results.contentMetrics.averageWordCount || 'N/A', 'N/A'],
     [],
   ];
 }
-
-/**
- * Generates the orphaned URLs analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The orphaned URLs analysis section data.
- */
 function generateOrphanedUrlsAnalysis(results) {
+  const totalPages = results.urlMetrics.total;
+  const orphanedUrls = results.orphanedUrls ? results.orphanedUrls.size : 0;
   return [
-    ['Orphaned URLs Analysis', 'Count'],
-    ['Orphaned URLs', results.orphanedUrls ? results.orphanedUrls.size : 0],
+    ['Orphaned URLs Analysis', 'Count', 'Percentage'],
+    ['Orphaned URLs', orphanedUrls, `${(orphanedUrls / totalPages * 100).toFixed(2)}%`],
     [],
   ];
 }
 
-/**
- * Generates the Pa11y analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The Pa11y analysis section data.
- */
-function generatePa11yAnalysis(results) {
-  const totalIssues = results.pa11y.reduce((sum, result) => (
-    sum + (result.issues?.length || 0)
-  ), 0);
-  return [
+function generateAccessibilityAnalysis(results) {
+  const totalIssues = results.pa11y.reduce((sum, result) => sum + (result.issues?.length || 0), 0);
+  const issuesByType = results.pa11y.reduce((acc, result) => {
+    result.issues?.forEach(issue => {
+      acc[issue.type] = (acc[issue.type] || 0) + 1;
+    });
+    return acc;
+  }, {});
+
+  const analysisRows = [
     ['Accessibility Analysis', 'Count'],
     ['Total Pa11y issues', totalIssues],
-    [],
   ];
+
+  Object.entries(issuesByType).forEach(([type, count]) => {
+    analysisRows.push([`${type} issues`, count]);
+  });
+
+  analysisRows.push([]);
+  return analysisRows;
 }
 
-/**
- * Generates the JavaScript errors analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The JavaScript errors analysis section data.
- */
 function generateJavaScriptErrorsAnalysis(results) {
-  const pagesWithJsErrors = results.contentAnalysis.filter(
-    (page) => page.jsErrors?.length > 0,
-  ).length;
+  const pagesWithJsErrors = results.contentAnalysis.filter(page => page.jsErrors?.length > 0).length;
+  const totalPages = results.urlMetrics.total;
   return [
-    ['JavaScript Errors Analysis', 'Count'],
-    ['Pages with JavaScript errors', pagesWithJsErrors],
+    ['JavaScript Errors Analysis', 'Count', 'Percentage'],
+    ['Pages with JavaScript errors', pagesWithJsErrors, `${(pagesWithJsErrors / totalPages * 100).toFixed(2)}%`],
     [],
   ];
 }
 
-/**
- * Generates the SEO score analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The SEO score analysis section data.
- */
 function generateSeoScoreAnalysis(results) {
-  const totalScore = results.seoScores.reduce((sum, score) => sum + score.score, 0);
-  const averageScore = totalScore / results.seoScores.length;
+  const scores = results.seoScores.map(score => score.score);
+  const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const minScore = Math.min(...scores);
+  const maxScore = Math.max(...scores);
+
   return [
     ['SEO Score Analysis', 'Score'],
     ['Average SEO Score', averageScore.toFixed(2)],
+    ['Lowest SEO Score', minScore],
+    ['Highest SEO Score', maxScore],
     [],
   ];
 }
 
-/**
- * Generates the performance analysis section of the report.
- * @param {Object} results - The SEO analysis results.
- * @returns {Array} The performance analysis section data.
- */
 function generatePerformanceAnalysis(results) {
-  const totalLoadTime = results.performanceAnalysis.reduce(
-    (sum, perf) => sum + perf.loadTime,
-    0,
-  );
-  const avgLoadTime = totalLoadTime / results.performanceAnalysis.length;
+  const avgLoadTime = results.performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / results.performanceAnalysis.length;
+  const avgFirstPaint = results.performanceAnalysis.reduce((sum, perf) => sum + perf.firstPaint, 0) / results.performanceAnalysis.length;
+  const avgFirstContentfulPaint = results.performanceAnalysis.reduce((sum, perf) => sum + perf.firstContentfulPaint, 0) / results.performanceAnalysis.length;
+
   return [
     ['Performance Analysis', 'Time (ms)'],
     ['Average Load Time', avgLoadTime.toFixed(2)],
+    ['Average First Paint', avgFirstPaint.toFixed(2)],
+    ['Average First Contentful Paint', avgFirstContentfulPaint.toFixed(2)],
+    [],
+  ];
+}
+
+function generateRecommendations(results) {
+  const recommendations = [];
+
+  if (results.titleMetrics.missing > 0) {
+    recommendations.push('Add title tags to pages missing them');
+  }
+  if (results.titleMetrics.tooLong > 0) {
+    recommendations.push('Shorten title tags that are over 60 characters');
+  }
+  if (results.metaDescriptionMetrics.missing > 0) {
+    recommendations.push('Add meta descriptions to pages missing them');
+  }
+  if (results.h1Metrics.missing > 0) {
+    recommendations.push('Add H1 tags to pages missing them');
+  }
+  if (results.imageMetrics.missingAlt > 0) {
+    recommendations.push('Add alt text to images missing it');
+  }
+  if (results.securityMetrics.httpUrls > 0) {
+    recommendations.push('Migrate all pages to HTTPS');
+  }
+  if (results.contentMetrics.lowContent > 0) {
+    recommendations.push('Improve content on pages with low word count');
+  }
+
+  return [
+    ['Top SEO Recommendations'],
+    ...recommendations.map(rec => [rec]),
     [],
   ];
 }
