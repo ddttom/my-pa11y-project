@@ -10,6 +10,12 @@ import {
   metaDescriptionThresholds
 } from '../config/options.js';
 
+// Utility function for percentage calculation
+function calculatePercentage(value, total, decimalPlaces = 2) {
+  if (total === 0) return '0.00%';
+  return ((value / total) * 100).toFixed(decimalPlaces) + '%';
+}
+
 function getSeoScoreComment(score) {
   if (score >= seoScoreThresholds.excellent) return 'Excellent';
   if (score >= seoScoreThresholds.veryGood) return 'Very Good';
@@ -19,11 +25,6 @@ function getSeoScoreComment(score) {
   return 'Poor';
 }
 
-// Utility function for percentage calculation
-function calculatePercentage(value, total, decimalPlaces = 2) {
-  if (total === 0) return '0.00%';
-  return ((value / total) * 100).toFixed(decimalPlaces) + '%';
-}
 function getPerformanceComment(metric, value) {
   if (value === null || value === undefined) return 'N/A';
   const thresholds = performanceThresholds[metric];
@@ -176,6 +177,7 @@ async function saveInternalLinks(results, outputDir) {
   );
   global.auditcore.logger.info(`Saved ${flattenedLinks.length} internal links to CSV`);
 }
+
 function flattenInternalLinks(internalLinks) {
   return internalLinks.flatMap((page) => 
     (page.links || []).map((link) => ({
@@ -185,6 +187,7 @@ function flattenInternalLinks(internalLinks) {
     }))
   );
 }
+
 async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
   const totalImages = contentAnalysis.reduce((sum, page) => sum + (page.images ? page.images.length : 0), 0);
   global.auditcore.logger.info(`Total images scanned: ${totalImages}`);
@@ -210,7 +213,7 @@ async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
       path.join(outputDir, 'images_without_alt.csv'),
       imagesWithoutAltCsv,
     );
-    global.auditcore.logger.info(`${imagesWithoutAlt.length} out of ${totalImages} images are without alt text`);
+    global.auditcore.logger.info(`${imagesWithoutAlt.length} out of ${totalImages} images are without alt text (${calculatePercentage(imagesWithoutAlt.length, totalImages)})`);
   } else {
     global.auditcore.logger.info(`All ${totalImages} images have alt text`);
   }
@@ -267,6 +270,7 @@ async function saveContentAnalysis(results, outputDir) {
     global.auditcore.logger.error(`Error saving content_analysis.csv: ${error.message}`);
   }
 }
+
 async function saveOrphanedUrls(results, outputDir) {
   if (results.orphanedUrls && results.orphanedUrls.size > 0) {
     const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({
@@ -317,6 +321,7 @@ function generateUpdatedReport(results, sitemapUrl) {
 
   return formatCsv(reportSections.flat());
 }
+
 function getMissingHeaders(h1Count, h2Count, h3Count, h4Count, h5Count, h6Count) {
   const headers = [h1Count, h2Count, h3Count, h4Count, h5Count, h6Count];
   let missingHeaders = new Set(); // Use a Set to avoid duplicates
@@ -340,6 +345,7 @@ function getMissingHeaders(h1Count, h2Count, h3Count, h4Count, h5Count, h6Count)
   const missingHeadersArray = Array.from(missingHeaders);
   return missingHeadersArray.length > 0 ? missingHeadersArray.join(', ') : 'None';
 }
+
 function analyzeContentData(contentAnalysis) {
   return contentAnalysis.reduce((acc, page) => {
     const titleLength = page.title ? page.title.length : 0;
@@ -389,6 +395,7 @@ function analyzeContentData(contentAnalysis) {
     pagesWithJsErrors: 0,
   });
 }
+
 function generateHeader(sitemapUrl) {
   return [
     ['SEO Analysis Report'],
@@ -404,16 +411,16 @@ function generateSummary(results, totalUrls) {
   return [
     ['Summary', 'Count', 'Percentage'],
     ['Total URLs', totalUrls, '100%'],
-    ['Internal URLs', results.urlMetrics.internal, `${(results.urlMetrics.internal / totalUrls * 100).toFixed(2)}%`],
-    ['External URLs', results.urlMetrics.external, `${(results.urlMetrics.external / totalUrls * 100).toFixed(2)}%`],
-    ['Indexable URLs', results.urlMetrics.internalIndexable, `${(results.urlMetrics.internalIndexable / totalUrls * 100).toFixed(2)}%`],
-    ['Non-Indexable URLs', results.urlMetrics.internalNonIndexable, `${(results.urlMetrics.internalNonIndexable / totalUrls * 100).toFixed(2)}%`],
+    ['Internal URLs', results.urlMetrics.internal, calculatePercentage(results.urlMetrics.internal, totalUrls)],
+    ['External URLs', results.urlMetrics.external, calculatePercentage(results.urlMetrics.external, totalUrls)],
+    ['Indexable URLs', results.urlMetrics.internalIndexable, calculatePercentage(results.urlMetrics.internalIndexable, totalUrls)],
+    ['Non-Indexable URLs', results.urlMetrics.internalNonIndexable, calculatePercentage(results.urlMetrics.internalNonIndexable, totalUrls)],
     [],
     ['Response Codes', 'Count', 'Percentage'],
-    ['2xx (Success)', responseCategories['2xx'], `${(responseCategories['2xx'] / totalUrls * 100).toFixed(2)}%`],
-    ['3xx (Redirection)', responseCategories['3xx'], `${(responseCategories['3xx'] / totalUrls * 100).toFixed(2)}%`],
-    ['4xx (Client Error)', responseCategories['4xx'], `${(responseCategories['4xx'] / totalUrls * 100).toFixed(2)}%`],
-    ['5xx (Server Error)', responseCategories['5xx'], `${(responseCategories['5xx'] / totalUrls * 100).toFixed(2)}%`],
+    ['2xx (Success)', responseCategories['2xx'], calculatePercentage(responseCategories['2xx'], totalUrls)],
+    ['3xx (Redirection)', responseCategories['3xx'], calculatePercentage(responseCategories['3xx'], totalUrls)],
+    ['4xx (Client Error)', responseCategories['4xx'], calculatePercentage(responseCategories['4xx'], totalUrls)],
+    ['5xx (Server Error)', responseCategories['5xx'], calculatePercentage(responseCategories['5xx'], totalUrls)],
     [],
   ];
 }
@@ -421,29 +428,31 @@ function generateSummary(results, totalUrls) {
 function generateUrlAnalysis(urlMetrics, totalUrls) {
   return [
     ['URL Analysis', 'Count', 'Percentage'],
-    ['URLs with non-ASCII characters', urlMetrics.nonAscii, `${(urlMetrics.nonAscii / totalUrls * 100).toFixed(2)}%`],
-    ['URLs with uppercase characters', urlMetrics.uppercase, `${(urlMetrics.uppercase / totalUrls * 100).toFixed(2)}%`],
-    ['URLs with underscores', urlMetrics.underscores, `${(urlMetrics.underscores / totalUrls * 100).toFixed(2)}%`],
-    ['URLs with spaces', urlMetrics.containsSpace, `${(urlMetrics.containsSpace / totalUrls * 100).toFixed(2)}%`],
-    [`URLs over ${urlThresholds.maxLength} characters`, urlMetrics.overLength, `${(urlMetrics.overLength / totalUrls * 100).toFixed(2)}%`],
+    ['URLs with non-ASCII characters', urlMetrics.nonAscii, calculatePercentage(urlMetrics.nonAscii, totalUrls)],
+    ['URLs with uppercase characters', urlMetrics.uppercase, calculatePercentage(urlMetrics.uppercase, totalUrls)],
+    ['URLs with underscores', urlMetrics.underscores, calculatePercentage(urlMetrics.underscores, totalUrls)],
+    ['URLs with spaces', urlMetrics.containsSpace, calculatePercentage(urlMetrics.containsSpace, totalUrls)],
+    [`URLs over ${urlThresholds.maxLength} characters`, urlMetrics.overLength, calculatePercentage(urlMetrics.overLength, totalUrls)],
     [],
   ];
 }
+
 function generatePageTitleAnalysis(analysis, totalUrls) {
   return [
     ['Page Title Analysis', 'Count', 'Percentage'],
-    ['Missing titles', analysis.missingTitles, `${(analysis.missingTitles / totalUrls * 100).toFixed(2)}%`],
-    [`Titles over ${titleThresholds.maxLength} characters`, analysis.titleOverLength, `${(analysis.titleOverLength / totalUrls * 100).toFixed(2)}%`],
-    [`Titles under ${titleThresholds.minLength} characters`, analysis.titleUnderLength, `${(analysis.titleUnderLength / totalUrls * 100).toFixed(2)}%`],
+    ['Missing titles', analysis.missingTitles, calculatePercentage(analysis.missingTitles, totalUrls)],
+    [`Titles over ${titleThresholds.maxLength} characters`, analysis.titleOverLength, calculatePercentage(analysis.titleOverLength, totalUrls)],
+    [`Titles under ${titleThresholds.minLength} characters`, analysis.titleUnderLength, calculatePercentage(analysis.titleUnderLength, totalUrls)],
     [],
   ];
 }
+
 function generateMetaDescriptionAnalysis(analysis, totalUrls) {
   return [
     ['Meta Description Analysis', 'Count', 'Percentage'],
-    ['Missing meta descriptions', analysis.missingMetaDesc, `${(analysis.missingMetaDesc / totalUrls * 100).toFixed(2)}%`],
-    [`Meta descriptions over ${metaDescriptionThresholds.maxLength} characters`, analysis.metaDescOverLength, `${(analysis.metaDescOverLength / totalUrls * 100).toFixed(2)}%`],
-    [`Meta descriptions under ${metaDescriptionThresholds.minLength} characters`, analysis.metaDescUnderLength, `${(analysis.metaDescUnderLength / totalUrls * 100).toFixed(2)}%`],
+    ['Missing meta descriptions', analysis.missingMetaDesc, calculatePercentage(analysis.missingMetaDesc, totalUrls)],
+    [`Meta descriptions over ${metaDescriptionThresholds.maxLength} characters`, analysis.metaDescOverLength, calculatePercentage(analysis.metaDescOverLength, totalUrls)],
+    [`Meta descriptions under ${metaDescriptionThresholds.minLength} characters`, analysis.metaDescUnderLength, calculatePercentage(analysis.metaDescUnderLength, totalUrls)],
     [],
   ];
 }
@@ -451,8 +460,8 @@ function generateMetaDescriptionAnalysis(analysis, totalUrls) {
 function generateHeadingAnalysis(analysis, totalUrls) {
   return [
     ['Heading Analysis', 'Count', 'Percentage'],
-    ['Missing H1', analysis.missingH1, `${(analysis.missingH1 / totalUrls * 100).toFixed(2)}%`],
-    ['Multiple H1s', analysis.multipleH1, `${(analysis.multipleH1 / totalUrls * 100).toFixed(2)}%`],
+    ['Missing H1', analysis.missingH1, calculatePercentage(analysis.missingH1, totalUrls)],
+    ['Multiple H1s', analysis.multipleH1, calculatePercentage(analysis.multipleH1, totalUrls)],
     [],
   ];
 }
@@ -461,7 +470,7 @@ function generateImageAnalysis(analysis) {
   return [
     ['Image Analysis', 'Count', 'Percentage'],
     ['Total images', analysis.totalImages, '100%'],
-    ['Images missing alt text', analysis.imagesWithoutAlt, `${(analysis.imagesWithoutAlt / analysis.totalImages * 100).toFixed(2)}%`],
+    ['Images missing alt text', analysis.imagesWithoutAlt, calculatePercentage(analysis.imagesWithoutAlt, analysis.totalImages)],
     [],
   ];
 }
@@ -469,8 +478,8 @@ function generateImageAnalysis(analysis) {
 function generateLinkAnalysis(linkMetrics, totalUrls) {
   return [
     ['Link Analysis', 'Count', 'Percentage'],
-    ['Pages without internal links', linkMetrics.pagesWithoutInternalOutlinks || 0, `${((linkMetrics.pagesWithoutInternalOutlinks || 0) / totalUrls * 100).toFixed(2)}%`],
-    ['Pages with high number of external links', linkMetrics.pagesWithHighExternalOutlinks || 0, `${((linkMetrics.pagesWithHighExternalOutlinks || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Pages without internal links', linkMetrics.pagesWithoutInternalOutlinks || 0, calculatePercentage(linkMetrics.pagesWithoutInternalOutlinks || 0, totalUrls)],
+    ['Pages with high number of external links', linkMetrics.pagesWithHighExternalOutlinks || 0, calculatePercentage(linkMetrics.pagesWithHighExternalOutlinks || 0, totalUrls)],
     [],
   ];
 }
@@ -478,11 +487,11 @@ function generateLinkAnalysis(linkMetrics, totalUrls) {
 function generateSecurityAnalysis(securityMetrics, totalUrls) {
   return [
     ['Security Analysis', 'Count', 'Percentage'],
-    ['HTTP URLs (non-secure)', securityMetrics.httpUrls || 0, `${((securityMetrics.httpUrls || 0) / totalUrls * 100).toFixed(2)}%`],
-    ['Missing HSTS header', securityMetrics.missingHstsHeader || 0, `${((securityMetrics.missingHstsHeader || 0) / totalUrls * 100).toFixed(2)}%`],
-    ['Missing Content Security Policy', securityMetrics.missingContentSecurityPolicy || 0, `${((securityMetrics.missingContentSecurityPolicy || 0) / totalUrls * 100).toFixed(2)}%`],
-    ['Missing X-Frame-Options header', securityMetrics.missingXFrameOptions || 0, `${((securityMetrics.missingXFrameOptions || 0) / totalUrls * 100).toFixed(2)}%`],
-    ['Missing X-Content-Type-Options header', securityMetrics.missingXContentTypeOptions || 0, `${((securityMetrics.missingXContentTypeOptions || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['HTTP URLs (non-secure)', securityMetrics.httpUrls || 0, calculatePercentage(securityMetrics.httpUrls || 0, totalUrls)],
+    ['Missing HSTS header', securityMetrics.missingHstsHeader || 0, calculatePercentage(securityMetrics.missingHstsHeader || 0, totalUrls)],
+    ['Missing Content Security Policy', securityMetrics.missingContentSecurityPolicy || 0, calculatePercentage(securityMetrics.missingContentSecurityPolicy || 0, totalUrls)],
+    ['Missing X-Frame-Options header', securityMetrics.missingXFrameOptions || 0, calculatePercentage(securityMetrics.missingXFrameOptions || 0, totalUrls)],
+    ['Missing X-Content-Type-Options header', securityMetrics.missingXContentTypeOptions || 0, calculatePercentage(securityMetrics.missingXContentTypeOptions || 0, totalUrls)],
     [],
   ];
 }
@@ -490,7 +499,7 @@ function generateSecurityAnalysis(securityMetrics, totalUrls) {
 function generateHreflangAnalysis(hreflangMetrics, totalUrls) {
   return [
     ['Hreflang Analysis', 'Count', 'Percentage'],
-    ['Pages with hreflang', hreflangMetrics.pagesWithHreflang || 0, `${((hreflangMetrics.pagesWithHreflang || 0) / totalUrls * 100).toFixed(2)}%`],
+    ['Pages with hreflang', hreflangMetrics.pagesWithHreflang || 0, calculatePercentage(hreflangMetrics.pagesWithHreflang || 0, totalUrls)],
     [],
   ];
 }
@@ -510,21 +519,20 @@ function generateCanonicalAnalysis(canonicalMetrics, totalUrls) {
     ];
   }
 
-  const calculatePercentage = (value) => ((value / totalUrls) * 100).toFixed(2) + '%';
-
   return [
     ['Canonical Analysis', 'Count', 'Percentage'],
-    ['Pages with canonical tags', totalCanonicals.toString(), calculatePercentage(totalCanonicals)],
-    ['Self-referencing canonicals', (canonicalMetrics.selfReferencing || 0).toString(), calculatePercentage(canonicalMetrics.selfReferencing || 0)],
-    ['Non-self canonicals', (canonicalMetrics.nonSelf || 0).toString(), calculatePercentage(canonicalMetrics.nonSelf || 0)],
-    ['Missing canonical tags', (canonicalMetrics.missing || 0).toString(), calculatePercentage(canonicalMetrics.missing || 0)],
+    ['Pages with canonical tags', totalCanonicals.toString(), calculatePercentage(totalCanonicals, totalUrls)],
+    ['Self-referencing canonicals', (canonicalMetrics.selfReferencing || 0).toString(), calculatePercentage(canonicalMetrics.selfReferencing || 0, totalUrls)],
+    ['Non-self canonicals', (canonicalMetrics.nonSelf || 0).toString(), calculatePercentage(canonicalMetrics.nonSelf || 0, totalUrls)],
+    ['Missing canonical tags', (canonicalMetrics.missing || 0).toString(), calculatePercentage(canonicalMetrics.missing || 0, totalUrls)],
     [],
   ];
 }
+
 function generateContentAnalysis(analysis, totalUrls) {
   return [
     ['Content Analysis', 'Count', 'Percentage'],
-    ['Low content pages', analysis.lowContentPages, `${(analysis.lowContentPages / totalUrls * 100).toFixed(2)}%`],
+    ['Low content pages', analysis.lowContentPages, calculatePercentage(analysis.lowContentPages, totalUrls)],
     ['Average word count', Math.round(analysis.totalWordCount / totalUrls), 'N/A'],
     [],
   ];
@@ -534,7 +542,7 @@ function generateOrphanedUrlsAnalysis(orphanedUrls, totalUrls) {
   const orphanedCount = orphanedUrls ? orphanedUrls.size : 0;
   return [
     ['Orphaned URLs Analysis', 'Count', 'Percentage'],
-    ['Orphaned URLs', orphanedCount, `${(orphanedCount / totalUrls * 100).toFixed(2)}%`],
+    ['Orphaned URLs', orphanedCount, calculatePercentage(orphanedCount, totalUrls)],
     [],
   ];
 }
@@ -566,7 +574,7 @@ function generateAccessibilityAnalysis(pa11yResults) {
 function generateJavaScriptErrorsAnalysis(analysis, totalUrls) {
   return [
     ['JavaScript Errors Analysis', 'Count', 'Percentage'],
-    ['Pages with JavaScript errors', analysis.pagesWithJsErrors, `${(analysis.pagesWithJsErrors / totalUrls * 100).toFixed(2)}%`],
+    ['Pages with JavaScript errors', analysis.pagesWithJsErrors, calculatePercentage(analysis.pagesWithJsErrors, totalUrls)],
     [],
   ];
 }
@@ -585,12 +593,13 @@ function generateSeoScoreAnalysis(seoScores) {
     [],
   ];
 }
+
 function generatePerformanceAnalysis(performanceAnalysis) {
   const calculateAverage = (metric) => {
     const validValues = performanceAnalysis
       .map(perf => perf[metric])
       .filter(value => value !== null && value !== undefined);
-    return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : null;
+      return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : null;
   };
 
   const avgLoadTime = calculateAverage('loadTime');
@@ -605,6 +614,7 @@ function generatePerformanceAnalysis(performanceAnalysis) {
     [],
   ];
 }
+
 function generateRecommendations(analysis, results) {
   const recommendations = [];
 
@@ -709,6 +719,7 @@ async function savePerformanceAnalysis(results, outputDir) {
   global.auditcore.logger.debug('Performance analysis saved');
   return roundedPerformanceAnalysis.length;
 }
+
 async function saveSeoScoresSummary(results, outputDir) {
   const getScoreComment = (score) => {
     if (score >= 90) return 'Excellent';
