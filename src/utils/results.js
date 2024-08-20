@@ -229,7 +229,7 @@ async function saveContentAnalysis(results, outputDir) {
     'H5 Count': page.h5Count,
     'H6 Count': page.h6Count,
     'Missing Headers': page.missingHeaders,
-    'Zero H1': page.zeroH1,
+    'Zero H1': page.h1Count === 0 ? 'true' : 'false',  // Updated this line
     'Images Count': page.imagesCount,
     'Internal Links Count': page.internalLinksCount,
     'External Links Count': page.externalLinksCount,
@@ -260,7 +260,6 @@ async function saveContentAnalysis(results, outputDir) {
     global.auditcore.logger.error(`Error saving content_analysis.csv: ${error.message}`);
   }
 }
-
 async function saveOrphanedUrls(results, outputDir) {
   if (results.orphanedUrls && results.orphanedUrls.size > 0) {
     const orphanedUrlsArray = Array.from(results.orphanedUrls).map((url) => ({
@@ -311,15 +310,33 @@ function generateUpdatedReport(results, sitemapUrl) {
 
   return formatCsv(reportSections.flat());
 }
+function getMissingHeaders(h1Count, h2Count, h3Count, h4Count, h5Count, h6Count) {
+  const headers = [h1Count, h2Count, h3Count, h4Count, h5Count, h6Count];
+  let missingHeaders = [];
+  let highestSeen = -1;
 
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i] > 0) {
+      for (let j = highestSeen + 1; j < i; j++) {
+        missingHeaders.push(`H${j + 1}`);
+      }
+      highestSeen = i;
+    }
+  }
+
+  return missingHeaders.length > 0 ? missingHeaders.join(', ') : 'None';
+}
 function analyzeContentData(contentAnalysis) {
   return contentAnalysis.reduce((acc, page) => {
     const titleLength = page.title ? page.title.length : 0;
     const metaDescLength = page.metaDescription ? page.metaDescription.length : 0;
+    const missingHeaders = getMissingHeaders(page.h1Count, page.h2Count, page.h3Count, page.h4Count, page.h5Count, page.h6Count);
+    acc.pagesWithMissingHeaders += missingHeaders !== 'None' ? 1 : 0;
     
     acc.titleOverLength += titleLength > 60 ? 1 : 0;
     acc.titleUnderLength += titleLength < 30 && titleLength > 0 ? 1 : 0;
     acc.missingTitles += titleLength === 0 ? 1 : 0;
+    
     
     acc.metaDescOverLength += metaDescLength > 155 ? 1 : 0;
     acc.metaDescUnderLength += metaDescLength < 70 && metaDescLength > 0 ? 1 : 0;
@@ -327,6 +344,7 @@ function analyzeContentData(contentAnalysis) {
     
     acc.missingH1 += page.h1Count === 0 ? 1 : 0;
     acc.multipleH1 += page.h1Count > 1 ? 1 : 0;
+    acc.zeroH1 += page.h1Count === 0 ? 1 : 0;  // Added this line
     
     acc.totalImages += page.imagesCount || 0;
     acc.imagesWithoutAlt += page.imagesWithoutAlt || 0;
@@ -346,6 +364,8 @@ function analyzeContentData(contentAnalysis) {
     missingMetaDesc: 0,
     missingH1: 0,
     multipleH1: 0,
+    pagesWithMissingHeaders: 0,
+    zeroH1: 0,  // Added this line
     totalImages: 0,
     imagesWithoutAlt: 0,
     lowContentPages: 0,
@@ -353,7 +373,6 @@ function analyzeContentData(contentAnalysis) {
     pagesWithJsErrors: 0,
   });
 }
-
 function generateHeader(sitemapUrl) {
   return [
     ['SEO Analysis Report'],
