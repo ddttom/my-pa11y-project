@@ -155,28 +155,31 @@ function flattenPa11yResults(pa11yResults) {
 }
 
 async function saveInternalLinks(results, outputDir) {
+  global.auditcore.logger.debug(`Starting to save internal links`);
+  
+  const flattenedLinks = flattenInternalLinks(results.internalLinks);
+  global.auditcore.logger.debug(`Flattened ${flattenedLinks.length} internal links`);
+
   const internalLinksCsv = formatCsv(
-    flattenInternalLinks(results.internalLinks),
-    ['source', 'target', 'anchorText', 'statusCode'],
+    flattenedLinks,
+    ['source', 'target', 'anchorText']
   );
+
   await saveFile(
     path.join(outputDir, 'internal_links.csv'),
-    internalLinksCsv,
+    internalLinksCsv
   );
-  global.auditcore.logger.debug('Internal links results saved');
+  global.auditcore.logger.info(`Saved ${flattenedLinks.length} internal links to CSV`);
 }
-
 function flattenInternalLinks(internalLinks) {
-  return internalLinks.flatMap((result) => (result.checkedLinks
-    ? result.checkedLinks.map((link) => ({
-      source: result.url,
+  return internalLinks.flatMap((page) => 
+    (page.links || []).map((link) => ({
+      source: page.url,
       target: link.url,
-      anchorText: link.text,
-      statusCode: link.statusCode,
+      anchorText: link.text || ''
     }))
-    : [{ source: result.url, error: result.error }]));
+  );
 }
-
 async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
   const totalImages = contentAnalysis.reduce((sum, page) => sum + (page.images ? page.images.length : 0), 0);
   global.auditcore.logger.info(`Total images scanned: ${totalImages}`);
@@ -219,7 +222,7 @@ async function saveContentAnalysis(results, outputDir) {
     'Pa11y Issues Count'
   ];
 
-  const contentAnalysisData = results.contentAnalysis.map(page => ({
+  const contentAnalysisData = results.contentAnalysis.map((page) => ({
     URL: page.url,
     'Word Count': page.wordCount,
     'H1 Count': page.h1Count,
@@ -228,8 +231,8 @@ async function saveContentAnalysis(results, outputDir) {
     'H4 Count': page.h4Count,
     'H5 Count': page.h5Count,
     'H6 Count': page.h6Count,
-    'Missing Headers': page.missingHeaders,
-    'Zero H1': page.h1Count === 0 ? 'true' : 'false',  // Updated this line
+    'Missing Headers': getMissingHeaders(page.h1Count, page.h2Count, page.h3Count, page.h4Count, page.h5Count, page.h6Count),
+    'Zero H1': page.h1Count === 0 ? 'true' : 'false',
     'Images Count': page.imagesCount,
     'Internal Links Count': page.internalLinksCount,
     'External Links Count': page.externalLinksCount,
@@ -332,7 +335,7 @@ function analyzeContentData(contentAnalysis) {
     const metaDescLength = page.metaDescription ? page.metaDescription.length : 0;
     const missingHeaders = getMissingHeaders(page.h1Count, page.h2Count, page.h3Count, page.h4Count, page.h5Count, page.h6Count);
     acc.pagesWithMissingHeaders += missingHeaders !== 'None' ? 1 : 0;
-    
+    acc.missingHeaders.push(missingHeaders);
     acc.titleOverLength += titleLength > 60 ? 1 : 0;
     acc.titleUnderLength += titleLength < 30 && titleLength > 0 ? 1 : 0;
     acc.missingTitles += titleLength === 0 ? 1 : 0;
@@ -359,6 +362,7 @@ function analyzeContentData(contentAnalysis) {
     titleOverLength: 0,
     titleUnderLength: 0,
     missingTitles: 0,
+    missingHeaders: [],
     metaDescOverLength: 0,
     metaDescUnderLength: 0,
     missingMetaDesc: 0,
