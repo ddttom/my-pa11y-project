@@ -2,6 +2,37 @@ import fs from 'fs/promises';
 import path from 'path';
 import { formatCsv } from './csvFormatter.js';
 
+
+function getSeoScoreComment(score) {
+  if (score >= 90) return 'Excellent';
+  if (score >= 80) return 'Very Good';
+  if (score >= 70) return 'Good';
+  if (score >= 60) return 'Fair';
+  if (score >= 50) return 'Needs Improvement';
+  return 'Poor';
+}
+
+const performanceThresholds = {
+  loadTime: { excellent: 1000, good: 2000, fair: 3000 },
+  domContentLoaded: { excellent: 500, good: 1000, fair: 2000 },
+  firstPaint: { excellent: 1000, good: 2000, fair: 3000 },
+  firstContentfulPaint: { excellent: 1500, good: 2500, fair: 4000 },
+};
+
+function getPerformanceComment(metric, value) {
+  if (value === null || value === undefined) return 'N/A';
+  const thresholds = performanceThresholds[metric];
+  if (!thresholds) return 'Unknown metric';
+  if (value <= thresholds.excellent) return 'Excellent';
+  if (value <= thresholds.good) return 'Good';
+  if (value <= thresholds.fair) return 'Fair';
+  return 'Needs Improvement';
+}
+
+function roundToTwoDecimals(value) {
+  return value !== null && value !== undefined ? Number(value.toFixed(2)) : null;
+}
+
 async function saveFile(filePath, content) {
   try {
     await fs.writeFile(filePath, content, 'utf8');
@@ -432,16 +463,31 @@ function generateHreflangAnalysis(hreflangMetrics, totalUrls) {
 }
 
 function generateCanonicalAnalysis(canonicalMetrics, totalUrls) {
+  const totalCanonicals = (canonicalMetrics.selfReferencing || 0) + (canonicalMetrics.nonSelf || 0);
+  const hasCanonicalsData = totalCanonicals > 0 || (canonicalMetrics.missing || 0) > 0;
+
+  if (!hasCanonicalsData) {
+    return [
+      ['Canonical Analysis', 'Count', 'Percentage'],
+      ['Pages with canonical tags', '0', '0.00%'],
+      ['Self-referencing canonicals', '0', '0.00%'],
+      ['Non-self canonicals', '0', '0.00%'],
+      ['Missing canonical tags', totalUrls.toString(), '100.00%'],
+      [],
+    ];
+  }
+
+  const calculatePercentage = (value) => ((value / totalUrls) * 100).toFixed(2) + '%';
+
   return [
     ['Canonical Analysis', 'Count', 'Percentage'],
-    ['Pages with canonical tags', canonicalMetrics.selfReferencing + canonicalMetrics.nonSelf || 0, `${(((canonicalMetrics.selfReferencing + canonicalMetrics.nonSelf) / totalUrls) * 100).toFixed(2)}%`],
-    ['Self-referencing canonicals', canonicalMetrics.selfReferencing || 0, `${((canonicalMetrics.selfReferencing / totalUrls) * 100).toFixed(2)}%`],
-    ['Non-self canonicals', canonicalMetrics.nonSelf || 0, `${((canonicalMetrics.nonSelf / totalUrls) * 100).toFixed(2)}%`],
-    ['Missing canonical tags', canonicalMetrics.missing || 0, `${((canonicalMetrics.missing / totalUrls) * 100).toFixed(2)}%`],
+    ['Pages with canonical tags', totalCanonicals.toString(), calculatePercentage(totalCanonicals)],
+    ['Self-referencing canonicals', (canonicalMetrics.selfReferencing || 0).toString(), calculatePercentage(canonicalMetrics.selfReferencing || 0)],
+    ['Non-self canonicals', (canonicalMetrics.nonSelf || 0).toString(), calculatePercentage(canonicalMetrics.nonSelf || 0)],
+    ['Missing canonical tags', (canonicalMetrics.missing || 0).toString(), calculatePercentage(canonicalMetrics.missing || 0)],
     [],
   ];
 }
-
 function generateContentAnalysis(analysis, totalUrls) {
   return [
     ['Content Analysis', 'Count', 'Percentage'],
@@ -495,29 +541,37 @@ function generateJavaScriptErrorsAnalysis(analysis, totalUrls) {
 function generateSeoScoreAnalysis(seoScores) {
   const scores = seoScores.map(score => score.score);
   const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const lowestScore = Math.min(...scores);
+  const highestScore = Math.max(...scores);
+
   return [
-    ['SEO Score Analysis', 'Score'],
-    ['Average SEO Score', averageScore.toFixed(2)],
-    ['Lowest SEO Score', Math.min(...scores)],
-    ['Highest SEO Score', Math.max(...scores)],
+    ['SEO Score Analysis', 'Score', 'Description'],
+    ['Average SEO Score', averageScore.toFixed(2), getSeoScoreComment(averageScore)],
+    ['Lowest SEO Score', lowestScore.toString(), getSeoScoreComment(lowestScore)],
+    ['Highest SEO Score', highestScore.toString(), getSeoScoreComment(highestScore)],
     [],
   ];
 }
-
 function generatePerformanceAnalysis(performanceAnalysis) {
-  const avgLoadTime = performanceAnalysis.reduce((sum, perf) => sum + perf.loadTime, 0) / performanceAnalysis.length;
-  const avgFirstPaint = performanceAnalysis.reduce((sum, perf) => sum + perf.firstPaint, 0) / performanceAnalysis.length;
-  const avgFirstContentfulPaint = performanceAnalysis.reduce((sum, perf) => sum + perf.firstContentfulPaint, 0) / performanceAnalysis.length;
+  const calculateAverage = (metric) => {
+    const validValues = performanceAnalysis
+      .map(perf => perf[metric])
+      .filter(value => value !== null && value !== undefined);
+    return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : null;
+  };
+
+  const avgLoadTime = calculateAverage('loadTime');
+  const avgFirstPaint = calculateAverage('firstPaint');
+  const avgFirstContentfulPaint = calculateAverage('firstContentfulPaint');
 
   return [
-    ['Performance Analysis', 'Time (ms)'],
-    ['Average Load Time', avgLoadTime.toFixed(2)],
-    ['Average First Paint', avgFirstPaint.toFixed(2)],
-    ['Average First Contentful Paint', avgFirstContentfulPaint.toFixed(2)],
+    ['Performance Analysis', 'Time (ms)', 'Comment'],
+    ['Average Load Time', roundToTwoDecimals(avgLoadTime), getPerformanceComment('loadTime', avgLoadTime)],
+    ['Average First Paint', roundToTwoDecimals(avgFirstPaint), getPerformanceComment('firstPaint', avgFirstPaint)],
+    ['Average First Contentful Paint', roundToTwoDecimals(avgFirstContentfulPaint), getPerformanceComment('firstContentfulPaint', avgFirstContentfulPaint)],
     [],
   ];
 }
-
 function generateRecommendations(analysis, results) {
   const recommendations = [];
 
@@ -552,6 +606,7 @@ async function saveSeoScores(results, outputDir) {
   const seoScoresFormatted = results.seoScores.map((score) => ({
     url: score.url || '',
     score: typeof score.score === 'number' ? Number(score.score.toFixed(2)) : 'N/A',
+    description: typeof score.score === 'number' ? getSeoScoreComment(score.score) : 'N/A',
     ...Object.fromEntries(
       Object.entries(score.details || {}).map(([key, value]) => [
         `details.${key}`,
@@ -561,7 +616,7 @@ async function saveSeoScores(results, outputDir) {
   }));
 
   const headers = [
-    'url', 'score', 'details.titleOptimization', 'details.metaDescriptionOptimization',
+    'url', 'score', 'description', 'details.titleOptimization', 'details.metaDescriptionOptimization',
     'details.urlStructure', 'details.h1Optimization', 'details.contentLength',
     'details.internalLinking', 'details.imageOptimization', 'details.pageSpeed',
     'details.mobileOptimization', 'details.securityFactors', 'details.structuredData',
@@ -574,51 +629,17 @@ async function saveSeoScores(results, outputDir) {
 }
 
 async function savePerformanceAnalysis(results, outputDir) {
-  const getPerformanceComment = (metric, value) => {
-    if (value === null || value === undefined) return 'N/A';
-    const thresholds = {
-      loadTime: { excellent: 1000, good: 2000, fair: 3000 },
-      domContentLoaded: { excellent: 500, good: 1000, fair: 2000 },
-      firstPaint: { excellent: 1000, good: 2000, fair: 3000 },
-      firstContentfulPaint: { excellent: 1500, good: 2500, fair: 4000 },
-    };
-
-    if (value <= thresholds[metric].excellent) return 'Excellent';
-    if (value <= thresholds[metric].good) return 'Good';
-    if (value <= thresholds[metric].fair) return 'Fair';
-    return 'Needs Improvement';
-  };
-
   const roundedPerformanceAnalysis = results.performanceAnalysis.map(
     (entry) => ({
       url: entry.url,
-      loadTime:
-        entry.loadTime !== null && entry.loadTime !== undefined
-          ? Number(entry.loadTime.toFixed(2))
-          : null,
+      loadTime: roundToTwoDecimals(entry.loadTime),
       loadTimeComment: getPerformanceComment('loadTime', entry.loadTime),
-      domContentLoaded:
-        entry.domContentLoaded !== null && entry.domContentLoaded !== undefined
-          ? Number(entry.domContentLoaded.toFixed(2))
-          : null,
-      domContentLoadedComment: getPerformanceComment(
-        'domContentLoaded',
-        entry.domContentLoaded,
-      ),
-      firstPaint:
-        entry.firstPaint !== null && entry.firstPaint !== undefined
-          ? Number(entry.firstPaint.toFixed(2))
-          : null,
+      domContentLoaded: roundToTwoDecimals(entry.domContentLoaded),
+      domContentLoadedComment: getPerformanceComment('domContentLoaded', entry.domContentLoaded),
+      firstPaint: roundToTwoDecimals(entry.firstPaint),
       firstPaintComment: getPerformanceComment('firstPaint', entry.firstPaint),
-      firstContentfulPaint:
-        entry.firstContentfulPaint !== null
-        && entry.firstContentfulPaint !== undefined
-          ? Number(entry.firstContentfulPaint.toFixed(2))
-          : null,
-      firstContentfulPaintComment: getPerformanceComment(
-        'firstContentfulPaint',
-        entry.firstContentfulPaint,
-      ),
+      firstContentfulPaint: roundToTwoDecimals(entry.firstContentfulPaint),
+      firstContentfulPaintComment: getPerformanceComment('firstContentfulPaint', entry.firstContentfulPaint),
     }),
   );
 
@@ -655,7 +676,6 @@ async function savePerformanceAnalysis(results, outputDir) {
   global.auditcore.logger.debug('Performance analysis saved');
   return roundedPerformanceAnalysis.length;
 }
-
 async function saveSeoScoresSummary(results, outputDir) {
   const getScoreComment = (score) => {
     if (score >= 90) return 'Excellent';
