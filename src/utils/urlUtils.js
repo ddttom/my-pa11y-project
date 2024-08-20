@@ -37,7 +37,8 @@ export function fixUrl(url) {
 }
 
 /**
- * Normalizes a URL by removing trailing slashes and converting to lowercase.
+ * Normalizes a URL by removing trailing slashes, converting to lowercase,
+ * removing default ports, and sorting query parameters.
  * @param {string} url - The URL to normalize.
  * @returns {string} The normalized URL.
  */
@@ -45,9 +46,23 @@ export function normalizeUrl(url) {
   if (typeof url !== "string") {
     return "";
   }
-  let normalized = url.toLowerCase();
-  normalized = fixUrl(normalized);
-  return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+  try {
+    const parsedUrl = new URL(url);
+    // Convert to lowercase
+    parsedUrl.hostname = parsedUrl.hostname.toLowerCase();
+    // Remove default ports
+    if ((parsedUrl.protocol === 'http:' && parsedUrl.port === '80')
+        || (parsedUrl.protocol === 'https:' && parsedUrl.port === '443')) {
+      parsedUrl.port = '';
+    }
+    // Remove trailing slash
+    parsedUrl.pathname = parsedUrl.pathname.replace(/\/$/, '');
+    // Sort query parameters
+    parsedUrl.searchParams.sort();
+    return fixUrl(parsedUrl.toString());
+  } catch (error) {
+    return fixUrl(url);
+  }
 }
 
 /**

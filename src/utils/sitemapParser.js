@@ -6,12 +6,11 @@
 
 import axios from 'axios';
 import xml2js from 'xml2js';
-import { URL } from 'url';
 import fs from 'fs/promises';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import RateLimiter from 'limiter';
-import { fixUrl } from './urlUtils.js';
+import { isValidUrl, normalizeUrl } from './urlUtils.js';
 
 const gunzip = promisify(zlib.gunzip);
 const { RateLimiter: Limiter } = RateLimiter;
@@ -32,7 +31,7 @@ export async function fetchAndParseSitemap(sitemapPath) {
     let content;
     let isCompressed = false;
 
-    if (isUrl(sitemapPath)) {
+    if (isValidUrl(sitemapPath)) {
       const response = await axiosInstance.get(sitemapPath, { responseType: 'arraybuffer' });
       content = response.data;
       isCompressed = response.headers['content-encoding'] === 'gzip' || sitemapPath.endsWith('.gz');
@@ -144,32 +143,3 @@ function processUrlset(urlset) {
   return urls;
 }
 
-function isUrl(string) {
-  try {
-    // eslint-disable-next-line no-new
-    new URL(string);
-    return true;
-  } catch (_) {
-    return false;
-  }
-}
-
-function normalizeUrl(url) {
-  try {
-    const parsedUrl = new URL(url);
-    // Convert to lowercase
-    parsedUrl.hostname = parsedUrl.hostname.toLowerCase();
-    // Remove default ports
-    if ((parsedUrl.protocol === 'http:' && parsedUrl.port === '80')
-        || (parsedUrl.protocol === 'https:' && parsedUrl.port === '443')) {
-      parsedUrl.port = '';
-    }
-    // Remove trailing slash
-    parsedUrl.pathname = parsedUrl.pathname.replace(/\/$/, '');
-    // Sort query parameters
-    parsedUrl.searchParams.sort();
-    return fixUrl(parsedUrl.toString());
-  } catch (error) {
-    return fixUrl(url);
-  }
-}

@@ -22,22 +22,24 @@ export function getInternalLinks(html, pageUrl, baseUrl) {
   try {
     const $ = cheerio.load(html);
     const links = new Set();
+    const baseUrlObj = new URL(baseUrl);
+    const pageUrlObj = new URL(pageUrl);
     
     $('a').each((i, element) => {
       const href = $(element).attr('href');
       if (href) {
         try {
-          const absoluteUrl = new URL(href, pageUrl).href;
-          if (absoluteUrl.startsWith(baseUrl)) {
+          const absoluteUrl = new URL(href, pageUrlObj);
+          if (absoluteUrl.hostname === baseUrlObj.hostname) {
             links.add({
-              url: fixUrl(absoluteUrl),
+              url: fixUrl(absoluteUrl.href),
               text: $(element).text().trim(),
               title: $(element).attr('title') || '',
               rel: $(element).attr('rel') || '',
             });
           }
         } catch (urlError) {
-          console.warn(`Invalid URL found: ${href}`);
+          global.auditcore.logger.warn(`Invalid URL found: ${href}`);
           const invalidUrl = {
             url: href,
             reason: 'Bad internal link',

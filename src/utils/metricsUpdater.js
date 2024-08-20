@@ -194,36 +194,3 @@ export function updateResponseCodeMetrics(statusCode, results) {
   results.responseCodeMetrics = results.responseCodeMetrics || {};
   results.responseCodeMetrics[statusCode] = (results.responseCodeMetrics[statusCode] || 0) + 1;
 }
-
-// Main function to update all metrics
-export function updateAllMetrics(pageData, results) {
-  const {
-    url, baseUrl, html, statusCode, $, headers, content
-  } = pageData;
-
-  // Create contentAnalysis object
-  const contentAnalysis = {
-    url,
-    wordCount: content.split(/\s+/).length,
-    h1: $('h1').first().text().trim(),
-    h2Count: $('h2').length,
-    imagesCount: $('img').length,
-    internalLinksCount: $(`a[href^="/"], a[href^="${baseUrl}"]`).length,
-    externalLinksCount: $('a[href^="http"]').not(`a[href^="${baseUrl}"]`).length,
-  };
-
-  updateUrlMetrics(url, baseUrl, html, statusCode, results);
-  updateResponseCodeMetrics(statusCode, results);
-  updateTitleMetrics($, results, url);
-  updateMetaDescriptionMetrics($, results, url);
-  updateHeadingMetrics($, results, url);
-  updateImageMetrics($, results, url);
-  updateLinkMetrics($, baseUrl, results, url);
-  updateSecurityMetrics(url, headers, results);
-  updateHreflangMetrics($, results, url);
-  updateCanonicalMetrics($, results, url);
-  updateContentMetrics(content, results, url);
-  updateContentAnalysis(contentAnalysis, results);
-
-  global.auditcore.logger.info(`Updated all metrics for ${url}`);
-}

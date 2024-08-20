@@ -10,6 +10,7 @@ import axios from "axios";
 import { parseString } from "xml2js";
 import { promisify } from "util";
 import { UrlProcessor } from "./urlProcessor.js";
+import { isValidUrl } from './urlUtils.js';
 
 const parseXml = promisify(parseString);
 const gunzipAsync = promisify(gunzip);
@@ -105,19 +106,6 @@ export async function getUrlsFromSitemap(sitemapUrl, limit) {
   }
 }
 
-/**
- * Validates a URL.
- * @param {string} url - The URL to validate.
- * @returns {boolean} True if the URL is valid, false otherwise.
- */
-function isValidUrl(url) {
-  try {
-    new URL(url);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
 
 /**
  * Processes URLs extracted from a sitemap.
