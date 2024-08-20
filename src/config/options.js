@@ -65,3 +65,43 @@ export const performanceOptions = {
   timeout: 60000,
   waitUntil: 'networkidle0',
 };
+
+
+// config.js
+
+export const seoScoreThresholds = {
+  excellent: 90,
+  veryGood: 80,
+  good: 70,
+  fair: 60,
+  needsImprovement: 50
+};
+
+export const performanceThresholds = {
+  loadTime: { excellent: 1000, good: 2000, fair: 3000 },
+  domContentLoaded: { excellent: 500, good: 1000, fair: 2000 },
+  firstPaint: { excellent: 1000, good: 2000, fair: 3000 },
+  firstContentfulPaint: { excellent: 1500, good: 2500, fair: 4000 },
+};
+
+export const contentThresholds = {
+  lowWordCount: 300
+};
+
+export const linkThresholds = {
+  highExternalLinks: 100
+};
+
+export const urlThresholds = {
+  maxLength: 115
+};
+
+export const titleThresholds = {
+  minLength: 30,
+  maxLength: 60
+};
+
+export const metaDescriptionThresholds = {
+  minLength: 70,
+  maxLength: 155
+};

@@ -1,24 +1,29 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { formatCsv } from './csvFormatter.js';
-
+import {
+  seoScoreThresholds,
+  performanceThresholds,
+  contentThresholds,
+  urlThresholds,
+  titleThresholds,
+  metaDescriptionThresholds
+} from '../config/options.js';
 
 function getSeoScoreComment(score) {
-  if (score >= 90) return 'Excellent';
-  if (score >= 80) return 'Very Good';
-  if (score >= 70) return 'Good';
-  if (score >= 60) return 'Fair';
-  if (score >= 50) return 'Needs Improvement';
+  if (score >= seoScoreThresholds.excellent) return 'Excellent';
+  if (score >= seoScoreThresholds.veryGood) return 'Very Good';
+  if (score >= seoScoreThresholds.good) return 'Good';
+  if (score >= seoScoreThresholds.fair) return 'Fair';
+  if (score >= seoScoreThresholds.needsImprovement) return 'Needs Improvement';
   return 'Poor';
 }
 
-const performanceThresholds = {
-  loadTime: { excellent: 1000, good: 2000, fair: 3000 },
-  domContentLoaded: { excellent: 500, good: 1000, fair: 2000 },
-  firstPaint: { excellent: 1000, good: 2000, fair: 3000 },
-  firstContentfulPaint: { excellent: 1500, good: 2500, fair: 4000 },
-};
-
+// Utility function for percentage calculation
+function calculatePercentage(value, total, decimalPlaces = 2) {
+  if (total === 0) return '0.00%';
+  return ((value / total) * 100).toFixed(decimalPlaces) + '%';
+}
 function getPerformanceComment(metric, value) {
   if (value === null || value === undefined) return 'N/A';
   const thresholds = performanceThresholds[metric];
@@ -340,25 +345,26 @@ function analyzeContentData(contentAnalysis) {
     const titleLength = page.title ? page.title.length : 0;
     const metaDescLength = page.metaDescription ? page.metaDescription.length : 0;
     const missingHeaders = getMissingHeaders(page.h1Count, page.h2Count, page.h3Count, page.h4Count, page.h5Count, page.h6Count);
+    
     acc.pagesWithMissingHeaders += missingHeaders !== 'None' ? 1 : 0;
     acc.missingHeaders.push(missingHeaders);
-    acc.titleOverLength += titleLength > 60 ? 1 : 0;
-    acc.titleUnderLength += titleLength < 30 && titleLength > 0 ? 1 : 0;
+    
+    acc.titleOverLength += titleLength > titleThresholds.maxLength ? 1 : 0;
+    acc.titleUnderLength += titleLength < titleThresholds.minLength && titleLength > 0 ? 1 : 0;
     acc.missingTitles += titleLength === 0 ? 1 : 0;
     
-    
-    acc.metaDescOverLength += metaDescLength > 155 ? 1 : 0;
-    acc.metaDescUnderLength += metaDescLength < 70 && metaDescLength > 0 ? 1 : 0;
+    acc.metaDescOverLength += metaDescLength > metaDescriptionThresholds.maxLength ? 1 : 0;
+    acc.metaDescUnderLength += metaDescLength < metaDescriptionThresholds.minLength && metaDescLength > 0 ? 1 : 0;
     acc.missingMetaDesc += metaDescLength === 0 ? 1 : 0;
     
     acc.missingH1 += page.h1Count === 0 ? 1 : 0;
     acc.multipleH1 += page.h1Count > 1 ? 1 : 0;
-    acc.zeroH1 += page.h1Count === 0 ? 1 : 0;  // Added this line
+    acc.zeroH1 += page.h1Count === 0 ? 1 : 0;
     
     acc.totalImages += page.imagesCount || 0;
     acc.imagesWithoutAlt += page.imagesWithoutAlt || 0;
     
-    acc.lowContentPages += page.wordCount < 300 ? 1 : 0;
+    acc.lowContentPages += page.wordCount < contentThresholds.lowWordCount ? 1 : 0;
     acc.totalWordCount += page.wordCount || 0;
     
     acc.pagesWithJsErrors += page.jsErrors > 0 ? 1 : 0;
@@ -375,7 +381,7 @@ function analyzeContentData(contentAnalysis) {
     missingH1: 0,
     multipleH1: 0,
     pagesWithMissingHeaders: 0,
-    zeroH1: 0,  // Added this line
+    zeroH1: 0,
     totalImages: 0,
     imagesWithoutAlt: 0,
     lowContentPages: 0,
@@ -419,27 +425,25 @@ function generateUrlAnalysis(urlMetrics, totalUrls) {
     ['URLs with uppercase characters', urlMetrics.uppercase, `${(urlMetrics.uppercase / totalUrls * 100).toFixed(2)}%`],
     ['URLs with underscores', urlMetrics.underscores, `${(urlMetrics.underscores / totalUrls * 100).toFixed(2)}%`],
     ['URLs with spaces', urlMetrics.containsSpace, `${(urlMetrics.containsSpace / totalUrls * 100).toFixed(2)}%`],
-    ['URLs over 115 characters', urlMetrics.overLength, `${(urlMetrics.overLength / totalUrls * 100).toFixed(2)}%`],
+    [`URLs over ${urlThresholds.maxLength} characters`, urlMetrics.overLength, `${(urlMetrics.overLength / totalUrls * 100).toFixed(2)}%`],
     [],
   ];
 }
-
 function generatePageTitleAnalysis(analysis, totalUrls) {
   return [
     ['Page Title Analysis', 'Count', 'Percentage'],
     ['Missing titles', analysis.missingTitles, `${(analysis.missingTitles / totalUrls * 100).toFixed(2)}%`],
-    ['Titles over 60 characters', analysis.titleOverLength, `${(analysis.titleOverLength / totalUrls * 100).toFixed(2)}%`],
-    ['Titles under 30 characters', analysis.titleUnderLength, `${(analysis.titleUnderLength / totalUrls * 100).toFixed(2)}%`],
+    [`Titles over ${titleThresholds.maxLength} characters`, analysis.titleOverLength, `${(analysis.titleOverLength / totalUrls * 100).toFixed(2)}%`],
+    [`Titles under ${titleThresholds.minLength} characters`, analysis.titleUnderLength, `${(analysis.titleUnderLength / totalUrls * 100).toFixed(2)}%`],
     [],
   ];
 }
-
 function generateMetaDescriptionAnalysis(analysis, totalUrls) {
   return [
     ['Meta Description Analysis', 'Count', 'Percentage'],
     ['Missing meta descriptions', analysis.missingMetaDesc, `${(analysis.missingMetaDesc / totalUrls * 100).toFixed(2)}%`],
-    ['Meta descriptions over 155 characters', analysis.metaDescOverLength, `${(analysis.metaDescOverLength / totalUrls * 100).toFixed(2)}%`],
-    ['Meta descriptions under 70 characters', analysis.metaDescUnderLength, `${(analysis.metaDescUnderLength / totalUrls * 100).toFixed(2)}%`],
+    [`Meta descriptions over ${metaDescriptionThresholds.maxLength} characters`, analysis.metaDescOverLength, `${(analysis.metaDescOverLength / totalUrls * 100).toFixed(2)}%`],
+    [`Meta descriptions under ${metaDescriptionThresholds.minLength} characters`, analysis.metaDescUnderLength, `${(analysis.metaDescUnderLength / totalUrls * 100).toFixed(2)}%`],
     [],
   ];
 }
