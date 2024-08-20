@@ -217,7 +217,7 @@ async function saveContentAnalysis(results, outputDir) {
   const headers = [
     'URL', 'Word Count', 'H1 Count', 'H2 Count', 'H3 Count', 'H4 Count', 'H5 Count', 'H6 Count',
     'Missing Headers', 'Zero H1', 'Images Count', 'Internal Links Count', 'External Links Count',
-    'Title', 'Meta Description', 'H1', 'Has Responsive Meta Tag', 'Scripts Count', 'Stylesheets Count',
+    'Title', 'Meta Description', 'Has Responsive Meta Tag', 'Scripts Count', 'Stylesheets Count',
     'HTML Lang', 'Canonical URL', 'Forms Count', 'Tables Count', 'Page Size', 'JS Errors Count',
     'Pa11y Issues Count'
   ];
@@ -238,7 +238,6 @@ async function saveContentAnalysis(results, outputDir) {
     'External Links Count': page.externalLinksCount,
     'Title': page.title,
     'Meta Description': page.metaDescription,
-    'H1': page.h1,
     'Has Responsive Meta Tag': page.hasResponsiveMetaTag,
     'Scripts Count': page.scriptsCount,
     'Stylesheets Count': page.stylesheetsCount,
@@ -315,19 +314,26 @@ function generateUpdatedReport(results, sitemapUrl) {
 }
 function getMissingHeaders(h1Count, h2Count, h3Count, h4Count, h5Count, h6Count) {
   const headers = [h1Count, h2Count, h3Count, h4Count, h5Count, h6Count];
-  let missingHeaders = [];
-  let highestSeen = -1;
+  let missingHeaders = new Set(); // Use a Set to avoid duplicates
+  
+  // Check for missing H1 separately
+  if (h1Count === 0) {
+    missingHeaders.add('H1');
+  }
 
-  for (let i = 0; i < headers.length; i++) {
+  let highestSeen = h1Count > 0 ? 0 : -1;
+
+  for (let i = 1; i < headers.length; i++) {
     if (headers[i] > 0) {
       for (let j = highestSeen + 1; j < i; j++) {
-        missingHeaders.push(`H${j + 1}`);
+        missingHeaders.add(`H${j + 1}`);
       }
       highestSeen = i;
     }
   }
 
-  return missingHeaders.length > 0 ? missingHeaders.join(', ') : 'None';
+  const missingHeadersArray = Array.from(missingHeaders);
+  return missingHeadersArray.length > 0 ? missingHeadersArray.join(', ') : 'None';
 }
 function analyzeContentData(contentAnalysis) {
   return contentAnalysis.reduce((acc, page) => {
