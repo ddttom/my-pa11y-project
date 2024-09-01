@@ -205,6 +205,13 @@ export async function renderAndCacheData(url) {
     });
     const page = await browser.newPage();
 
+    // Set viewport to iPad dimensions
+    await page.setViewport({
+      width: 1024,
+      height: 768,
+      deviceScaleFactor: 2,
+    });
+
     const jsErrors = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
@@ -266,6 +273,27 @@ export async function renderAndCacheData(url) {
       };
     });
 
+    // Take screenshot of the viewport
+    // Check if the screenshot directory exists, create it if it doesn't
+    const screenshotDir = path.join(process.cwd(), 'ss');
+    try {
+      await fs.access(screenshotDir);
+      global.auditcore.logger.debug(`Screenshot directory already exists: ${screenshotDir}`);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        await fs.mkdir(screenshotDir, { recursive: true });
+        global.auditcore.logger.debug(`Created screenshot directory: ${screenshotDir}`);
+      } else {
+        global.auditcore.logger.error(`Error checking/creating screenshot directory: ${error.message}`);
+        throw error;
+      }
+    }
+
+
+    
+    const screenshotFilename = `${url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_ipad.png`;
+    await page.screenshot({ path: `./ss/${screenshotFilename}`, fullPage: false });
+
     await browser.close();
 
     const data = {
@@ -285,6 +313,7 @@ export async function renderAndCacheData(url) {
         performanceMetrics,
       }),
       lastCrawled: new Date().toISOString(),
+      screenshot: screenshotFilename,
     };
 
     global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
