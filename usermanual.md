@@ -59,7 +59,7 @@ npm start -- -s <sitemap-url> -o <output-directory>
 Example:
 
 ```bash
-npm start -- -s https://example.com/sitemap.xml -o ./results
+npm start -- -s https://allabout.network/sitemap.xml -o results --log-level info
 ```
 
 This command will crawl the sitemap at the specified URL and save results in the `./results` directory.
