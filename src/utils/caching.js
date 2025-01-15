@@ -7,6 +7,7 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
 import { calculateSeoScore } from './seoScoring.js';
+import { isValidUrl } from './urlUtils.js';
 
 const CACHE_DIR = path.join(process.cwd(), '.cache');
 
@@ -14,7 +15,7 @@ function generateCacheKey(url) {
   return crypto.createHash('md5').update(url).digest('hex');
 }
 
-export async function ensureCacheDir(options = {}) {
+async function ensureCacheDir(options = {}) {
   try {
     if (options.forceDeleteCache) {
       global.auditcore.logger.debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
@@ -36,14 +37,29 @@ export async function ensureCacheDir(options = {}) {
   }
 }
 
-export async function getCachedData(url) {
+async function getCachedData(url) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
   global.auditcore.logger.debug(`Attempting to read cache from: ${cachePath}`);
   try {
     const cachedData = await fs.readFile(cachePath, 'utf8');
     global.auditcore.logger.debug(`Cache hit for ${url}`);
-    return JSON.parse(cachedData);
+    const parsedData = JSON.parse(cachedData);
+    
+    // Ensure cached data has a status code
+    if (!parsedData.statusCode) {
+      parsedData.statusCode = 200;
+    }
+    
+    // Validate URLs in cached data
+    if (parsedData.pageData && parsedData.pageData.testUrl) {
+      if (!isValidUrl(parsedData.pageData.testUrl)) {
+        global.auditcore.logger.warn(`Invalid URL in cached data: ${parsedData.pageData.testUrl}`);
+        return null;
+      }
+    }
+    
+    return parsedData;
   } catch (error) {
     if (error.code !== 'ENOENT') {
       global.auditcore.logger.error(`Error reading cache for ${url}:`, error);
@@ -70,43 +86,6 @@ async function setCachedData(url, data) {
   }
 }
 
-export async function getOrRenderData(url, options = {}) {
-  const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
-  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
-
-  if (!noCache) {
-    const cachedData = await getCachedData(url);
-    if (cachedData) {
-      cachedData.contentFreshness = analyzeContentFreshness(cachedData);
-      global.auditcore.logger.debug(`Returning cached data for ${url}`);
-      return cachedData;
-    }
-  }
-
-  if (cacheOnly) {
-    global.auditcore.logger.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
-    return { html: null, statusCode: null };
-  }
-
-  global.auditcore.logger.debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
-  try {
-    const newData = noPuppeteer
-      ? await fetchDataWithoutPuppeteer(url)
-      : await renderAndCacheData(url);
-
-    newData.contentFreshness = analyzeContentFreshness(newData);
-
-    if (!noCache) {
-      await setCachedData(url, newData);
-    }
-
-    return newData;
-  } catch (error) {
-    global.auditcore.logger.error(`Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`, error);
-    return { html: null, statusCode: null, error: error.message };
-  }
-}
-
 async function fetchDataWithoutPuppeteer(url) {
   try {
     global.auditcore.logger.debug(`Fetching data without Puppeteer for ${url}`);
@@ -130,6 +109,20 @@ async function fetchDataWithoutPuppeteer(url) {
       || response.headers['last-modified']
       || null;
 
+    // Improved link detection
+    const links = $('a[href]');
+    const internalLinks = links.filter((i, el) => {
+      const href = $(el).attr('href');
+      return (
+        href.startsWith('/') || // Relative paths
+        href.startsWith('./') || // Relative paths
+        href.startsWith('../') || // Relative paths
+        href.startsWith('#') || // Anchors
+        href.startsWith(window.location.origin) || // Same domain
+        href.startsWith(window.location.hostname) // Same domain without protocol
+      );
+    }).length;
+
     const pageData = {
       title: $('title').text(),
       metaDescription: $('meta[name="description"]').attr('content') || '',
@@ -142,7 +135,7 @@ async function fetchDataWithoutPuppeteer(url) {
           alt: $(el).attr('alt') || '',
         }))
         .get(),
-      internalLinks: $(`a[href^="/"], a[href^="${url}"]`).length,
+      internalLinks,
       structuredData: $('script[type="application/ld+json"]')
         .map((i, el) => $(el).html())
         .get(),
@@ -195,7 +188,44 @@ async function fetchDataWithoutPuppeteer(url) {
   }
 }
 
-export async function renderAndCacheData(url) {
+async function getOrRenderData(url, options = {}) {
+  const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
+  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
+
+  if (!noCache) {
+    const cachedData = await getCachedData(url);
+    if (cachedData) {
+      cachedData.contentFreshness = analyzeContentFreshness(cachedData);
+      global.auditcore.logger.debug(`Returning cached data for ${url}`);
+      return cachedData;
+    }
+  }
+
+  if (cacheOnly) {
+    global.auditcore.logger.warn(`No cached data available for ${url} and cache-only mode is enabled. Skipping this URL.`);
+    return { html: null, statusCode: null };
+  }
+
+  global.auditcore.logger.debug(`No cache found or cache disabled, ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}`);
+  try {
+    const newData = noPuppeteer
+      ? await fetchDataWithoutPuppeteer(url)
+      : await renderAndCacheData(url);
+
+    newData.contentFreshness = analyzeContentFreshness(newData);
+
+    if (!noCache) {
+      await setCachedData(url, newData);
+    }
+
+    return newData;
+  } catch (error) {
+    global.auditcore.logger.error(`Error ${noPuppeteer ? 'fetching' : 'rendering'} data for ${url}:`, error);
+    return { html: null, statusCode: null, error: error.message };
+  }
+}
+
+async function renderAndCacheData(url) {
   global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
   let browser;
   try {
@@ -230,38 +260,53 @@ export async function renderAndCacheData(url) {
     const html = await page.content();
     const statusCode = response.status();
 
-    const pageData = await page.evaluate(() => ({
-      title: document.title,
-      metaDescription: document.querySelector('meta[name="description"]')?.content || '',
-      h1: document.querySelector('h1')?.textContent || '',
-      wordCount: document.body.innerText.trim().split(/\s+/).length,
-      hasResponsiveMetaTag: !!document.querySelector('meta[name="viewport"]'),
-      images: Array.from(document.images).map((img) => ({
-        src: img.src,
-        alt: img.alt || '',
-      })),
-      internalLinks: document.querySelectorAll(`a[href^="/"], a[href^="${window.location.origin}"]`).length,
-      structuredData: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map((script) => script.textContent),
-      openGraphTags: Array.from(document.querySelectorAll('meta[property^="og:"]')).map((tag) => ({
-        [tag.getAttribute('property')]: tag.getAttribute('content'),
-      })),
-      twitterTags: Array.from(document.querySelectorAll('meta[name^="twitter:"]')).map((tag) => ({
-        [tag.getAttribute('name')]: tag.getAttribute('content'),
-      })),
-      h1Count: document.querySelectorAll('h1').length,
-      h2Count: document.querySelectorAll('h2').length,
-      h3Count: document.querySelectorAll('h3').length,
-      h4Count: document.querySelectorAll('h4').length,
-      h5Count: document.querySelectorAll('h5').length,
-      h6Count: document.querySelectorAll('h6').length,
-      scriptsCount: document.scripts.length,
-      stylesheetsCount: document.styleSheets.length,
-      htmlLang: document.documentElement.lang,
-      canonicalUrl: document.querySelector('link[rel="canonical"]')?.href,
-      formsCount: document.forms.length,
-      tablesCount: document.querySelectorAll('table').length,
-      pageSize: document.documentElement.outerHTML.length,
-    }));
+    const pageData = await page.evaluate(() => {
+      const links = document.querySelectorAll('a[href]');
+      const internalLinks = Array.from(links).filter((el) => {
+        const href = el.getAttribute('href');
+        return (
+          href.startsWith('/') || // Relative paths
+          href.startsWith('./') || // Relative paths
+          href.startsWith('../') || // Relative paths
+          href.startsWith('#') || // Anchors
+          href.startsWith(window.location.origin) || // Same domain
+          href.startsWith(window.location.hostname) // Same domain without protocol
+        );
+      }).length;
+
+      return {
+        title: document.title,
+        metaDescription: document.querySelector('meta[name="description"]')?.content || '',
+        h1: document.querySelector('h1')?.textContent || '',
+        wordCount: document.body.innerText.trim().split(/\s+/).length,
+        hasResponsiveMetaTag: !!document.querySelector('meta[name="viewport"]'),
+        images: Array.from(document.images).map((img) => ({
+          src: img.src,
+          alt: img.alt || '',
+        })),
+        internalLinks,
+        structuredData: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map((script) => script.textContent),
+        openGraphTags: Array.from(document.querySelectorAll('meta[property^="og:"]')).map((tag) => ({
+          [tag.getAttribute('property')]: tag.getAttribute('content'),
+        })),
+        twitterTags: Array.from(document.querySelectorAll('meta[name^="twitter:"]')).map((tag) => ({
+          [tag.getAttribute('name')]: tag.getAttribute('content'),
+        })),
+        h1Count: document.querySelectorAll('h1').length,
+        h2Count: document.querySelectorAll('h2').length,
+        h3Count: document.querySelectorAll('h3').length,
+        h4Count: document.querySelectorAll('h4').length,
+        h5Count: document.querySelectorAll('h5').length,
+        h6Count: document.querySelectorAll('h6').length,
+        scriptsCount: document.scripts.length,
+        stylesheetsCount: document.styleSheets.length,
+        htmlLang: document.documentElement.lang,
+        canonicalUrl: document.querySelector('link[rel="canonical"]')?.href,
+        formsCount: document.forms.length,
+        tablesCount: document.querySelectorAll('table').length,
+        pageSize: document.documentElement.outerHTML.length,
+      };
+    });
 
     const performanceMetrics = await page.evaluate(() => {
       const navigationTiming = performance.getEntriesByType('navigation')[0];
@@ -274,7 +319,6 @@ export async function renderAndCacheData(url) {
     });
 
     // Take screenshot of the viewport
-    // Check if the screenshot directory exists, create it if it doesn't
     const screenshotDir = path.join(process.cwd(), 'ss');
     try {
       await fs.access(screenshotDir);
@@ -289,8 +333,6 @@ export async function renderAndCacheData(url) {
       }
     }
 
-
-    
     const screenshotFilename = `${url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_ipad.png`;
     await page.screenshot({ path: `./ss/${screenshotFilename}`, fullPage: false });
 
@@ -328,11 +370,28 @@ export async function renderAndCacheData(url) {
 }
 
 function analyzeContentFreshness(data) {
+  // Ensure data has the expected structure
+  if (!data || typeof data !== 'object') {
+    return {
+      lastModifiedDate: 'Unknown',
+      daysSinceLastModified: null,
+      lastCrawledDate: new Date().toISOString(),
+      daysSinceLastCrawled: 0,
+      freshnessStatus: 'Unknown'
+    };
+  }
+
   const now = new Date();
-  const lastModified = data.pageData.lastModified
+  
+  // Safely get lastModified date
+  const lastModified = (data.pageData && data.pageData.lastModified)
     ? new Date(data.pageData.lastModified)
     : null;
-  const lastCrawled = new Date(data.lastCrawled);
+    
+  // Safely get lastCrawled date
+  const lastCrawled = data.lastCrawled
+    ? new Date(data.lastCrawled)
+    : new Date();
 
   const freshness = {
     lastModifiedDate: lastModified ? lastModified.toISOString() : 'Unknown',
@@ -341,7 +400,7 @@ function analyzeContentFreshness(data) {
       : null,
     lastCrawledDate: lastCrawled.toISOString(),
     daysSinceLastCrawled: Math.floor(
-      (now - lastCrawled) / (1000 * 60 * 60 * 24),
+      (now - lastCrawled) / (1000 * 60 * 60 * 24)
     ),
     freshnessStatus: 'Unknown',
   };
@@ -370,3 +429,12 @@ function analyzeContentFreshness(data) {
 
   return freshness;
 }
+
+export {
+  ensureCacheDir,
+  getCachedData,
+  setCachedData,
+  getOrRenderData,
+  renderAndCacheData,
+  analyzeContentFreshness
+};

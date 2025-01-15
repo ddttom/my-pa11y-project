@@ -21,7 +21,7 @@ logFiles.forEach((file) => {
 });
 
 program
-  .option('-s, --sitemap <url>', 'URL of the sitemap to process', 'https://allabout.network/sitemap.xml')
+  .option('-s, --sitemap <url>', 'URL of the sitemap to process', 'https://icann.org/index.html')
   .option('-o, --output <directory>', 'Output directory for results', 'results')
   .option(
     '-l, --limit <number>',
@@ -36,7 +36,7 @@ program
   .option(
     '--log-level <level>',
     'Set logging level (error, warn, info, verbose, debug)',
-    'warn'
+    'info'
   )
   .parse(process.argv);
 

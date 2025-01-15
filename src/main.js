@@ -3,7 +3,6 @@ import fs from 'fs/promises';
 import { validateAndPrepare } from './utils/setup.js';
 import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
 import { postProcessResults, saveResults } from './utils/results.js';
-import { generateSitemap } from './utils/sitemapGenerator.js';
 import {
   checkIsShuttingDown,
   setupShutdownHandler,
@@ -103,9 +102,39 @@ function initializeResults() {
 async function handleInvalidUrls(invalidUrls, outputDir) {
   if (invalidUrls.length > 0) {
     global.auditcore.logger.warn(`Found ${invalidUrls.length} invalid URL(s). Saving to file...`);
+    
+    // Format invalid URLs with more detail and error handling
+    const formattedInvalidUrls = invalidUrls.map(invalid => {
+      // Create detailed error object
+      return {
+        url: invalid.url,
+        source: invalid.source || 'Unknown source',
+        reason: invalid.reason || (
+          invalid.statusCode 
+            ? `HTTP ${invalid.statusCode}` 
+            : (invalid.error?.message || 'Unknown error')
+        ),
+        details: {
+          statusCode: invalid.statusCode,
+          errorType: invalid.error?.name,
+          errorMessage: invalid.error?.message,
+          timestamp: invalid.timestamp
+        }
+      };
+    }).filter(item => item.url); // Filter out any entries without URLs
+
     const invalidUrlsPath = path.join(outputDir, 'invalid_urls.json');
-    await fs.writeFile(invalidUrlsPath, JSON.stringify(invalidUrls, null, 2));
-    global.auditcore.logger.info(`Invalid URLs saved to ${invalidUrlsPath}`);
+    
+    try {
+      await fs.writeFile(
+        invalidUrlsPath, 
+        JSON.stringify(formattedInvalidUrls, null, 2)
+      );
+      
+      global.auditcore.logger.info(`Invalid URLs saved to ${invalidUrlsPath}`);
+    } catch (error) {
+      global.auditcore.logger.error('Error saving invalid URLs:', error);
+    }
   }
 }
 
@@ -136,11 +165,92 @@ async function getUrlsFromSitemapWithRetry(sitemapUrl, limit, maxRetries = 3) {
   }
 }
 
+async function saveVirtualSitemap(urls, outputDir) {
+  const xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
+  xml.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+  
+  // Sort URLs alphabetically for consistency
+  const sortedUrls = [...urls].sort((a, b) => a.url.localeCompare(b.url));
+  
+  sortedUrls.forEach(url => {
+    xml.push('  <url>');
+    xml.push(`    <loc>${url.url}</loc>`);
+    if (url.lastmod) xml.push(`    <lastmod>${url.lastmod}</lastmod>`);
+    if (url.changefreq) xml.push(`    <changefreq>${url.changefreq}</changefreq>`);
+    if (url.priority) xml.push(`    <priority>${url.priority}</priority>`);
+    xml.push('  </url>');
+  });
+  
+  xml.push('</urlset>');
+  
+  const virtualSitemapPath = path.join(outputDir, 'virtual_sitemap.xml');
+  await fs.writeFile(virtualSitemapPath, xml.join('\n'));
+  global.auditcore.logger.info(`Virtual sitemap saved to: ${virtualSitemapPath}`);
+  return virtualSitemapPath;
+}
+
+async function saveFinalSitemap(results, outputDir) {
+  const xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
+  xml.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+  
+  // Create a Set of all unique valid URLs
+  const uniqueUrls = new Set();
+  
+  // Add URLs from initial scan
+  if (results.urlMetrics && results.urlMetrics.internal > 0) {
+    results.internalLinks.forEach(link => {
+      // Add both source and target URLs from internal links
+      if (link.url) uniqueUrls.add(link.url);
+      if (link.links) {
+        link.links.forEach(subLink => {
+          if (subLink.url) uniqueUrls.add(subLink.url);
+        });
+      }
+    });
+  }
+
+  // Add URLs from internal_links.csv data
+  if (results.internalLinks) {
+    results.internalLinks.forEach(page => {
+      // Add source URL
+      if (page.url) uniqueUrls.add(page.url);
+      
+      // Add all target URLs from the page's links
+      if (page.links && Array.isArray(page.links)) {
+        page.links.forEach(link => {
+          if (link.url) uniqueUrls.add(link.url);
+        });
+      }
+    });
+  }
+
+  // Sort and format URLs
+  const sortedUrls = [...uniqueUrls].sort();
+  
+  // Log stats for debugging
+  global.auditcore.logger.debug(`Total unique URLs found: ${sortedUrls.length}`);
+  global.auditcore.logger.debug('Sample of URLs:', sortedUrls.slice(0, 5));
+
+  sortedUrls.forEach(url => {
+    xml.push('  <url>');
+    xml.push(`    <loc>${url}</loc>`);
+    xml.push('  </url>');
+  });
+  
+  xml.push('</urlset>');
+  
+  const finalSitemapPath = path.join(outputDir, 'final_sitemap.xml');
+  await fs.writeFile(finalSitemapPath, xml.join('\n'));
+  global.auditcore.logger.info(`Final sitemap saved to: ${finalSitemapPath}`);
+  global.auditcore.logger.info(`Total unique URLs in final sitemap: ${sortedUrls.length}`);
+  return finalSitemapPath;
+}
+
 async function runPostProcessingTasks(results, outputDir, sitemapUrl) {
   const tasks = [
     { name: 'Post-processing', func: () => postProcessResults(results, outputDir) },
     { name: 'Saving results', func: () => saveResults(results, outputDir, sitemapUrl) },
-    { name: 'Generating sitemap', func: () => generateSitemap(results, outputDir) },
+    { name: 'Generating final sitemap', func: () => saveFinalSitemap(results, outputDir) }
   ];
 
   for (const task of tasks) {
@@ -191,6 +301,8 @@ export async function runTestsOnSitemap() {
   try {
     await validateAndPrepare(sitemapUrl, outputDir, otherOptions);
     
+    // Phase 1: Get sitemap URLs
+    global.auditcore.logger.info('Phase 1: Getting sitemap URLs...');
     const urlsResult = await getUrlsFromSitemapWithRetry(sitemapUrl, limit);
     
     const { validUrls = [], invalidUrls = [] } = urlsResult;
@@ -198,9 +310,6 @@ export async function runTestsOnSitemap() {
     global.auditcore.logger.info(
       `Found ${validUrls.length} valid URL(s) and ${invalidUrls.length} invalid URL(s)`,
     );
-
-//    global.auditcore.logger.debug(`Valid URLs: ${JSON.stringify(validUrls)}`);
- //   global.auditcore.logger.debug(`Invalid URLs: ${JSON.stringify(invalidUrls)}`);
 
     if (invalidUrls.length > 0) {
       await handleInvalidUrls(invalidUrls, outputDir);
@@ -211,9 +320,21 @@ export async function runTestsOnSitemap() {
       return results;
     }
 
+    // Save virtual sitemap before processing
+    global.auditcore.logger.info('Saving virtual sitemap...');
+    const virtualSitemapPath = await saveVirtualSitemap(validUrls, outputDir);
+    results.virtualSitemapPath = virtualSitemapPath;
+
+    // Phase 2: Process URLs
     if (!checkIsShuttingDown()) {
+      global.auditcore.logger.info('Phase 2: Processing URLs...');
       const baseUrl = otherOptions.baseUrl || (validUrls[0] && new URL(validUrls[0].url).origin);
-      const processorOptions = { ...otherOptions, baseUrl, outputDir, sitemapUrl };
+      const processorOptions = { 
+        ...otherOptions, 
+        baseUrl, 
+        outputDir, 
+        sitemapUrl: virtualSitemapPath
+      };
       results = await processSitemapUrls(validUrls, processorOptions);
     }
 
@@ -223,10 +344,8 @@ export async function runTestsOnSitemap() {
     global.auditcore.logger.info(`External URLs: ${results.urlMetrics.external}`);
     global.auditcore.logger.info(`Indexable URLs: ${results.urlMetrics.internalIndexable}`);
     global.auditcore.logger.info(`Non-Indexable URLs: ${results.urlMetrics.internalNonIndexable}`);
-    global.auditcore.logger.info(`Total Pa11y issues: ${results.pa11y.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0)}`);
-    global.auditcore.logger.info(`Average SEO Score: ${results.seoScores.reduce((sum, score) => sum + score.score, 0) / results.seoScores.length}`);
 
-    await runPostProcessingTasks(results, outputDir, sitemapUrl, otherOptions);
+    await runPostProcessingTasks(results, outputDir, sitemapUrl);
 
     logProcessingTime(startTime);
 
