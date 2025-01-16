@@ -7,9 +7,7 @@ import { runTestsOnSitemap } from './src/main.js';
 
 const logFiles = ['error.log', 'combined.log'];
 
-const DEFAULT_LIMIT = -1;
-
-// Clear log files before starting, only if they exist
+// Clear log files before starting
 logFiles.forEach((file) => {
   if (fs.existsSync(file)) {
     try {
@@ -21,22 +19,26 @@ logFiles.forEach((file) => {
 });
 
 program
-  .option('-s, --sitemap <url>', 'URL of the sitemap to process', 'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub')
+  .option(
+    '-s, --sitemap <url>', 
+    'URL of the sitemap to process', 
+    'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
+  )
   .option('-o, --output <directory>', 'Output directory for results', 'results')
   .option(
     '-l, --limit <number>',
     'Limit the number of URLs to test. Use -1 to test all URLs.',
     (value) => parseInt(value, 10),
-    DEFAULT_LIMIT
+    -1
   )
   .option('--cache-only', 'Use only cached data, do not fetch new data')
   .option('--no-cache', 'Disable caching, always fetch fresh data')
-  .option('--no-puppeteer', 'Bypass Puppeteer execution and use cached HTML')
-  .option('--force-delete-cache', 'Force delete existing cache before starting')
+  .option('--no-puppeteer', 'Bypass Puppeteer execution')
+  .option('--force-delete-cache', 'Force delete existing cache')
   .option(
     '--log-level <level>',
-    'Set logging level (error, warn, info, verbose, debug)',
-    'info'
+    'Set logging level (error, warn, info, debug)',
+    'debug'
   )
   .parse(process.argv);
 
@@ -47,6 +49,7 @@ global.auditcore = {
 
 const { output: outputDir } = global.auditcore.options;
 
+// Clear output directory at startup
 if (fs.existsSync(outputDir)) {
   try {
     fs.rmSync(outputDir, { recursive: true, force: true });
@@ -57,8 +60,9 @@ if (fs.existsSync(outputDir)) {
   }
 }
 
+// Setup logger
 global.auditcore.logger = winston.createLogger({
-  level: 'info',
+  level: global.auditcore.options.logLevel,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.printf(
@@ -72,39 +76,10 @@ global.auditcore.logger = winston.createLogger({
   ],
 });
 
-// Ensure the limit is correctly set
-if (isNaN(global.auditcore.options.limit)) {
-  global.auditcore.options.limit = DEFAULT_LIMIT;
-}
-
-global.auditcore.logger.level = global.auditcore.options.logLevel;
-
-global.auditcore.logger.info('Current Settings Summary:');
-global.auditcore.logger.info('-------------------------');
-global.auditcore.logger.info(`Sitemap URL: ${global.auditcore.options.sitemap}`);
-global.auditcore.logger.info(`Output Directory: ${global.auditcore.options.output}`);
-global.auditcore.logger.info(`Limit: ${global.auditcore.options.limit}`);
-global.auditcore.logger.info(
-  `Puppeteer: ${global.auditcore.options.puppeteer ? 'Enabled' : 'Disabled'}`,
-);
-global.auditcore.logger.info(
-  `Cache Only: ${global.auditcore.options.cacheOnly ? 'Enabled' : 'Disabled'}`,
-);
-global.auditcore.logger.info(
-  `Cache: ${global.auditcore.options.cache ? 'Enabled' : 'Disabled'}`,
-);
-global.auditcore.logger.info(
-  `Force Delete Cache: ${global.auditcore.options.forceDeleteCache ? 'Enabled' : 'Disabled'}`,
-);
-global.auditcore.logger.info(`Log Level: ${global.auditcore.options.logLevel}`);
-
-global.auditcore.logger.info('Starting the crawl process...');
-
 async function main() {
   try {
     const results = await runTestsOnSitemap();
     
-    // Check for specific errors in the results
     if (results && results.errors) {
       results.errors.forEach((error) => {
         if (error.includes('openGraphTags must be an object')) {

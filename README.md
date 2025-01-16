@@ -1,134 +1,191 @@
-# Pa11y Sitemap Crawler
+# SEO Analysis Tool
 
-A comprehensive web crawler for accessibility testing, SEO analysis, and content checks using sitemaps. Created by Tom Cranstoun, August 2024.
+A Node.js tool for analyzing website SEO and performance metrics.
+
+## Data Structure
+
+The tool collects comprehensive data about each page and stores it in `results.json`. This file serves as the source of truth for all reports.
+
+### Key Metrics Collected
+
+#### Performance Metrics
+- Load time and DOM content loaded
+- First paint and first contentful paint
+- Time to interactive and largest contentful paint
+
+#### Content Analysis
+- Word count
+- Heading structure (h1, h2, h3 counts)
+- Image analysis (count, dimensions, alt text)
+- Internal and external link counts
+- Meta information (title, description)
+
+#### Technical Metrics
+- Page size in bytes
+- Resource counts (scripts, stylesheets)
+- Form and table counts
+- JavaScript errors
+- Accessibility issues count
+
+#### Detailed Data
+- Complete image inventory with dimensions
+- Accessibility issues with recommendations
+- HTML validation results
+- SEO scores with subscores
+
+### Example Data Structure
+
+```json
+{
+  "url": "https://example.com/page",
+  "lastmod": "2025-01-16T15:30:45.892Z",
+  "loadTime": 115.79,
+  "firstPaint": 700.39,
+  "wordCount": 3153,
+  "h1Count": 2,
+  "imagesCount": 2,
+  "images": [
+    {
+      "src": "./media_1.png",
+      "alt": "Description",
+      "width": "1087",
+      "height": "486"
+    }
+  ],
+  "pageSize": 43104,
+  "pa11yIssuesCount": 5
+}
+```
+
+See [Product Requirements](docs/prd.md) for complete specifications.
+
+## Documentation
+
+- [User Manual](docs/usermanual.md)
+- [Product Requirements](docs/prd.md)
+- [Project State](docs/projectstate.md)
+
+## Project Structure
+
+```
+seo-audit-tool/
+├── docs/           # Documentation files
+│   ├── prd.md          # Product requirements
+│   ├── projectstate.md # Current project status
+│   └── usermanual.md   # User guide
+├── results/        # Generated reports and analysis
+│   ├── seo_report.csv
+│   ├── performance_analysis.csv
+│   ├── seo_scores.csv
+│   ├── virtual_sitemap.xml
+│   ├── final_sitemap.xml
+│   ├── results.json
+│   └── summary.json
+├── src/           # Source code
+│   ├── main.js
+│   └── utils/     # Utility functions
+├── index.js       # Entry point
+├── README.md
+├── combined.log   # Complete activity log
+└── error.log      # Error tracking
+```
 
 ## Features
 
-- Sitemap-based crawling with HTML page support
-- Intelligent caching system for reduced server load
-- Pa11y accessibility testing
-- SEO factor analysis
-- Web security header checks
+- Smart content detection (XML sitemap or HTML)
+- Recursive link discovery from HTML pages
+- Robust URL handling (absolute, relative, protocol-relative)
 - Internal/external link analysis
-- Image and alt text analysis
-- Comprehensive reporting
-- Graceful shutdown with progress saving
+- SEO score calculation
+- Performance metrics
+- Accessibility testing (Pa11y)
+- Virtual and final sitemap generation
+- Graceful error recovery
 
-## Prerequisites
+## Requirements
 
-- Node.js (v18+)
+- Node.js >= 20.0.0
 - npm
 
 ## Installation
 
 ```bash
-git clone https://github.com/ddttom/my-pa11y-project.git
-cd my-pa11y-project
 npm install
 ```
 
 ## Usage
 
 ```bash
-npm start -- -s <sitemap-url> -o <output-directory> [options]
+npm start -- -s <url> -o <output-dir> [options]
 ```
 
-Options:
+### Options
 
-- `-s, --sitemap <url>`: Sitemap URL or HTML page URL (required)
-- `-o, --output <directory>`: Output directory (required)
-- `-l, --limit <number>`: Max URLs to test (-1 for no limit, default)
-- `--no-puppeteer`: Skip Puppeteer rendering
+- `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub")
+- `-o, --output <directory>`: Output directory for results (default: "results")
+- `-l, --limit <number>`: Limit the number of URLs to test (-1 for all)
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear existing cache
-- `--log-level <level>`: Set logging level (error, warn, info, verbose, debug)
+- `--no-puppeteer`: Bypass Puppeteer execution
+- `--force-delete-cache`: Force delete existing cache
+- `--log-level <level>`: Set logging level (error, warn, info, debug)
 
-Example:
+### Output Files
 
-```bash
-npm start -- -s https://example.com/sitemap.xml -o ./results -l 100
-```
+- `seo_report.csv`: Page-level SEO analysis
+  - URL
+  - Title presence and content
+  - Meta description presence and content
+  - H1 tag count
+  - Image count and alt text usage
+  - Internal/external link counts
 
-## Output
+- `performance_analysis.csv`: Page performance metrics
+  - Load time
+  - First paint timing
+  - First contentful paint timing
+  - Page size
+  - Resource count
 
-Results are saved in the specified output directory:
+- `seo_scores.csv`: Detailed SEO scoring
+  - Overall score
+  - Title optimization score
+  - Meta description score
+  - Content quality score
+  - Link structure score
 
-```bash
-results/
-  ├── final/
-  │   └── final_sitemap.xml    # Complete sitemap of all discovered URLs
-  ├── invalid_urls.json        # List of problematic URLs with reasons
-  ├── internal_links.csv       # Internal link analysis
-  ├── content_analysis.csv     # Content analysis results
-  └── pa11y_raw_results.json   # Detailed accessibility findings
-```
+- `virtual_sitemap.xml`: Initial crawl results
+  - URLs discovered during first pass
+  - Last modification dates
+  - Change frequency
+  - Priority values
 
-## Cache Management
+- `final_sitemap.xml`: Complete site structure
+  - All unique internal URLs
+  - Updated modification dates
+  - Consolidated priorities
 
-The `.cache` directory uses MD5 hashing to store:
+- `summary.json`: Site-wide metrics
+  - Total URLs processed
+  - Internal/external URL counts
+  - Average SEO score
+  - Timestamp
 
-- HTML content from crawled pages
-- Processing results and metadata
-- Temporary crawl data
+- `results.json`: Complete analysis data
+  - Performance metrics
+  - SEO scores
+  - Accessibility results
+  - URL metrics
+  - Response codes
 
-Clear the cache when:
+### Log Files
 
-- Starting a new project
-- Site content has been updated
-- Troubleshooting issues
-- Cache becomes too large
+- `combined.log`: Complete activity log
+  - All processing steps
+  - Debug information
+  - Warnings and notices
 
-## Interruption Handling
-
-The crawler handles interruptions gracefully:
-
-- Ctrl+C will trigger a clean shutdown
-- Current progress is saved to the `final` directory
-- A summary of processed URLs is displayed
-- All discovered URLs are preserved in the final sitemap
-
-## Project Structure
-
-```bash
-.
-├── index.js               # Entry point and CLI configuration
-├── src/
-│   ├── main.js           # Core orchestration logic
-│   └── utils/
-│       ├── setup.js      # Initial setup and validation
-│       ├── sitemap.js    # Sitemap processing
-│       ├── sitemapUtils.js    # Sitemap generation
-│       ├── shutdownHandler.js # Graceful interruption
-│       ├── caching.js    # Cache management
-│       ├── results.js    # Results processing
-│       └── urlUtils.js   # URL validation
-├── results/              # Generated output
-└── .cache/              # Cached data storage
-```
-
-## Output Files
-
-```bash
-results/
-├── final/
-│   └── final_sitemap.xml    # All discovered URLs
-├── invalid_urls.json        # Failed URLs with reasons
-├── internal_links.csv       # Site structure analysis
-├── content_analysis.csv     # Content metrics
-└── pa11y_raw_results.json  # Accessibility data
-```
-
-## Contributing
-
-Contributions welcome. Please submit a Pull Request.
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Acknowledgments
-
-- [Pa11y](https://pa11y.org/)
-- [Puppeteer](https://pptr.dev/)
-- [Commander.js](https://github.com/tj/commander.js/)
+- `error.log`: Error tracking
+  - Processing failures
+  - Invalid URLs
+  - Connection issues

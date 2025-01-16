@@ -5,17 +5,31 @@ import path from 'path';
 // urlUtils.js
 
 /**
- * Checks if a given string is a valid URL.
- * @param {string} url - The URL to validate.
- * @returns {boolean} True if the URL is valid, false otherwise.
+ * Check if a URL is valid for processing
  */
-export function isValidUrl(url) {
-  if (typeof url !== "string") {
-    return false;
-  }
+export function isValidUrl(url, baseUrl = null) {
   try {
-    // eslint-disable-next-line no-new
-    new URL(url);
+    const urlObj = new URL(url);
+    
+    // Skip non-HTTP protocols
+    if (!urlObj.protocol.startsWith('http')) {
+      return false;
+    }
+
+    // If baseUrl is provided, check if URL is from same domain
+    if (baseUrl) {
+      const baseUrlObj = new URL(baseUrl);
+      if (urlObj.hostname !== baseUrlObj.hostname) {
+        return false;
+      }
+    }
+
+    // Skip common file extensions we don't want to process
+    const skipExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.css', '.js'];
+    if (skipExtensions.some(ext => urlObj.pathname.toLowerCase().endsWith(ext))) {
+      return false;
+    }
+
     return true;
   } catch (error) {
     return false;
@@ -103,4 +117,19 @@ export async function writeToInvalidUrlFile(invalidUrl) {
     .catch((error) => {
       console.error(`Error updating invalid_urls.json: ${error.message}`);
     });
+}
+
+export function isValidXML(content) {
+  try {
+    // Try to find XML declaration or sitemap namespace
+    const hasXMLDeclaration = content.trim().startsWith('<?xml');
+    const hasSitemapNamespace = content.includes('xmlns="http://www.sitemaps.org/schemas/sitemap/');
+    
+    // Check for basic XML structure
+    const hasUrlsetTag = content.includes('<urlset') && content.includes('</urlset>');
+    
+    return (hasXMLDeclaration || hasSitemapNamespace) && hasUrlsetTag;
+  } catch (error) {
+    return false;
+  }
 }

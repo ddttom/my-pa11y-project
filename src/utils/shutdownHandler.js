@@ -1,71 +1,48 @@
-/* eslint-disable import/extensions */
-// shutdownHandler.js
-
-import path from 'path';
-import fs from 'fs/promises';
-import { saveFinalSitemap } from './sitemapUtils.js';
+import { generateReports } from './reports.js';
 
 let isShuttingDown = false;
-let shutdownInProgress = false;
+let currentResults = null;
 
-export function checkIsShuttingDown() {
-  return isShuttingDown;
-}
-
-export function setupShutdownHandler(outputDir, results) {
+export function setupShutdownHandler() {
   async function handleShutdown(signal) {
-    if (shutdownInProgress) {
-      global.auditcore.logger.warn('Forced exit requested during shutdown');
-      process.exit(1);
-    }
-
+    if (isShuttingDown) return;
     isShuttingDown = true;
-    shutdownInProgress = true;
 
-    global.auditcore.logger.info(`\nReceived ${signal}. Saving current progress...`);
+    global.auditcore.logger.info(`\nReceived ${signal} signal. Saving data before exit...`);
 
     try {
-      // Ensure final directory exists
-      const finalDir = path.join(outputDir, 'final');
-      await fs.mkdir(finalDir, { recursive: true });
-
-      // Save final sitemap with current results
-      const finalSitemapPath = await saveFinalSitemap(results, finalDir);
-      
-      global.auditcore.logger.info('=== Shutdown Summary ===');
-      global.auditcore.logger.info(`Final sitemap saved to: ${finalSitemapPath}`);
-      if (results.urlMetrics) {
-        global.auditcore.logger.info(`Total URLs processed: ${results.urlMetrics.total || 0}`);
-        global.auditcore.logger.info(`Internal URLs found: ${results.urlMetrics.internal || 0}`);
+      if (currentResults || global.auditcore.results) {
+        const results = currentResults || global.auditcore.results;
+        await generateReports(results, [], global.auditcore.options.output);
+        global.auditcore.logger.info('All data saved successfully');
+      } else {
+        global.auditcore.logger.warn('No results to save during shutdown');
       }
-      global.auditcore.logger.info('=====================');
-      
-      global.auditcore.logger.info('Graceful shutdown completed.');
-      process.exit(0);
     } catch (error) {
-      global.auditcore.logger.error('Error during shutdown:', error);
-      global.auditcore.logger.error('Error details:', error.stack);
-      process.exit(1);
+      global.auditcore.logger.error('Error saving data during shutdown:', error);
     }
+
+    // Exit after a brief delay to allow logs to be written
+    setTimeout(() => process.exit(0), 100);
   }
 
-  // Handle SIGINT (Ctrl+C) and SIGTERM
-  process.on('SIGINT', () => handleShutdown('SIGINT (Ctrl+C)'));
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-
-  // Handle uncaught exceptions
+  // Handle various termination signals
+  process.on('SIGINT', () => handleShutdown('SIGINT')); // Ctrl+C
+  process.on('SIGTERM', () => handleShutdown('SIGTERM')); // Kill
   process.on('uncaughtException', (error) => {
     global.auditcore.logger.error('Uncaught exception:', error);
     handleShutdown('UNCAUGHT_EXCEPTION');
   });
-
-  // Handle unhandled promise rejections
   process.on('unhandledRejection', (reason) => {
-    global.auditcore.logger.error('Unhandled promise rejection:', reason);
+    global.auditcore.logger.error('Unhandled rejection:', reason);
     handleShutdown('UNHANDLED_REJECTION');
   });
 }
 
-export function setShuttingDown(value) {
-  isShuttingDown = value;
+export function updateCurrentResults(results) {
+  currentResults = results;
+}
+
+export function isProcessShuttingDown() {
+  return isShuttingDown;
 }

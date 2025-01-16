@@ -172,6 +172,12 @@ export class UrlProcessor {
    * @returns {Promise<Object>} The results of processing all URLs.
    */
   async processUrls(urls) {
+    if (!Array.isArray(urls) || urls.length === 0) {
+      global.auditcore.logger.warn('No URLs to process');
+      return [];
+    }
+
+    global.auditcore.logger.info(`Processing ${urls.length} URLs`);
     const totalTests = urls.length;
 
     for (let i = 0; i < totalTests; i++) {

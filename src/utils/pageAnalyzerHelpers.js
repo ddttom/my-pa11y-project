@@ -2,6 +2,7 @@
 
 import { getInternalLinks } from './linkAnalyzer.js';
 import { updateInternalLinks } from './technicalMetrics.js';
+import cheerio from 'cheerio';
 
 async function retryOperation(operation, retryAttempts, retryDelay) {
   for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
@@ -22,18 +23,52 @@ async function retryOperation(operation, retryAttempts, retryDelay) {
 }
 
 async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
-  global.auditcore.logger.debug(`Attempting to get internal links for ${testUrl}`);
   try {
-    const links = await retryOperation(
-      () => getInternalLinks(html, testUrl, baseUrl),
-      config.retryAttempts || 3,
-      config.retryDelay || 1000,
-    );
-    global.auditcore.logger.debug(`Successfully retrieved ${links ? links.length : 0} internal links for ${testUrl}`);
+    const $ = cheerio.load(html);
+    const links = [];
+    const seenUrls = new Set();
+    const testUrlObj = new URL(testUrl);
+    const baseUrlObj = new URL(baseUrl);
+
+    $('a[href]').each((_, element) => {
+      try {
+        const href = $(element).attr('href');
+        if (!href) return;
+
+        // Handle different URL formats
+        let resolvedUrl;
+        if (href.startsWith('//')) {
+          // Protocol-relative URL
+          resolvedUrl = `${baseUrlObj.protocol}${href}`;
+        } else if (href.startsWith('/')) {
+          // Root-relative URL
+          resolvedUrl = `${baseUrlObj.origin}${href}`;
+        } else if (!href.startsWith('http')) {
+          // Relative URL
+          resolvedUrl = new URL(href, baseUrl).href;
+        } else {
+          // Absolute URL
+          resolvedUrl = href;
+        }
+
+        const urlObj = new URL(resolvedUrl);
+        // Only include internal links (same domain)
+        if (urlObj.hostname === testUrlObj.hostname && !seenUrls.has(resolvedUrl)) {
+          seenUrls.add(resolvedUrl);
+          links.push({
+            url: resolvedUrl,
+            text: $(element).text().trim()
+          });
+        }
+      } catch (error) {
+        global.auditcore.logger.warn(`Error processing link in ${testUrl}: ${error.message}`);
+      }
+    });
+
     return links;
   } catch (error) {
-    global.auditcore.logger.error(`Failed to get internal links for ${testUrl}: ${error.message}`);
-    return null;
+    global.auditcore.logger.error(`Error getting internal links for ${testUrl}: ${error.message}`);
+    return [];
   }
 }
 

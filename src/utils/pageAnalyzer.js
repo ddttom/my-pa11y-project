@@ -65,6 +65,31 @@ function extractImageInfo($) {
   return images;
 }
 
+function validateInput(testUrl, html, baseUrl) {
+  if (typeof testUrl !== 'string' || !testUrl) {
+    throw new Error('Invalid testUrl');
+  }
+  if (typeof html !== 'string' || !html) {
+    throw new Error('Invalid html');
+  }
+  
+  try {
+    // Try to create URL objects to validate URLs
+    const testUrlObj = new URL(testUrl);
+    // If baseUrl is not provided, use the testUrl's origin as base
+    if (!baseUrl) {
+      baseUrl = testUrlObj.origin;
+    }
+    const baseUrlObj = new URL(baseUrl);
+    
+    return {
+      testUrl: testUrlObj.href,
+      baseUrl: baseUrlObj.href
+    };
+  } catch (error) {
+    throw new Error(`Invalid URL format: ${error.message}`);
+  }
+}
 
 async function analyzePageContent({
   testUrl,
@@ -83,10 +108,12 @@ async function analyzePageContent({
     if (!testUrl) {
       throw new Error('testUrl is undefined or empty');
     }
-    validateInput(testUrl, html, baseUrl);
 
+    // Validate and normalize URLs
+    const { testUrl: validTestUrl, baseUrl: validBaseUrl } = validateInput(testUrl, html, baseUrl);
+    
     const $ = cheerio.load(html);
-    global.auditcore.logger.debug(`Cheerio loaded for ${testUrl}`);
+    global.auditcore.logger.debug(`Cheerio loaded for ${validTestUrl}`);
 
     // Extract header information
     for (let i = 1; i <= 6; i++) {
@@ -99,37 +126,37 @@ async function analyzePageContent({
     pageData.imagesCount = images.length;
     pageData.imagesWithoutAlt = images.filter(img => !img.alt).length;
 
-    global.auditcore.logger.debug(`Found ${images.length} images for ${testUrl}`);
+    global.auditcore.logger.debug(`Found ${images.length} images for ${validTestUrl}`);
     global.auditcore.logger.debug(`Images without alt text: ${pageData.imagesWithoutAlt}`);
 
-    const pa11yResult = await runPa11yAnalysis(testUrl, html, config);
+    const pa11yResult = await runPa11yAnalysis(validTestUrl, html, config);
     if (!results.pa11y) results.pa11y = [];
     results.pa11y.push(pa11yResult);
 
     if (pa11yResult.issues && pa11yResult.issues.length > 0) {
-      global.auditcore.logger.info(`Found ${pa11yResult.issues.length} Pa11y issues for ${testUrl}`);
+      global.auditcore.logger.info(`Found ${pa11yResult.issues.length} Pa11y issues for ${validTestUrl}`);
     } else {
-      global.auditcore.logger.info(`No Pa11y issues found for ${testUrl}`);
+      global.auditcore.logger.info(`No Pa11y issues found for ${validTestUrl}`);
     }
 
-    const internalLinks = await getInternalLinksWithRetry(html, testUrl, baseUrl, config);
+    const internalLinks = await getInternalLinksWithRetry(html, validTestUrl, validBaseUrl, config);
     if (!results.internalLinks) results.internalLinks = [];
-    results.internalLinks.push({ url: testUrl, links: internalLinks });
+    results.internalLinks.push({ url: validTestUrl, links: internalLinks });
 
-    await runMetricsAnalysis($, testUrl, baseUrl, headers, results);
+    await runMetricsAnalysis($, validTestUrl, validBaseUrl, headers, results);
 
-    updateResults(results, testUrl, pa11yResult, internalLinks);
+    updateResults(results, validTestUrl, pa11yResult, internalLinks);
 
-    const contentAnalysis = createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11yResult);
+    const contentAnalysis = createContentAnalysis(validTestUrl, pageData, jsErrors, internalLinks, pa11yResult);
     updateContentAnalysis(contentAnalysis, results);
 
     const duration = calculateDuration(startTime);
-    global.auditcore.logger.info(`[END] Content analysis completed for ${testUrl} in ${duration.toFixed(3)} seconds`);
+    global.auditcore.logger.info(`[END] Content analysis completed for ${validTestUrl} in ${duration.toFixed(3)} seconds`);
 
-    return createAnalysisResult(testUrl, duration, contentAnalysis, pa11yResult, internalLinks);
+    return createAnalysisResult(validTestUrl, duration, contentAnalysis, pa11yResult, internalLinks);
   } catch (error) {
-    global.auditcore.logger.error(`[ERROR] Error in analyzePageContent for ${testUrl || 'unknown URL'}:`, error);
-    return { url: testUrl || 'unknown URL', error: error.message };
+    global.auditcore.logger.error(`[ERROR] Error in analyzePageContent for ${validTestUrl || 'unknown URL'}:`, error);
+    return { url: validTestUrl || 'unknown URL', error: error.message };
   }
 }
 
@@ -238,12 +265,6 @@ function updateResults(results, testUrl, pa11yResult, internalLinks) {
   results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
 
   global.auditcore.logger.info(`[END] Results updated for ${testUrl}`);
-}
-
-function validateInput(testUrl, html, baseUrl) {
-  if (typeof testUrl !== 'string' || !testUrl) throw new Error('Invalid testUrl');
-  if (typeof html !== 'string' || !html) throw new Error('Invalid html');
-  if (typeof baseUrl !== 'string' || !baseUrl) throw new Error('Invalid baseUrl');
 }
 
 export {
