@@ -63,7 +63,7 @@
 
 The `.cache` directory uses MD5 hashing for filenames:
 
-```
+```bash
 .cache/
   ├── be3b1dc7348a079bdab9443dc804c741.json
   ├── b72b97c79a50c857ae0d684b9125aa24.json
