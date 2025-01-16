@@ -3,7 +3,7 @@
 
 import path from 'path';
 import fs from 'fs/promises';
-import { saveFinalSitemap } from '../main.js';
+import { saveFinalSitemap } from './sitemapUtils.js';
 
 let isShuttingDown = false;
 let shutdownInProgress = false;

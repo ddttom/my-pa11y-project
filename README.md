@@ -88,6 +88,37 @@ The crawler handles interruptions gracefully:
 - A summary of processed URLs is displayed
 - All discovered URLs are preserved in the final sitemap
 
+## Project Structure
+
+```bash
+.
+├── index.js               # Entry point and CLI configuration
+├── src/
+│   ├── main.js           # Core orchestration logic
+│   └── utils/
+│       ├── setup.js      # Initial setup and validation
+│       ├── sitemap.js    # Sitemap processing
+│       ├── sitemapUtils.js    # Sitemap generation
+│       ├── shutdownHandler.js # Graceful interruption
+│       ├── caching.js    # Cache management
+│       ├── results.js    # Results processing
+│       └── urlUtils.js   # URL validation
+├── results/              # Generated output
+└── .cache/              # Cached data storage
+```
+
+## Output Files
+
+```bash
+results/
+├── final/
+│   └── final_sitemap.xml    # All discovered URLs
+├── invalid_urls.json        # Failed URLs with reasons
+├── internal_links.csv       # Site structure analysis
+├── content_analysis.csv     # Content metrics
+└── pa11y_raw_results.json  # Accessibility data
+```
+
 ## Contributing
 
 Contributions welcome. Please submit a Pull Request.

@@ -12,9 +12,40 @@
 - [x] Progress preservation on interruption
 - [x] Duplicate URL detection and filtering
 
+### Project Organization
+
+```bash
+.
+├── index.js               # Entry point and CLI configuration
+├── src/
+│   ├── main.js           # Core orchestration logic
+│   └── utils/
+│       ├── setup.js      # Initial setup and validation
+│       ├── sitemap.js    # Sitemap processing
+│       ├── sitemapUtils.js    # Sitemap generation
+│       ├── shutdownHandler.js # Graceful interruption
+│       ├── caching.js    # Cache management
+│       ├── results.js    # Results processing
+│       └── urlUtils.js   # URL validation
+├── results/              # Generated output
+└── .cache/              # Cached data storage
+```
+
+### Generated Files
+
+```bash
+results/
+├── final/
+│   └── final_sitemap.xml    # All discovered URLs
+├── invalid_urls.json        # Failed URLs with reasons
+├── internal_links.csv       # Site structure analysis
+├── content_analysis.csv     # Content metrics
+└── pa11y_raw_results.json  # Accessibility data
+```
+
 ### Performance
 
-- [x] Caching of HTML content
+- [x] Caching of HTML content with MD5 keys
 - [x] Efficient URL deduplication using Sets
 - [x] Resource-aware page processing
 - [x] Controlled crawl rate
@@ -29,22 +60,13 @@
 - [x] Progress preservation on shutdown
 - [x] Detailed error logging
 
-### Output Files
-
-- [x] `final/final_sitemap.xml`: Complete discovered URLs
-- [x] `invalid_urls.json`: Problematic URLs with reasons
-- [x] `internal_links.csv`: Link relationships
-- [x] `content_analysis.csv`: Page content data
-- [x] `pa11y_raw_results.json`: Accessibility findings
-
 ## Recent Updates
 
-- Added HTML page crawling with recursive discovery
-- Implemented MD5-based caching system
+- Reorganized code structure for better modularity
+- Fixed circular dependencies in shutdown handling
 - Enhanced error reporting with source tracking
-- Added graceful shutdown with progress saving
-- Improved logging and status reporting
 - Added support for gzipped sitemaps
+- Improved cache system with MD5 hashing
 
 ## Known Issues
 
@@ -65,10 +87,9 @@ The `.cache` directory uses MD5 hashing for filenames:
 
 ```bash
 .cache/
-  ├── be3b1dc7348a079bdab9443dc804c741.json
-  ├── b72b97c79a50c857ae0d684b9125aa24.json
-  ├── 028671fcf192b30bfb8b8a3cb293830f.json
-  └── ...
+├── be3b1dc7348a079bdab9443dc804c741.json  # HTML content
+├── b72b97c79a50c857ae0d684b9125aa24.json  # Results
+└── 028671fcf192b30bfb8b8a3cb293830f.json  # Temp data
 ```
 
 Cache is used to:
