@@ -12,6 +12,7 @@ import puppeteer from 'puppeteer';
 import fs from 'fs/promises';
 import { UrlProcessor } from "./urlProcessor.js";
 import { isValidUrl } from './urlUtils.js';
+import { getCachedData, setCachedData } from './caching.js';
 
 const parseXml = promisify(parseString);
 const gunzipAsync = promisify(gunzip);
@@ -148,6 +149,13 @@ function isPageLink(url) {
  * @returns {Promise<string>} The HTML content
  */
 async function getHtmlContent(url, log) {
+  // Try to get from cache first
+  const cachedContent = await getCachedData(url);
+  if (cachedContent) {
+    log.debug(`Using cached HTML content for ${url}`);
+    return cachedContent;
+  }
+
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -204,14 +212,13 @@ async function getHtmlContent(url, log) {
       return document.documentElement.outerHTML;
     });
     
-    log.debug(`Retrieved HTML content length: ${html.length}`);
-    
     if (!html || html.length === 0) {
       throw new Error('Retrieved empty HTML content');
     }
 
-    // Log a sample of the HTML for debugging
-    log.debug('First 200 characters of HTML:', html.substring(0, 200));
+    // Cache the HTML content
+    await setCachedData(url, html);
+    log.debug(`Cached HTML content for ${url}`);
 
     return html;
   } catch (error) {
@@ -259,6 +266,7 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
   visitedUrls.add(normalizedUrl);
   const validUrls = [];
   const invalidUrls = [];
+  const seenInvalidUrls = new Set();  // Track unique invalid URLs for this page
 
   try {
     log.info(`Scanning page: ${normalizedUrl}`);
@@ -277,42 +285,45 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
       
       let newValidUrls = 0;
       let newInvalidUrls = 0;
+      const newInvalidUrlsList = [];  // Store details of new invalid URLs
 
       // Process found links
       for (const link of links) {
         try {
-          log.debug(`Processing link: ${link}`);
-          
-          if (containsNonce(link)) {
-            log.debug(`Skipping URL with nonce parameter: ${link}`);
-            continue;
-          }
-
           const normalizedLink = normalizeUrl(link);
           
-          // Skip if we've already found this URL
-          if (allUniqueUrls.has(normalizedLink)) {
-            log.debug(`Skipping: URL already found: ${normalizedLink}`);
+          if (containsNonce(link)) {
             continue;
           }
 
-          // Debug the filtering conditions
+          // Skip if we've already found this invalid URL
+          if (seenInvalidUrls.has(normalizedLink)) {
+            continue;
+          }
+
           const isRoot = isSameRootDomain(link, rootDomain);
           const isPage = isPageLink(link);
           const isVisited = visitedUrls.has(normalizedLink);
           const isValid = isValidUrl(link);
           
           if (!isRoot || !isPage || isVisited || !isValid) {
+            const reason = !isRoot ? "Not in root domain" :
+                          !isPage ? "Not a page link" :
+                          isVisited ? "Already visited" :
+                          "Invalid URL format";
+
             newInvalidUrls++;
-            invalidUrls.push({
+            seenInvalidUrls.add(normalizedLink);
+            
+            const invalidUrl = {
               url: normalizedLink,
               source: url,
-              reason: !isRoot ? "Not in root domain" :
-                        !isPage ? "Not a page link" :
-                        isVisited ? "Already visited" :
-                        "Invalid URL format",
+              reason,
               timestamp: new Date().toISOString()
-            });
+            };
+            
+            invalidUrls.push(invalidUrl);
+            newInvalidUrlsList.push(invalidUrl);
             continue;
           }
 
@@ -348,7 +359,6 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
 
         } catch (error) {
           log.error(`Error processing link ${link}:`, error);
-          log.debug(`Error stack:`, error.stack);
         }
       }
 
@@ -358,6 +368,16 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
       log.info(`├─ New valid URLs: ${newValidUrls}`);
       log.info(`├─ Invalid URLs: ${newInvalidUrls}`);
       log.info(`└─ Total unique URLs found so far: ${allUniqueUrls.size}${limit !== -1 ? ` / ${limit}` : ''}`);
+
+      // Log new invalid URLs if any were found
+      if (newInvalidUrlsList.length > 0) {
+        log.info('New invalid URLs found:');
+        newInvalidUrlsList.forEach(invalid => {
+          log.info(`├─ ${invalid.url}`);
+          log.info(`│  ├─ Source: ${invalid.source}`);
+          log.info(`│  └─ Reason: ${invalid.reason}`);
+        });
+      }
 
       return { validUrls, invalidUrls };
     } catch (fetchError) {
