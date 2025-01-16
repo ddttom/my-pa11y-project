@@ -21,7 +21,7 @@ logFiles.forEach((file) => {
 });
 
 program
-  .option('-s, --sitemap <url>', 'URL of the sitemap to process', 'https://icann.org/index.html')
+  .option('-s, --sitemap <url>', 'URL of the sitemap to process', 'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub')
   .option('-o, --output <directory>', 'Output directory for results', 'results')
   .option(
     '-l, --limit <number>',
