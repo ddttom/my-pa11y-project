@@ -1,94 +1,79 @@
-# Project State Overview
+# Project State
 
-## Current Architecture
+## Current Implementation
 
-### Core Components
+### Core Features
 
-1. **index.js** (Main Entry Point)
-   - Handles CLI argument parsing using commander
-   - Manages logging configuration with winston
-   - Orchestrates the main auditing process
-   - Implements configuration options from auditcore.options
-   - Calls runTestsOnSitemap() from src/main.js
+- [x] Sitemap XML parsing
+- [x] HTML page crawling with recursive link discovery
+- [x] Intelligent caching system with MD5 hashing
+- [x] Invalid URL tracking with detailed reasons
+- [x] Graceful shutdown handling with state preservation
+- [x] Progress preservation on interruption
+- [x] Duplicate URL detection and filtering
 
-2. **sitemap.js** (Sitemap Processing)
-   - Processes both XML and HTML sitemaps
-   - Implements URL validation and normalization
-   - Provides recursive crawling for HTML sitemaps
-   - Integrates with Puppeteer for dynamic content extraction
-   - Includes caching mechanism for HTML content
-   - Generates virtual XML sitemaps
+### Performance
 
-3. **caching.js** (Caching System)
-   - Implements file-based caching with MD5 hashing
-   - Provides content freshness analysis
-   - Supports both Puppeteer and non-Puppeteer data collection
-   - Handles cache directory management
-   - Implements cache invalidation strategies
+- [x] Caching of HTML content
+- [x] Efficient URL deduplication using Sets
+- [x] Resource-aware page processing
+- [x] Controlled crawl rate
+- [x] Optimized memory usage for large sites
 
-4. **Configuration (src/config/readme.md)**
-   - Documents available auditcore.options
-   - Defines configuration parameters for:
-     - Sitemap handling
-     - Output locations
-     - Processing limits
-     - Caching behavior
-     - Puppeteer execution
-     - Logging levels
+### Error Handling
 
-## Current State
+- [x] Invalid URL reporting with source tracking
+- [x] HTTP error tracking with status codes
+- [x] Network error recovery with retries
+- [x] Graceful interruption handling
+- [x] Progress preservation on shutdown
+- [x] Detailed error logging
 
-### Completed Functionality
+### Output Files
 
-- CLI interface with comprehensive options
-- Sitemap processing for both XML and HTML formats
-- URL validation and normalization
-- HTML content extraction with Puppeteer
-- Robust caching implementation with:
-  - Content freshness analysis
-  - Multiple retrieval strategies
-  - Cache invalidation
-- Comprehensive logging system with multiple levels and output targets
-- Detailed metrics collection including:
-  - URL metrics
-  - Content analysis
-  - SEO scoring
-  - Performance metrics
-- Error handling and recovery mechanisms
-- Screenshot capture functionality
+- [x] `final/final_sitemap.xml`: Complete discovered URLs
+- [x] `invalid_urls.json`: Problematic URLs with reasons
+- [x] `internal_links.csv`: Link relationships
+- [x] `content_analysis.csv`: Page content data
+- [x] `pa11y_raw_results.json`: Accessibility findings
 
-### Next Steps
+## Recent Updates
 
-1. Enhance reporting system for audit results
-2. Optimize performance for large-scale audits
-3. Implement advanced content analysis features
-4. Add more comprehensive SEO scoring metrics
-5. Improve error handling for edge cases
-6. Add support for additional sitemap formats
+- Added HTML page crawling with recursive discovery
+- Implemented MD5-based caching system
+- Enhanced error reporting with source tracking
+- Added graceful shutdown with progress saving
+- Improved logging and status reporting
+- Added support for gzipped sitemaps
 
-## Dependencies
+## Known Issues
 
-- commander (CLI parsing)
-- winston (logging)
-- puppeteer (browser automation)
-- axios (HTTP requests)
-- xml2js (XML parsing)
-- zlib (compression handling)
-- cheerio (HTML parsing)
-- csv-stringify (CSV generation)
-- lighthouse (performance analysis)
-- pa11y (accessibility testing)
+- None currently reported
 
-## Development Status
+## Planned Improvements
 
-The project has a robust foundation with:
+- Enhance parallel processing capabilities
+- Add more detailed crawl statistics
+- Implement rate limiting configuration
+- Add support for custom URL filters
+- Enhance reporting formats
+- Add support for robots.txt parsing
 
-- Working CLI interface
-- Comprehensive sitemap processing
-- Advanced caching system
-- Detailed metrics collection
-- Modular and extensible architecture
-- Comprehensive error handling
-- Performance monitoring capabilities
+## Cache System
 
-Next development efforts should focus on enhancing reporting capabilities and optimizing performance for large-scale audits.
+The `.cache` directory uses MD5 hashing for filenames:
+
+```
+.cache/
+  ├── be3b1dc7348a079bdab9443dc804c741.json
+  ├── b72b97c79a50c857ae0d684b9125aa24.json
+  ├── 028671fcf192b30bfb8b8a3cb293830f.json
+  └── ...
+```
+
+Cache is used to:
+
+- Reduce server load during crawling
+- Speed up repeated scans
+- Support interrupted crawl recovery
+- Store HTML content and processing results
