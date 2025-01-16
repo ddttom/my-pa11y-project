@@ -257,25 +257,27 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
   }
 
   visitedUrls.add(normalizedUrl);
+  const validUrls = [];
+  const invalidUrls = [];
 
   try {
-    log.info(`Processing page: ${normalizedUrl}`);
+    log.info(`Scanning page: ${normalizedUrl}`);
+    log.info(`Current progress: ${allUniqueUrls.size} unique URLs found${limit !== -1 ? ` (limit: ${limit})` : ''}`);
     
     try {
       const html = await getHtmlContent(url, log);
 
       if (!html || typeof html !== 'string') {
         log.error(`Invalid HTML content received for ${url}`);
-        log.debug('HTML content:', html);
         return { validUrls: [], invalidUrls: [] };
       }
 
       const links = await extractLinksFromHtml(html, url);
-      log.debug(`Found ${links.length} links:`, links);
-
-      const validUrls = [];
-      const invalidUrls = [];  // Initialize invalidUrls array
+      log.info(`Found ${links.length} links on ${normalizedUrl}`);
       
+      let newValidUrls = 0;
+      let newInvalidUrls = 0;
+
       // Process found links
       for (const link of links) {
         try {
@@ -301,22 +303,14 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
           const isValid = isValidUrl(link);
           
           if (!isRoot || !isPage || isVisited || !isValid) {
-            const reason = !isRoot ? "Not in root domain" :
-                          !isPage ? "Not a page link" :
-                          isVisited ? "Already visited" :
-                          "Invalid URL format";
-                          
-            log.debug(`Skipping URL ${normalizedLink}:`, {
-              notRootDomain: !isRoot,
-              notPageLink: !isPage,
-              alreadyVisited: isVisited,
-              notValid: !isValid
-            });
-            
+            newInvalidUrls++;
             invalidUrls.push({
               url: normalizedLink,
-              source: url, // Current page being processed
-              reason: reason,
+              source: url,
+              reason: !isRoot ? "Not in root domain" :
+                        !isPage ? "Not a page link" :
+                        isVisited ? "Already visited" :
+                        "Invalid URL format",
               timestamp: new Date().toISOString()
             });
             continue;
@@ -324,20 +318,21 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
 
           // Check limit before adding
           if (limit !== -1 && allUniqueUrls.size >= limit) {
-            log.debug(`Reached limit of ${limit} unique URLs`);
-            return { validUrls, invalidUrls };
+            log.info(`Reached limit of ${limit} unique URLs`);
+            break;
           }
 
           // Add to global unique set and valid URLs
-          allUniqueUrls.add(normalizedLink);
-          validUrls.push({
-            url: normalizedLink,
-            lastmod: null,
-            changefreq: null,
-            priority: null
-          });
-
-          log.debug(`Added unique URL: ${normalizedLink} (total unique count: ${allUniqueUrls.size})`);
+          if (!allUniqueUrls.has(normalizedLink)) {
+            allUniqueUrls.add(normalizedLink);
+            validUrls.push({
+              url: normalizedLink,
+              lastmod: null,
+              changefreq: null,
+              priority: null
+            });
+            newValidUrls++;
+          }
 
           // Recursively process new URL
           const nestedUrls = await processPageRecursive(
@@ -357,12 +352,16 @@ async function processPageRecursive(url, visitedUrls, allUniqueUrls, limit, root
         }
       }
 
-      log.info(`Found ${validUrls.length} new valid links on page ${url}`);
-      log.info(`Total unique URLs found so far: ${allUniqueUrls.size}`);
-      
+      // Summary for this page
+      log.info(`Page scan summary for ${normalizedUrl}:`);
+      log.info(`├─ Total links found: ${links.length}`);
+      log.info(`├─ New valid URLs: ${newValidUrls}`);
+      log.info(`├─ Invalid URLs: ${newInvalidUrls}`);
+      log.info(`└─ Total unique URLs found so far: ${allUniqueUrls.size}${limit !== -1 ? ` / ${limit}` : ''}`);
+
       return { validUrls, invalidUrls };
     } catch (fetchError) {
-      // Add to invalidUrls and continue
+      log.error(`Failed to fetch ${url}: ${fetchError.reason || fetchError.message}`);
       invalidUrls.push({
         url: fetchError.url || url,
         source: url,
@@ -497,7 +496,6 @@ async function processHtmlSitemap(sitemapUrl, limit) {
   const visitedUrls = new Set();
   const allUniqueUrls = new Set();  // Track all unique URLs across all pages
   const rootDomain = new URL(sitemapUrl).hostname;
-  const allInvalidUrls = [];  // Track all invalid URLs
 
   try {
     const { validUrls, invalidUrls } = await processPageRecursive(
@@ -664,7 +662,6 @@ async function processSitemapUrls(urls, options) {
 
     return results;
   } catch (error) {
-    const log = global.auditcore?.logger || console;
     log.error(`Error during URL processing: ${error.message}`);
     log.debug(`Error stack: ${error.stack}`);
     throw error;
