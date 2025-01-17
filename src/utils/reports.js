@@ -65,18 +65,26 @@ async function generateSeoReport(results, outputDir) {
     ],
   });
 
-  const reportData = results.performanceAnalysis.map((page) => ({
-    url: page.url,
-    title: page.title || '',
-    description: page.metaDescription || '',
-    h1Count: Math.round(page.h1Count || 0),
-    imageCount: Math.round(page.imagesCount || 0),
-    imagesWithoutAlt: Math.round(page.imagesWithoutAlt || 0),
-    internalLinks: Math.round(page.internalLinksCount || 0),
-    externalLinks: Math.round(page.externalLinksCount || 0),
-    pageSize: Math.round(page.pageSize || 0),
-    wordCount: Math.round(page.wordCount || 0)
-  }));
+  // Get the full page data that includes all metrics
+  const reportData = results.performanceAnalysis.map((page) => {
+    // Find the full page data that contains content metrics
+    const fullPageData = results.performanceAnalysis.find(p => 
+      p.url === page.url && p.wordCount !== undefined
+    );
+
+    return {
+      url: page.url,
+      title: fullPageData?.title || '',
+      description: fullPageData?.metaDescription || '',
+      h1Count: Math.round(fullPageData?.h1Count || 0),
+      imageCount: Math.round(fullPageData?.imagesCount || 0),
+      imagesWithoutAlt: Math.round(fullPageData?.imagesWithoutAlt || 0),
+      internalLinks: Math.round(fullPageData?.internalLinksCount || 0),
+      externalLinks: Math.round(fullPageData?.externalLinksCount || 0),
+      pageSize: Math.round(fullPageData?.pageSize || 0),
+      wordCount: Math.round(fullPageData?.wordCount || 0)
+    };
+  });
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`SEO report generated with ${reportData.length} records`);

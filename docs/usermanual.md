@@ -21,7 +21,7 @@ npm start -- -s https://example.com/sitemap.xml -o results
 
 ### Available Options
 
-- `-s, --sitemap <url>`: The URL to analyze (default: "https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub")
+- `-s, --sitemap <url>`: The URL to analyze (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")
 - `-o, --output <directory>`: Where to save results (default: "results")
 - `-l, --limit <number>`: Maximum URLs to process (default: -1)
 - `--log-level <level>`: Logging detail level (default: "debug")
@@ -52,6 +52,7 @@ The tool generates several files in the output directory:
 ## Interruption Handling
 
 The tool handles Ctrl+C (SIGINT) gracefully:
+
 - Saves all current results
 - Generates reports with available data
 - Creates sitemaps with discovered URLs
