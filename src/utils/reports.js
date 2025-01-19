@@ -1,6 +1,10 @@
 import { createObjectCsvWriter } from 'csv-writer';
 import path from 'path';
 import fs from 'fs/promises';
+import { 
+  generateAccessibilityReport,
+  generateDetailedAccessibilityReport 
+} from './accessibilityReport.js';
 
 export async function generateReports(results, urls, outputDir) {
   try {
@@ -11,6 +15,10 @@ export async function generateReports(results, urls, outputDir) {
     await generateSeoReport(results, outputDir);
     await generatePerformanceReport(results, outputDir);
     await generateSeoScores(results, outputDir);
+    
+    // Generate accessibility reports
+    await generateAccessibilityReport(results, outputDir);
+    await generateDetailedAccessibilityReport(results, outputDir);
 
     await fs.writeFile(
       path.join(outputDir, 'results.json'),

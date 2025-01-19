@@ -38,6 +38,59 @@ A Node.js tool for analyzing website SEO and performance metrics.
       - score, titleOptimization
       - metaDescriptionOptimization
       - contentQuality, internalLinking
+    - Accessibility metrics:
+      - WCAG compliance data
+      - Issue types and severity
+      - Accessibility scores
+    - Security metrics:
+      - HTTPS status
+      - Security headers
+      - Mixed content issues
+      - Cookie security
+    - Link analysis:
+      - Broken links
+      - Redirect chains
+      - Nofollow links
+      - Anchor text data
+    - Content quality metrics:
+      - Readability scores
+      - Keyword density
+      - Duplicate content metrics
+
+### Sample Data Fragment
+
+```json
+{
+  "performanceAnalysis": [{
+    "url": "https://example.com/page",
+    "lastmod": "2025-01-16T15:30:45.892Z",
+    "wordCount": 3153,
+    "h1Count": 2,
+    "imagesCount": 2,
+    "images": [
+      {
+        "src": "./media_1.png",
+        "alt": "Description",
+        "width": "1087",
+        "height": "486"
+      }
+    ],
+    "imagesWithoutAlt": 2,
+    "internalLinksCount": 22,
+    "title": "Page Title",
+    "metaDescription": "Page description...",
+    "pageSize": 43104,
+    "pa11yIssuesCount": 5,
+    "details": {
+      "score": 79,
+      "titleOptimization": 85,
+      "metaDescriptionOptimization": 90,
+      "contentQuality": 75,
+      "internalLinking": 70
+    }
+  }]
+}
+```
 
 ### Report Generation
 
@@ -63,6 +116,41 @@ A Node.js tool for analyzing website SEO and performance metrics.
   - Meta description score
   - Content quality score
   - Link structure score
+
+- Accessibility Report (accessibility_report.csv):
+  - URL
+  - Pa11y issues count
+  - Issue types and severity
+  - WCAG compliance levels
+  - Accessibility score
+
+- Image Optimization Report (image_optimization.csv):
+  - URL
+  - Images without alt text
+  - Image dimensions
+  - File sizes
+  - Compression opportunities
+
+- Link Analysis Report (link_analysis.csv):
+  - URL
+  - Broken links
+  - Redirect chains
+  - Nofollow links
+  - Anchor text analysis
+
+- Content Quality Report (content_quality.csv):
+  - URL
+  - Word count distribution
+  - Readability scores
+  - Keyword density
+  - Duplicate content detection
+
+- Security Report (security_report.csv):
+  - URL
+  - HTTPS usage
+  - Security headers presence
+  - Mixed content issues
+  - Cookie security
 
 - Sitemaps:
   - virtual_sitemap.xml: Initial crawl results
@@ -135,41 +223,6 @@ A Node.js tool for analyzing website SEO and performance metrics.
 - Error case coverage
 - Report format validation
 
-### Sample Data Fragment
-
-```json
-{
-  "performanceAnalysis": [{
-    "url": "https://example.com/page",
-    "lastmod": "2025-01-16T15:30:45.892Z",
-    "wordCount": 3153,
-    "h1Count": 2,
-    "imagesCount": 2,
-    "images": [
-      {
-        "src": "./media_1.png",
-        "alt": "Description",
-        "width": "1087",
-        "height": "486"
-      }
-    ],
-    "imagesWithoutAlt": 2,
-    "internalLinksCount": 22,
-    "title": "Page Title",
-    "metaDescription": "Page description...",
-    "pageSize": 43104,
-    "pa11yIssuesCount": 5,
-    "details": {
-      "score": 79,
-      "titleOptimization": 85,
-      "metaDescriptionOptimization": 90,
-      "contentQuality": 75,
-      "internalLinking": 70
-    }
-  }]
-}
-```
-
 ## Core Features
 
 ### URL Processing
@@ -188,17 +241,15 @@ A Node.js tool for analyzing website SEO and performance metrics.
 - Accessibility testing
 - Content analysis
 - Link structure analysis
+- Security assessment
+- Image optimization analysis
 
 ### Output Generation
 
 - Generate all reports from results.json data
 - No direct data collection during report generation
 - Reports should reflect exact data from results.json
-- Required reports:
-  - SEO report (CSV): title, meta, counts from results.json
-  - Performance analysis (CSV): metrics from results.json
-  - SEO scores (CSV): scores from results.json details
-  - Final sitemap (XML): URLs from results.json
+- All reports listed in Report Generation section
 - Results JSON (source of truth, complete data set)
 
 ## Technical Requirements
@@ -217,98 +268,9 @@ A Node.js tool for analyzing website SEO and performance metrics.
 - Check for missing or invalid values
 - Compare report output against source data
 
-### Error Handling
-
-- Retry failed requests
-- Validate data completeness
-- Validate report data against results.json
-- Log all errors
-
-### Performance
+### Performance2
 
 - Async/await for I/O
 - Efficient data structures
 - Single source of truth (results.json)
 - Minimal memory usage
-
-### Output
-
-- All reports must accurately reflect results.json
-- Consistent data across reports
-- Valid CSV/XML formats
-- Detailed logging
-
-### Data Formatting
-
-- Time measurements:
-  - All time values in milliseconds
-  - Round to nearest integer (no decimals)
-  - Example: 105.79ms → 106ms
-
-- Scores and metrics:
-  - Two decimal places for all scores
-  - Round integers for counts and sizes
-  - Format rules:
-    - Time values: Math.round()
-    - Scores: Number(x.toFixed(2))
-    - Counts: Math.round()
-    - Sizes: Math.round()
-  - Examples:
-    - SEO score: 79.45
-    - Page size: 43104 bytes
-    - Resource count: 15
-    - Load time: 106ms
-
-- Report headers:
-  - Include units in column headers
-  - Example: "Load Time (ms)", "Page Size (bytes)"
-  - Units by type:
-    - Time: (ms)
-    - Size: (bytes)
-    - Scores: no units (0-100)
-    - Counts: no units
-
-### Data Quality
-
-- No direct data collection in report phase
-- All data modifications happen before results.json
-- Reports must be reproducible from results.json
-- Data consistency checks between reports
-
-
-Future Tasks
-
-- Accessibility Report (accessibility_report.csv):
-  - URL
-  - Pa11y issues count
-  - Issue types and severity
-  - WCAG compliance levels
-  - Accessibility score
-
-- Image Optimization Report (image_optimization.csv):
-  - URL
-  - Images without alt text
-  - Image dimensions
-  - File sizes
-  - Compression opportunities
-
-- Link Analysis Report (link_analysis.csv):
-  - URL
-  - Broken links
-  - Redirect chains
-  - Nofollow links
-  - Anchor text analysis
-
-- Content Quality Report (content_quality.csv):
-  - URL
-  - Word count distribution
-  - Readability scores
-  - Keyword density
-  - Duplicate content detection
-
-- Security Report (security_report.csv):
-  - URL
-  - HTTPS usage
-  - Security headers presence
-  - Mixed content issues
-  - Cookie security
