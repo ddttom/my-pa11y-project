@@ -1,3 +1,10 @@
+#!/bin/bash
+
+# Ensure utils directory exists
+mkdir -p src/utils
+
+# Create the updated reports.js
+cat > src/utils/reports.js << 'END_OF_FILE'
 import { createObjectCsvWriter } from 'csv-writer';
 import path from 'path';
 import fs from 'fs/promises';
@@ -113,3 +120,12 @@ async function generateSeoScores(results, outputDir) {
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`SEO scores report generated with ${reportData.length} records`);
 }
+END_OF_FILE
+
+# Install dependencies if needed
+npm install csv-writer --save
+
+echo "✓ Updated reports.js"
+echo "✓ Installed dependencies"
+echo -e "\nTo test the fixes, run:"
+echo "npm start -- -s <your-sitemap-url>"
