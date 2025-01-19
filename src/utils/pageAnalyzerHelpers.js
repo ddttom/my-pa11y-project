@@ -1,6 +1,6 @@
 // pageAnalyzerHelpers.js
 
-import { getInternalLinks } from './linkAnalyzer.js';
+// import { getInternalLinks } from './linkAnalyzer.js';
 import { updateInternalLinks } from './technicalMetrics.js';
 import cheerio from 'cheerio';
 
@@ -22,7 +22,7 @@ async function retryOperation(operation, retryAttempts, retryDelay) {
   return null;
 }
 
-async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
+async function getInternalLinksWithRetry(html, testUrl, baseUrl) {
   try {
     const $ = cheerio.load(html);
     const links = [];
@@ -38,26 +38,21 @@ async function getInternalLinksWithRetry(html, testUrl, baseUrl, config) {
         // Handle different URL formats
         let resolvedUrl;
         if (href.startsWith('//')) {
-          // Protocol-relative URL
           resolvedUrl = `${baseUrlObj.protocol}${href}`;
         } else if (href.startsWith('/')) {
-          // Root-relative URL
           resolvedUrl = `${baseUrlObj.origin}${href}`;
         } else if (!href.startsWith('http')) {
-          // Relative URL
           resolvedUrl = new URL(href, baseUrl).href;
         } else {
-          // Absolute URL
           resolvedUrl = href;
         }
 
         const urlObj = new URL(resolvedUrl);
-        // Only include internal links (same domain)
         if (urlObj.hostname === testUrlObj.hostname && !seenUrls.has(resolvedUrl)) {
           seenUrls.add(resolvedUrl);
           links.push({
             url: resolvedUrl,
-            text: $(element).text().trim()
+            text: $(element).text().trim(),
           });
         }
       } catch (error) {

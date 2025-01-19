@@ -9,8 +9,9 @@ A Node.js tool for analyzing website SEO and performance metrics.
 ### Source of Truth
 
 - results.json is the authoritative source of all collected data
-- All report files (CSV, XML) should be generated from results.json
+- All report files (CSV, XML) are generated from results.json
 - No direct data collection in report generation phase
+- Consistent data formatting across all outputs
 
 ### Data Structure
 
@@ -37,6 +38,102 @@ A Node.js tool for analyzing website SEO and performance metrics.
       - score, titleOptimization
       - metaDescriptionOptimization
       - contentQuality, internalLinking
+
+### Report Generation
+
+- SEO Report (seo_report.csv):
+  - URL
+  - Title presence and content
+  - Meta description presence and content
+  - H1 tag count
+  - Image count and alt text usage
+  - Internal/external link counts
+  - Page size and word count
+
+- Performance Analysis (performance_analysis.csv):
+  - Load time
+  - First paint timing
+  - First contentful paint timing
+  - Page size
+  - Resource count
+
+- SEO Scores (seo_scores.csv):
+  - Overall score
+  - Title optimization score
+  - Meta description score
+  - Content quality score
+  - Link structure score
+
+- Sitemaps:
+  - virtual_sitemap.xml: Initial crawl results
+  - final_sitemap.xml: Complete site structure
+
+### Data Quality
+
+- No direct data collection in report phase
+- All data modifications happen before results.json
+- Reports must be reproducible from results.json
+- Data consistency checks between reports
+- Validation of required fields
+- Error handling for missing data
+
+### Data Formatting
+
+- Time measurements:
+  - All time values in milliseconds
+  - Round to nearest integer
+  - Example: 105.79ms → 106ms
+
+- Scores and metrics:
+  - Two decimal places for all scores
+  - Round integers for counts and sizes
+  - Format rules:
+    - Time values: Math.round()
+    - Scores: Number(x.toFixed(2))
+    - Counts: Math.round()
+    - Sizes: Math.round()
+
+- Report headers:
+  - Include units in column headers
+  - Example: "Load Time (ms)", "Page Size (bytes)"
+  - Units by type:
+    - Time: (ms)
+    - Size: (bytes)
+    - Scores: no units (0-100)
+    - Counts: no units
+
+### Error Handling
+
+- Retry failed requests
+- Validate data completeness
+- Validate report data against results.json
+- Log all errors with stack traces
+- Consistent error object format
+
+### Performance
+
+- Async/await for I/O operations
+- Efficient data structures
+- Single source of truth (results.json)
+- Minimal memory usage
+- Caching of network requests
+
+### Code Quality
+
+- JSDoc documentation
+- Consistent error handling patterns
+- Input validation for edge cases
+- Airbnb style guide compliance
+- Proper type checking
+- Comprehensive logging
+
+### Testing Requirements
+
+- Unit tests for core functions
+- Integration tests for data flow
+- Validation tests for output formats
+- Error case coverage
+- Report format validation
 
 ### Sample Data Fragment
 

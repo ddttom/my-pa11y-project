@@ -9,11 +9,13 @@ The tool collects comprehensive data about each page and stores it in `results.j
 ### Key Metrics Collected
 
 #### Performance Metrics
+
 - Load time and DOM content loaded
 - First paint and first contentful paint
 - Time to interactive and largest contentful paint
 
 #### Content Analysis
+
 - Word count
 - Heading structure (h1, h2, h3 counts)
 - Image analysis (count, dimensions, alt text)
@@ -21,6 +23,7 @@ The tool collects comprehensive data about each page and stores it in `results.j
 - Meta information (title, description)
 
 #### Technical Metrics
+
 - Page size in bytes
 - Resource counts (scripts, stylesheets)
 - Form and table counts
@@ -28,6 +31,7 @@ The tool collects comprehensive data about each page and stores it in `results.j
 - Accessibility issues count
 
 #### Detailed Data
+
 - Complete image inventory with dimensions
 - Accessibility issues with recommendations
 - HTML validation results
@@ -67,7 +71,7 @@ See [Product Requirements](docs/prd.md) for complete specifications.
 
 ## Project Structure
 
-```
+```bash
 seo-audit-tool/
 ├── docs/           # Documentation files
 │   ├── prd.md          # Product requirements
@@ -121,7 +125,7 @@ npm start -- -s <url> -o <output-dir> [options]
 
 ### Options
 
-- `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub")
+- `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")
 - `-o, --output <directory>`: Output directory for results (default: "results")
 - `-l, --limit <number>`: Limit the number of URLs to test (-1 for all)
 - `--cache-only`: Use only cached data

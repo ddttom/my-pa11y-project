@@ -109,7 +109,7 @@ async function analyzePageContent({
       throw new Error('testUrl is undefined or empty');
     }
 
-    // Validate and normalize URLs
+    // Validate and normalize URLs first
     const { testUrl: validTestUrl, baseUrl: validBaseUrl } = validateInput(testUrl, html, baseUrl);
     
     const $ = cheerio.load(html);
@@ -124,7 +124,7 @@ async function analyzePageContent({
     const images = extractImageInfo($);
     pageData.images = images;
     pageData.imagesCount = images.length;
-    pageData.imagesWithoutAlt = images.filter(img => !img.alt).length;
+    pageData.imagesWithoutAlt = images.filter((img) => !img.alt).length;
 
     global.auditcore.logger.debug(`Found ${images.length} images for ${validTestUrl}`);
     global.auditcore.logger.debug(`Images without alt text: ${pageData.imagesWithoutAlt}`);
@@ -141,7 +141,10 @@ async function analyzePageContent({
 
     const internalLinks = await getInternalLinksWithRetry(html, validTestUrl, validBaseUrl, config);
     if (!results.internalLinks) results.internalLinks = [];
-    results.internalLinks.push({ url: validTestUrl, links: internalLinks });
+    results.internalLinks.push({
+      url: validTestUrl,
+      links: internalLinks,
+    });
 
     await runMetricsAnalysis($, validTestUrl, validBaseUrl, headers, results);
 
@@ -155,8 +158,8 @@ async function analyzePageContent({
 
     return createAnalysisResult(validTestUrl, duration, contentAnalysis, pa11yResult, internalLinks);
   } catch (error) {
-    global.auditcore.logger.error(`[ERROR] Error in analyzePageContent for ${validTestUrl || 'unknown URL'}:`, error);
-    return { url: validTestUrl || 'unknown URL', error: error.message };
+    global.auditcore.logger.error(`[ERROR] Error in analyzePageContent for ${testUrl}:`, error);
+    return { url: testUrl, error: error.message };
   }
 }
 
@@ -183,16 +186,20 @@ async function runPa11yAnalysis(testUrl, html, config) {
     global.auditcore.logger.debug(`Pa11y result: ${JSON.stringify(result)}`);
     global.auditcore.logger.info(`[END] runPa11yAnalysis completed successfully for ${testUrl}`);
     
-    // Log the number of issues found
     global.auditcore.logger.info(`Pa11y found ${result.issues ? result.issues.length : 0} issues for ${testUrl}`);
     
     return result;
   } catch (error) {
     global.auditcore.logger.error(`[ERROR] Error in runPa11yAnalysis for ${testUrl}:`, error);
     global.auditcore.logger.error(`Error stack: ${error.stack}`);
-    return { url: testUrl, error: error.message, stack: error.stack };
+    return {
+      url: testUrl,
+      error: error.message,
+      stack: error.stack,
+    };
   }
 }
+
 async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
   global.auditcore.logger.info(`[START] Running metrics analysis for ${testUrl}`);
   try {

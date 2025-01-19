@@ -12,6 +12,7 @@ import path from 'path';
 import axios from 'axios';
 import { parseStringPromise } from 'xml2js';
 import jsdom from 'jsdom';
+import { create } from 'xmlbuilder2';
 
 // Local modules
 import { UrlProcessor } from './urlProcessor.js';
@@ -49,14 +50,14 @@ export async function getUrlsFromSitemap(url, limit = -1) {
     }
 
     // Filter and validate URLs
-    const validUrls = urls.filter(urlObj => isValidUrl(urlObj.url, url));
+    const validUrls = urls.filter((urlObj) => isValidUrl(urlObj.url, url));
     global.auditcore.logger.info(`Found ${validUrls.length} valid URLs out of ${urls.length} total URLs`);
     
     // Generate and save virtual sitemap
     if (validUrls.length > 0) {
       const sitemap = await generateVirtualSitemap(validUrls);
       if (sitemap) {
-        const virtualPath = await saveVirtualSitemap(sitemap, global.auditcore.options.output);
+        await saveVirtualSitemap(sitemap, global.auditcore.options.output);
         // Store the sitemap in the results object
         global.auditcore.results = global.auditcore.results || {};
         global.auditcore.results.virtualSitemap = sitemap;
@@ -217,15 +218,12 @@ export async function generateVirtualSitemap(urls) {
 export async function saveVirtualSitemap(sitemap, outputDir) {
   if (!sitemap) {
     global.auditcore.logger.error('No sitemap data provided');
-    return;
+    return null;
   }
 
   try {
-    // Create the directory if it doesn't exist
     await fs.mkdir(outputDir, { recursive: true });
 
-    // Save virtual sitemap
-    const { create } = await import('xmlbuilder2');
     const virtualPath = path.join(outputDir, 'virtual_sitemap.xml');
     const xml = create(sitemap).end({ prettyPrint: true });
     await fs.writeFile(virtualPath, xml);
@@ -243,24 +241,21 @@ export async function saveVirtualSitemap(sitemap, outputDir) {
  */
 export async function saveFinalSitemap(results, outputDir) {
   try {
-    // Get all unique internal URLs from results
     const uniqueUrls = new Set();
     
-    // Add URLs from initial crawl (from global state)
     const virtualSitemap = global.auditcore.results?.virtualSitemap;
     if (virtualSitemap?.urlset?.url) {
-      virtualSitemap.urlset.url.forEach(item => uniqueUrls.add(item.loc));
+      virtualSitemap.urlset.url.forEach((item) => uniqueUrls.add(item.loc));
     }
 
-    // Add URLs found during processing
     if (results.internalLinks) {
-      results.internalLinks.forEach(link => uniqueUrls.add(link.url));
+      results.internalLinks.forEach((link) => uniqueUrls.add(link.url));
     }
 
     const finalSitemap = {
       urlset: {
         '@xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
-        url: Array.from(uniqueUrls).map(url => ({
+        url: Array.from(uniqueUrls).map((url) => ({
           loc: url,
           lastmod: new Date().toISOString(),
           changefreq: 'monthly',
@@ -269,11 +264,8 @@ export async function saveFinalSitemap(results, outputDir) {
       },
     };
 
-    // Create the directory if it doesn't exist
     await fs.mkdir(outputDir, { recursive: true });
 
-    // Save final sitemap
-    const { create } = await import('xmlbuilder2');
     const finalPath = path.join(outputDir, 'final_sitemap.xml');
     const xml = create(finalSitemap).end({ prettyPrint: true });
     await fs.writeFile(finalPath, xml);
