@@ -65,24 +65,25 @@ async function generateSeoReport(results, outputDir) {
     ],
   });
 
-  // Get the full page data that includes all metrics
-  const reportData = results.performanceAnalysis.map((page) => {
-    // Find the full page data that contains content metrics
-    const fullPageData = results.performanceAnalysis.find(p => 
-      p.url === page.url && p.wordCount !== undefined
+  // Map from pa11y data for titles and URLs, then merge with content metrics
+  const reportData = results.pa11y.map((page) => {
+    // Find matching content metrics for this URL from the content metrics array
+    const contentMetrics = Object.values(results).find(p => 
+      p.url === page.pageUrl && p.wordCount !== undefined
     );
 
+    // Get title from pa11y and metrics from content data
     return {
-      url: page.url,
-      title: fullPageData?.title || '',
-      description: fullPageData?.metaDescription || '',
-      h1Count: Math.round(fullPageData?.h1Count || 0),
-      imageCount: Math.round(fullPageData?.imagesCount || 0),
-      imagesWithoutAlt: Math.round(fullPageData?.imagesWithoutAlt || 0),
-      internalLinks: Math.round(fullPageData?.internalLinksCount || 0),
-      externalLinks: Math.round(fullPageData?.externalLinksCount || 0),
-      pageSize: Math.round(fullPageData?.pageSize || 0),
-      wordCount: Math.round(fullPageData?.wordCount || 0)
+      url: page.pageUrl,
+      title: page.documentTitle || '',
+      description: contentMetrics?.metaDescription || '',
+      h1Count: Math.round(contentMetrics?.h1Count || 0),
+      imageCount: Math.round(contentMetrics?.imagesCount || 0),
+      imagesWithoutAlt: Math.round(contentMetrics?.imagesWithoutAlt || 0),
+      internalLinks: Math.round(contentMetrics?.internalLinksCount || 0),
+      externalLinks: Math.round(contentMetrics?.externalLinksCount || 0),
+      pageSize: Math.round(contentMetrics?.pageSize || 0),
+      wordCount: Math.round(contentMetrics?.wordCount || 0)
     };
   });
 
