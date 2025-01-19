@@ -274,3 +274,41 @@ A Node.js tool for analyzing website SEO and performance metrics.
 - All data modifications happen before results.json
 - Reports must be reproducible from results.json
 - Data consistency checks between reports
+
+
+Future Tasks
+
+- Accessibility Report (accessibility_report.csv):
+  - URL
+  - Pa11y issues count
+  - Issue types and severity
+  - WCAG compliance levels
+  - Accessibility score
+
+- Image Optimization Report (image_optimization.csv):
+  - URL
+  - Images without alt text
+  - Image dimensions
+  - File sizes
+  - Compression opportunities
+
+- Link Analysis Report (link_analysis.csv):
+  - URL
+  - Broken links
+  - Redirect chains
+  - Nofollow links
+  - Anchor text analysis
+
+- Content Quality Report (content_quality.csv):
+  - URL
+  - Word count distribution
+  - Readability scores
+  - Keyword density
+  - Duplicate content detection
+
+- Security Report (security_report.csv):
+  - URL
+  - HTTPS usage
+  - Security headers presence
+  - Mixed content issues
+  - Cookie security
