@@ -2,58 +2,292 @@
 
 ## Overview
 
-This tool analyzes websites for SEO optimization by crawling sitemaps or web pages, generating reports, and providing actionable insights.
+This tool performs comprehensive website analysis, generating detailed reports on SEO, performance, accessibility, content quality, and security metrics.
 
 ## Getting Started
 
-1. Install Node.js (version 20 or higher)
-2. Clone the repository
-3. Run `npm install`
-4. Start the tool with `npm start -- [options]`
+### Prerequisites
+
+- Node.js version 20.0.0 or higher
+- npm package manager
+- Internet connection for web crawling
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+
+# Navigate to project directory
+cd my-pa11y-project
+
+# Install dependencies
+npm install
+```
+
+## Basic Usage
+
+```bash
+# Basic analysis with default options
+npm start -- -s https://example.com/sitemap.xml
+
+# Analysis with custom output directory
+npm start -- -s https://example.com/sitemap.xml -o custom-results
+
+# Limit the number of URLs to analyze
+npm start -- -s https://example.com/sitemap.xml -l 10
+```
 
 ## Command Line Options
 
-### Basic Usage
+### Required Options
 
-```bash
-npm start -- -s https://example.com/sitemap.xml -o results
-```
+- `-s, --sitemap <url>`: URL of sitemap or webpage to analyze
+  - Accepts sitemap XML or webpage URL
+  - Default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>"
 
-### Available Options
+### Optional Settings
 
-- `-s, --sitemap <url>`: The URL to analyze (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")
-- `-o, --output <directory>`: Where to save results (default: "results")
-- `-l, --limit <number>`: Maximum URLs to process (default: -1)
-- `--log-level <level>`: Logging detail level (default: "debug")
+- `-o, --output <directory>`: Output directory for results (default: "results")
+- `-l, --limit <number>`: Maximum URLs to process (-1 for all)
+- `--log-level <level>`: Set logging detail (error, warn, info, debug)
 
-### Caching Options
+### Cache Control
 
-- `--cache-only`: Use cached data only
+- `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
 - `--force-delete-cache`: Clear cache before starting
 
-## Output Files
+## Generated Reports
 
-The tool generates several files in the output directory:
+### SEO Report (seo_report.csv)
 
-- `virtual_sitemap.xml`: URLs found during initial crawl
-- `final_sitemap.xml`: All unique internal URLs discovered
-- `seo_scores.csv`: SEO analysis scores
-- `performance_analysis.csv`: Performance metrics
-- `seo_report.csv`: Detailed SEO findings
-- `summary.json`: Overall statistics
-- `results.json`: Complete results data
+- Basic SEO metrics for each page
+- Title and meta description analysis
+- Heading structure
+- Image and link counts
+- Content length metrics
 
-## Logging
+Fields:
 
-- `error.log`: Error messages
-- `combined.log`: All log messages
+- URL
+- Title
+- Description
+- H1 Count
+- Image Count
+- Images Without Alt
+- Internal Links
+- External Links
+- Page Size
+- Word Count
+- Title Length
+- Description Length
+- Has Structured Data
+- Has Social Tags
+- Last Modified
 
-## Interruption Handling
+### Performance Report (performance_analysis.csv)
 
-The tool handles Ctrl+C (SIGINT) gracefully:
+- Loading speed metrics
+- Paint timing measurements
+- Resource usage statistics
 
-- Saves all current results
-- Generates reports with available data
-- Creates sitemaps with discovered URLs
-- Ensures logs are written before exit
+Fields:
+
+- URL
+- Load Time (ms)
+- First Paint (ms)
+- First Contentful Paint (ms)
+- Largest Contentful Paint (ms)
+- Time to Interactive (ms)
+- Speed Index
+- Total Blocking Time (ms)
+- Cumulative Layout Shift
+- Resource Count
+- Resource Size (KB)
+
+### Accessibility Report (accessibility_report.csv)
+
+- WCAG compliance issues
+- Issues by severity level
+- ARIA and contrast problems
+
+Fields:
+
+- URL
+- Total Issues
+- Critical Issues
+- Serious Issues
+- Moderate Issues
+- Minor Issues
+- WCAG A Issues
+- WCAG AA Issues
+- WCAG AAA Issues
+- Accessibility Score
+- Missing ARIA Labels
+- Contrast Ratio Issues
+- Keyboard Navigation Issues
+
+### Image Optimization Report (image_optimization.csv)
+
+- Image metrics and recommendations
+- Alt text quality analysis
+- Compression suggestions
+
+Fields:
+
+- Page URL
+- Image URL
+- File Size (KB)
+- Dimensions
+- Format
+- Alt Text
+- Alt Text Quality Score
+- Is Responsive
+- Lazy Loaded
+- Compression Level
+- Optimization Score
+- Recommendations
+
+### Link Analysis Report (link_analysis.csv)
+
+- Internal/external link structure
+- Navigation analysis
+- Link quality metrics
+
+Fields:
+
+- Source URL
+- Target URL
+- Link Text
+- Link Type
+- Follow Type
+- HTTP Status
+- Redirect Chain
+- Content Type
+- In Navigation
+- Link Depth
+- Link Quality Score
+
+### Content Quality Report (content_quality.csv)
+
+- Content analysis metrics
+- Readability scores
+- Keyword analysis
+
+Fields:
+
+- URL
+- Word Count
+- Readability Score
+- Keyword Density
+- Heading Structure Score
+- Content Freshness Score
+- Content Uniqueness Score
+- Grammar Score
+- Media Richness Score
+- Top Keywords
+- Overall Content Score
+
+### Security Report (security_report.csv)
+
+- Security implementation analysis
+- Vulnerability detection
+- SSL certificate details
+
+Fields:
+
+- URL
+- HTTPS Implementation
+- Security Headers
+- Mixed Content Issues
+- Cookie Security
+- Content Security Policy
+- XSS Protection
+- SSL Certificate Details
+- Vulnerabilities Found
+- Overall Security Score
+
+## Log Files
+
+- `combined.log`: Complete activity log
+  - All processing steps
+  - Information messages
+  - Warning messages
+  
+- `error.log`: Error-only log file
+  - Processing errors
+  - Connection issues
+  - Validation failures
+
+## Cache Management
+
+The tool maintains a cache to improve performance:
+
+- Cache location: `.cache` directory
+- Cache format: JSON files
+- Cache naming: MD5 hash of URLs
+
+### Cache Control Options
+
+- `--cache-only`: Use only cached data
+- `--no-cache`: Disable caching
+- `--force-delete-cache`: Clear existing cache
+
+## Troubleshooting
+
+### Common Issues
+
+Connection Timeouts
+
+```bash
+Error: ETIMEDOUT
+```
+
+Solution: Check internet connection and try again
+
+Invalid URLs
+
+```bash
+Error: Invalid URL format
+```
+
+Solution: Ensure URL includes protocol (http:// or https://)
+
+Memory Issues
+
+```bash
+JavaScript heap out of memory
+```
+
+Solution: Reduce number of URLs using -l option
+
+### Error Messages
+
+- `Invalid sitemap format`: Check if URL points to valid sitemap
+- `Failed to parse HTML`: Check if URL returns valid HTML
+- `Network error`: Check internet connection
+- `Permission denied`: Check directory permissions
+
+## Best Practices
+
+1. Start Small
+   - Test with few URLs first
+   - Use -l option to limit processing
+
+2. Monitor Logs
+   - Check error.log for issues
+   - Use --log-level debug for details
+
+3. Regular Cache Cleanup
+   - Use --force-delete-cache periodically
+   - Clear cache if behavior seems incorrect
+
+## Support
+
+For issues and questions:
+
+- Check error logs first
+- Verify input parameters
+- Check documentation
+- Submit issue with full error details

@@ -2,226 +2,7 @@
 
 ## Overview
 
-A Node.js tool for analyzing website SEO and performance metrics.
-
-## Data Architecture
-
-### Source of Truth
-
-- results.json is the authoritative source of all collected data
-- All report files (CSV, XML) are generated from results.json
-- No direct data collection in report generation phase
-- Consistent data formatting across all outputs
-
-### Data Structure
-
-- results.json contains:
-  - performanceAnalysis: Array of page data including:
-    - Performance metrics:
-      - url, lastmod
-      - loadTime, domContentLoaded
-      - firstPaint, firstContentfulPaint
-      - timeToInteractive, largestContentfulPaint
-    - Content metrics:
-      - title, metaDescription, h1
-      - wordCount, h1Count, h2Count, h3Count
-      - imagesCount, imagesWithoutAlt
-      - internalLinksCount, externalLinksCount
-    - Technical metrics:
-      - pageSize (in bytes)
-      - scriptsCount, stylesheetsCount
-      - formsCount, tablesCount
-      - jsErrors, pa11yIssuesCount
-    - Image data:
-      - images: Array of {src, alt, width, height}
-    - SEO details:
-      - score, titleOptimization
-      - metaDescriptionOptimization
-      - contentQuality, internalLinking
-    - Accessibility metrics:
-      - WCAG compliance data
-      - Issue types and severity
-      - Accessibility scores
-    - Security metrics:
-      - HTTPS status
-      - Security headers
-      - Mixed content issues
-      - Cookie security
-    - Link analysis:
-      - Broken links
-      - Redirect chains
-      - Nofollow links
-      - Anchor text data
-    - Content quality metrics:
-      - Readability scores
-      - Keyword density
-      - Duplicate content metrics
-
-### Sample Data Fragment
-
-```json
-{
-  "performanceAnalysis": [{
-    "url": "https://example.com/page",
-    "lastmod": "2025-01-16T15:30:45.892Z",
-    "wordCount": 3153,
-    "h1Count": 2,
-    "imagesCount": 2,
-    "images": [
-      {
-        "src": "./media_1.png",
-        "alt": "Description",
-        "width": "1087",
-        "height": "486"
-      }
-    ],
-    "imagesWithoutAlt": 2,
-    "internalLinksCount": 22,
-    "title": "Page Title",
-    "metaDescription": "Page description...",
-    "pageSize": 43104,
-    "pa11yIssuesCount": 5,
-    "details": {
-      "score": 79,
-      "titleOptimization": 85,
-      "metaDescriptionOptimization": 90,
-      "contentQuality": 75,
-      "internalLinking": 70
-    }
-  }]
-}
-```
-
-### Report Generation
-
-- SEO Report (seo_report.csv):
-  - URL
-  - Title presence and content
-  - Meta description presence and content
-  - H1 tag count
-  - Image count and alt text usage
-  - Internal/external link counts
-  - Page size and word count
-
-- Performance Analysis (performance_analysis.csv):
-  - Load time
-  - First paint timing
-  - First contentful paint timing
-  - Page size
-  - Resource count
-
-- SEO Scores (seo_scores.csv):
-  - Overall score
-  - Title optimization score
-  - Meta description score
-  - Content quality score
-  - Link structure score
-
-- Accessibility Report (accessibility_report.csv):
-  - URL
-  - Pa11y issues count
-  - Issue types and severity
-  - WCAG compliance levels
-  - Accessibility score
-
-- Image Optimization Report (image_optimization.csv):
-  - URL
-  - Images without alt text
-  - Image dimensions
-  - File sizes
-  - Compression opportunities
-
-- Link Analysis Report (link_analysis.csv):
-  - URL
-  - Broken links
-  - Redirect chains
-  - Nofollow links
-  - Anchor text analysis
-
-- Content Quality Report (content_quality.csv):
-  - URL
-  - Word count distribution
-  - Readability scores
-  - Keyword density
-  - Duplicate content detection
-
-- Security Report (security_report.csv):
-  - URL
-  - HTTPS usage
-  - Security headers presence
-  - Mixed content issues
-  - Cookie security
-
-- Sitemaps:
-  - virtual_sitemap.xml: Initial crawl results
-  - final_sitemap.xml: Complete site structure
-
-### Data Quality
-
-- No direct data collection in report phase
-- All data modifications happen before results.json
-- Reports must be reproducible from results.json
-- Data consistency checks between reports
-- Validation of required fields
-- Error handling for missing data
-
-### Data Formatting
-
-- Time measurements:
-  - All time values in milliseconds
-  - Round to nearest integer
-  - Example: 105.79ms → 106ms
-
-- Scores and metrics:
-  - Two decimal places for all scores
-  - Round integers for counts and sizes
-  - Format rules:
-    - Time values: Math.round()
-    - Scores: Number(x.toFixed(2))
-    - Counts: Math.round()
-    - Sizes: Math.round()
-
-- Report headers:
-  - Include units in column headers
-  - Example: "Load Time (ms)", "Page Size (bytes)"
-  - Units by type:
-    - Time: (ms)
-    - Size: (bytes)
-    - Scores: no units (0-100)
-    - Counts: no units
-
-### Error Handling
-
-- Retry failed requests
-- Validate data completeness
-- Validate report data against results.json
-- Log all errors with stack traces
-- Consistent error object format
-
-### Performance
-
-- Async/await for I/O operations
-- Efficient data structures
-- Single source of truth (results.json)
-- Minimal memory usage
-- Caching of network requests
-
-### Code Quality
-
-- JSDoc documentation
-- Consistent error handling patterns
-- Input validation for edge cases
-- Airbnb style guide compliance
-- Proper type checking
-- Comprehensive logging
-
-### Testing Requirements
-
-- Unit tests for core functions
-- Integration tests for data flow
-- Validation tests for output formats
-- Error case coverage
-- Report format validation
+A Node.js tool for comprehensive website analysis, including SEO, performance, accessibility, content quality, and security metrics.
 
 ## Core Features
 
@@ -230,47 +11,237 @@ A Node.js tool for analyzing website SEO and performance metrics.
 - Process sitemap URLs
 - Handle relative/absolute URLs
 - Validate URL formats
+- URL normalization and caching
+- Handle redirects and errors
 
-### Analysis
+### Analysis Features
 
-- Two-phase analysis:
-  1. Data Collection (into results.json)
-  2. Report Generation (from results.json)
-- SEO metrics collection
-- Performance metrics
-- Accessibility testing
-- Content analysis
-- Link structure analysis
-- Security assessment
-- Image optimization analysis
+#### SEO Analysis
 
-### Output Generation
+- Title and meta description evaluation
+- Heading structure analysis
+- URL structure analysis
+- Internal/external link analysis
+- Image alt text validation
+- Structured data validation
+- Social media tag verification
 
-- Generate all reports from results.json data
-- No direct data collection during report generation
-- Reports should reflect exact data from results.json
-- All reports listed in Report Generation section
-- Results JSON (source of truth, complete data set)
+#### Performance Analysis
+
+- Load time measurement
+- First paint timing
+- First contentful paint
+- Largest contentful paint
+- Time to interactive
+- Speed index
+- Total blocking time
+- Resource usage metrics
+
+#### Accessibility Analysis
+
+- WCAG 2.1 compliance checking
+- Automated accessibility testing
+- Issue categorization by severity
+- ARIA label validation
+- Color contrast checking
+- Keyboard navigation testing
+- Screen reader compatibility
+
+#### Content Analysis
+
+- Word count metrics
+- Readability scoring
+- Keyword density analysis
+- Heading structure validation
+- Content freshness evaluation
+- Media richness scoring
+- Duplicate content detection
+
+#### Link Analysis
+
+- Internal/external link validation
+- Dead link detection
+- Redirect chain analysis
+- Link depth calculation
+- Navigation structure analysis
+- Anchor text evaluation
+- Link quality scoring
+
+#### Security Analysis
+
+- HTTPS implementation check
+- Security headers validation
+- Mixed content detection
+- Cookie security analysis
+- Content Security Policy validation
+- XSS protection verification
+- SSL certificate validation
+- Vulnerability scanning
+
+### Report Generation
+
+#### SEO Report (seo_report.csv)
+
+- URL
+- Title presence and content
+- Meta description analysis
+- H1 tag count
+- Image count and alt text
+- Internal/external link counts
+- Page size and word count
+
+#### Performance Report (performance_analysis.csv)
+
+- Load time metrics
+- Paint timing metrics
+- Interactive timing
+- Performance scores
+- Resource usage
+- Page size analysis
+
+#### Accessibility Report (accessibility_report.csv)
+
+- Total issues count
+- Issues by severity
+- WCAG compliance levels
+- ARIA issues
+- Contrast issues
+- Navigation issues
+- Remediation suggestions
+
+#### Image Report (image_optimization.csv)
+
+- Image dimensions
+- File sizes
+- Alt text quality
+- Responsive image implementation
+- Lazy loading status
+- Compression recommendations
+- Optimization scores
+
+#### Link Report (link_analysis.csv)
+
+- Source and target URLs
+- Link types
+- HTTP status
+- Redirect chains
+- Navigation context
+- Link depth
+- Link quality scores
+
+#### Content Report (content_quality.csv)
+
+- Word count
+- Readability scores
+- Keyword density
+- Heading structure
+- Content freshness
+- Media richness
+- Overall quality score
+
+#### Security Report (security_report.csv)
+
+- HTTPS status
+- Security headers
+- Mixed content issues
+- Cookie security
+- CSP analysis
+- XSS protection
+- SSL certificate details
+- Vulnerability count
+
+### Data Quality
+
+- Single source of truth (results.json)
+- Consistent data formatting
+- Validation of required fields
+- Error handling for missing data
+- Data consistency checks
+- Complete error logging
+
+### Performance Requirements
+
+- Asynchronous processing
+- Efficient data structures
+- Memory usage optimization
+- Request rate limiting
+- Caching support
+- Parallel processing where possible
+
+### Code Quality
+
+- Modern JavaScript (ES modules)
+- Comprehensive error handling
+- Detailed logging
+- JSDoc documentation
+- Consistent code style
+- Input validation
+- Type checking
+
+### Testing Requirements
+
+- Unit tests for core functions
+- Integration tests for workflows
+- Performance benchmarks
+- Error case coverage
+- Data validation tests
 
 ## Technical Requirements
 
-### Data Flow
+### Supported Node.js Version
 
-1. Collect all data into results.json
-2. Validate collected data completeness
-3. Generate reports from results.json
-4. Validate report data matches results.json
+- Node.js >= 20.0.0
 
-### Data Validation
+### Dependencies
 
-- Ensure all required fields present in results.json
-- Verify data types and ranges
-- Check for missing or invalid values
-- Compare report output against source data
+- csv-writer (report generation)
+- Pa11y (accessibility testing)
+- Winston (logging)
+- Commander (CLI)
+- Cheerio (HTML parsing)
+- Axios (HTTP requests)
 
-### Performance2
+### File Organization
 
-- Async/await for I/O
-- Efficient data structures
-- Single source of truth (results.json)
-- Minimal memory usage
+```terminal
+project/
+├── docs/           # Documentation
+├── src/           # Source code
+│   ├── main.js    # Main logic
+│   └── utils/     # Utilities
+├── tests/         # Test files
+├── results/       # Generated reports
+└── logs/          # Log files
+```
+
+### Error Handling
+
+- Comprehensive error catching
+- Detailed error logging
+- Recovery mechanisms
+- User-friendly error messages
+- Error tracking and reporting
+
+### Logging
+
+- Multiple log levels
+- Separate error logs
+- Activity tracking
+- Performance monitoring
+- Debug information
+
+## Security Considerations
+
+- Safe URL handling
+- Input sanitization
+- Rate limiting
+- Error message security
+- Secure dependency versions
+- SSL/TLS best practices
+
+## Future Enhancements
+
+- Enhanced content analysis
+- Natural language processing
+- Performance optimization
+- Additional report types
