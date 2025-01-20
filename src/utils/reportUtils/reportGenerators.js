@@ -1,14 +1,14 @@
-import { createObjectCsvWriter } from 'csv-writer';
-import path from 'path';
-import { formatScore } from './formatUtils.js';
-import { analyzePa11yResults, createEmptyAnalysis } from './accessibilityAnalysis.js';
+import { analyzePa11yResults } from './accessibilityAnalysis.js';
+import { createEmptyAnalysis, calculateLinkDepth, getImageFormat } from './formatUtils.js';
 import { analyzeImage } from './imageAnalysis.js';
 import { analyzeLinkQuality, getLinkType, isInNavigation } from './linkAnalysis.js';
 import { analyzeContentQuality } from './contentAnalysis.js';
 import { analyzeSecurityFeatures } from './securityAnalysis.js';
+import { createObjectCsvWriter } from 'csv-writer';
+import path from 'path';
 
 /**
- * Generate SEO report
+ * Generate basic SEO report
  */
 export async function generateSeoReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -216,7 +216,7 @@ export async function generateImageOptimizationReport(results, outputDir) {
         imageUrl: image.src,
         fileSize: Math.round((image.size || 0) / 1024),
         dimensions: `${image.width || '?'}x${image.height || '?'}`,
-        format: analysis.format,
+        format: getImageFormat(image.src),
         altText: image.alt || '',
         altScore: analysis.altScore.toFixed(2),
         isResponsive: image.srcset ? 'Yes' : 'No',
@@ -267,7 +267,7 @@ export async function generateLinkAnalysisReport(results, outputDir) {
         redirectChain: (link.redirects || []).join(' → '),
         contentType: link.contentType || 'unknown',
         inNavigation: isInNavigation(link) ? 'Yes' : 'No',
-        linkDepth: analysis.linkDepth,
+        linkDepth: calculateLinkDepth(link.url),
         linkQuality: analysis.qualityScore.toFixed(2)
       });
     });
@@ -357,4 +357,8 @@ export async function generateSecurityReport(results, outputDir) {
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Security report generated with ${reportData.length} records`);
+}
+
+function formatScore(score) {
+  return typeof score === 'number' ? score.toFixed(2) : '0.00';
 }
