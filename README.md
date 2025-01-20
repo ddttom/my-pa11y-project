@@ -88,6 +88,15 @@ seo-audit-tool/
 ├── src/           # Source code
 │   ├── main.js
 │   └── utils/     # Utility functions
+│       ├── reportUtils/  # Report generation modules
+│       │   ├── formatUtils.js        # Formatting utilities
+│       │   ├── accessibilityAnalysis.js # Accessibility analysis
+│       │   ├── imageAnalysis.js      # Image analysis
+│       │   ├── linkAnalysis.js       # Link analysis
+│       │   ├── contentAnalysis.js    # Content quality analysis
+│       │   ├── securityAnalysis.js   # Security analysis
+│       │   └── reportGenerators.js   # Report generation functions
+│       └── reports.js    # Main report coordination
 ├── index.js       # Entry point
 ├── README.md
 ├── combined.log   # Complete activity log
