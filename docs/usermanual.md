@@ -234,6 +234,42 @@ The tool maintains a cache to improve performance:
 - `--no-cache`: Disable caching
 - `--force-delete-cache`: Clear existing cache
 
+## Network Error Handling
+
+The tool includes robust network error handling that:
+
+1. Automatically detects network-related errors
+2. Provides clear console messages about the issue
+3. Allows retrying after fixing the problem
+4. Handles both regular network requests and browser operations
+
+### Network Error Types
+
+- DNS failures
+- Connection timeouts
+- Host unreachable errors
+- Browser network errors
+- SSL/TLS handshake failures
+- Rate limiting errors
+
+### Retry Mechanism
+
+When a network error occurs:
+
+1. The tool will pause and display error details
+2. You'll be prompted to retry after fixing the issue
+3. The tool will automatically retry up to 3 times
+4. You can cancel the operation if needed
+
+### Example Network Error Flow
+
+```bash
+[ERROR] Network error: Could not connect to example.com
+Reason: ETIMEDOUT
+Would you like to retry? (yes/no): yes
+Retrying connection... (attempt 1/3)
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -282,6 +318,11 @@ Solution: Reduce number of URLs using -l option
 3. Regular Cache Cleanup
    - Use --force-delete-cache periodically
    - Clear cache if behavior seems incorrect
+
+4. Handle Network Issues
+   - Check internet connection before starting
+   - Use retry mechanism when network errors occur
+   - Monitor network stability during long runs
 
 ## Support
 

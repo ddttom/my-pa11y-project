@@ -1,6 +1,7 @@
 import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
 import { generateReports } from './utils/reports.js';
 import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHandler.js';
+import { executeNetworkOperation, executeBrowserNetworkOperation } from './utils/networkUtils.js';
 
 /**
  * Run tests on a sitemap or webpage
@@ -17,7 +18,10 @@ export async function runTestsOnSitemap() {
   try {
     // Phase 1: Get URLs
     global.auditcore.logger.info('Phase 1: Getting sitemap URLs...');
-    const urls = await getUrlsFromSitemap(sitemapUrl, limit);
+    const urls = await executeNetworkOperation(
+      () => getUrlsFromSitemap(sitemapUrl, limit),
+      'sitemap URL retrieval'
+    );
     
     if (!urls || urls.length === 0) {
       global.auditcore.logger.warn('No valid URLs found to process');
@@ -28,14 +32,20 @@ export async function runTestsOnSitemap() {
 
     // Phase 2: Process URLs
     global.auditcore.logger.info('Phase 2: Processing URLs...');
-    const results = await processSitemapUrls(urls);
+    const results = await executeBrowserNetworkOperation(
+      () => processSitemapUrls(urls),
+      'URL processing'
+    );
 
     // Update current results for shutdown handler
     updateCurrentResults(results);
 
     // Phase 3: Generate Reports
     global.auditcore.logger.info('Phase 3: Generating reports...');
-    await generateReports(results, urls, outputDir);
+    await executeNetworkOperation(
+      () => generateReports(results, urls, outputDir),
+      'report generation'
+    );
 
     return results;
   } catch (error) {

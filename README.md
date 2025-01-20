@@ -96,6 +96,7 @@ seo-audit-tool/
 │       │   ├── contentAnalysis.js    # Content quality analysis
 │       │   ├── securityAnalysis.js   # Security analysis
 │       │   └── reportGenerators.js   # Report generation functions
+│       ├── networkUtils.js # Network error handling
 │       └── reports.js    # Main report coordination
 ├── index.js       # Entry point
 ├── README.md
@@ -114,6 +115,22 @@ seo-audit-tool/
 - Accessibility testing (Pa11y)
 - Virtual and final sitemap generation
 - Graceful error recovery
+- Enhanced network error handling with retry mechanism
+
+## Network Error Handling
+
+The tool includes robust network error handling that:
+
+1. Detects network-related errors automatically
+2. Provides clear console messages about the issue
+3. Allows the user to retry after fixing the problem
+4. Handles both regular network requests and browser operations
+5. Implements automatic retries with user confirmation
+6. Provides detailed error classification for:
+   - DNS failures
+   - Connection timeouts
+   - Host unreachable errors
+   - Browser network errors
 
 ## Requirements
 
