@@ -26,7 +26,10 @@ export function countSyllables(text) {
 export function getImageFormat(src) {
   if (!src) return 'unknown';
   try {
-    const ext = src.split('.').pop().toLowerCase();
+    // Remove query string if present
+    const cleanSrc = src.split('?')[0];
+    // Get the last part after splitting by dots
+    const ext = cleanSrc.split('.').pop().toLowerCase();
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext) ? ext : 'unknown';
   } catch {
     return 'unknown';

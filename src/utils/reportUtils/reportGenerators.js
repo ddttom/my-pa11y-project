@@ -286,9 +286,6 @@ export async function generateContentQualityReport(results, outputDir) {
     header: [
       { id: 'url', title: 'URL' },
       { id: 'wordCount', title: 'Word Count' },
-      { id: 'readabilityScore', title: 'Readability Score' },
-      { id: 'keywordDensity', title: 'Keyword Density' },
-      { id: 'headingStructure', title: 'Heading Structure Score' },
       { id: 'contentFreshness', title: 'Content Freshness Score' },
       { id: 'uniqueContent', title: 'Content Uniqueness Score' },
       { id: 'grammarScore', title: 'Grammar Score' },
@@ -303,9 +300,6 @@ export async function generateContentQualityReport(results, outputDir) {
     return {
       url: page.url,
       wordCount: page.wordCount || 0,
-      readabilityScore: analysis.readabilityScore.toFixed(2),
-      keywordDensity: analysis.keywordDensity.toFixed(2),
-      headingStructure: analysis.headingStructureScore.toFixed(2),
       contentFreshness: analysis.freshnessScore.toFixed(2),
       uniqueContent: analysis.uniquenessScore.toFixed(2),
       grammarScore: analysis.grammarScore.toFixed(2),

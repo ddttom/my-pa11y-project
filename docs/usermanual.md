@@ -172,16 +172,13 @@ Fields:
 ### Content Quality Report (content_quality.csv)
 
 - Content analysis metrics
-- Readability scores
-- Keyword analysis
+- Content freshness and uniqueness
+- Media richness analysis
 
 Fields:
 
 - URL
 - Word Count
-- Readability Score
-- Keyword Density
-- Heading Structure Score
 - Content Freshness Score
 - Content Uniqueness Score
 - Grammar Score

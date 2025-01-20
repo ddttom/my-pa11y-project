@@ -4,13 +4,19 @@ import { countSyllables } from './formatUtils.js';
  * Calculate readability score using Flesch Reading Ease
  */
 export function calculateReadabilityScore(content) {
-  if (!content) return 0;
+  if (!content || typeof content !== 'string') {
+    global.auditcore.logger.debug('Invalid content for readability analysis');
+    return 0;
+  }
   
   const words = content.split(/\s+/).length;
   const sentences = content.split(/[.!?]+/).length;
   const syllables = countSyllables(content);
 
-  if (sentences === 0) return 0;
+  if (sentences === 0 || words === 0) {
+    global.auditcore.logger.debug('Insufficient content for readability analysis');
+    return 0;
+  }
 
   // Flesch Reading Ease score
   const score = 206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words);
@@ -21,12 +27,18 @@ export function calculateReadabilityScore(content) {
  * Calculate keyword density
  */
 export function calculateKeywordDensity(content) {
-  if (!content) return 0;
+  if (!content || typeof content !== 'string') {
+    global.auditcore.logger.debug('Invalid content for keyword density analysis');
+    return 0;
+  }
   
   const words = content.toLowerCase().split(/\s+/);
   const wordCount = words.length;
   
-  if (wordCount === 0) return 0;
+  if (wordCount === 0) {
+    global.auditcore.logger.debug('No words found for keyword density analysis');
+    return 0;
+  }
 
   const frequency = words.reduce((acc, word) => {
     if (word.length > 3) { // Skip short words
@@ -46,7 +58,10 @@ export function calculateKeywordDensity(content) {
  * Analyze heading structure
  */
 export function analyzeHeadingStructure(headings) {
-  if (!headings) return 0;
+  if (!headings || typeof headings !== 'object') {
+    global.auditcore.logger.debug('Invalid headings data for analysis');
+    return 0;
+  }
   
   let score = 100;
   
@@ -158,6 +173,8 @@ export function analyzeContentQuality(page) {
     };
   }
 
+  global.auditcore.logger.debug(`Analyzing content quality for page: ${page.url}`);
+  
   const readabilityScore = calculateReadabilityScore(page.content);
   const keywordDensity = calculateKeywordDensity(page.content);
   const headingStructureScore = analyzeHeadingStructure({
