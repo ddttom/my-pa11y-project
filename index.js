@@ -22,7 +22,7 @@ program
   .option(
     '-s, --sitemap <url>', 
     'URL of the sitemap to process', 
-    'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
+    'https://www.icann.org'
   )
   .option('-o, --output <directory>', 'Output directory for results', 'results')
   .option(

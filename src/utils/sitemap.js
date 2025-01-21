@@ -1,6 +1,5 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
- 
 
 // Node.js built-in modules
 import { gunzip } from 'zlib';
@@ -9,7 +8,6 @@ import fs from 'fs/promises';
 import path from 'path';
 
 // Third-party modules
-import axios from 'axios';
 import { parseStringPromise } from 'xml2js';
 import jsdom from 'jsdom';
 import { create } from 'xmlbuilder2';
@@ -17,9 +15,11 @@ import { create } from 'xmlbuilder2';
 // Local modules
 import { UrlProcessor } from './urlProcessor.js';
 import { isValidUrl, isValidXML } from './urlUtils.js';
+import { createAxiosInstance, executePuppeteerOperation } from './networkUtils.js';
 
 const { JSDOM } = jsdom;
 const gunzipAsync = promisify(gunzip);
+const axiosInstance = createAxiosInstance();
 
 /**
  * Gets URLs from a sitemap or HTML page
@@ -27,20 +27,37 @@ const gunzipAsync = promisify(gunzip);
 export async function getUrlsFromSitemap(url, limit = -1) {
   try {
     global.auditcore.logger.info(`Fetching URL: ${url}`);
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
-    const { 'content-type': contentType } = response.headers;
-    let content = response.data;
+    
+    // First check if URL is a sitemap
+    const isSitemap = url.toLowerCase().endsWith('sitemap.xml');
+    
+    let content;
+    try {
+      const response = await axiosInstance.get(url, { 
+        responseType: 'arraybuffer'
+      });
+      
+      const { 'content-type': contentType } = response.headers;
+      content = response.data;
 
-    if (contentType?.includes('gzip')) {
-      global.auditcore.logger.debug('Processing gzipped content');
-      content = await gunzipAsync(content);
+      if (contentType?.includes('gzip')) {
+        global.auditcore.logger.debug('Processing gzipped content');
+        content = await gunzipAsync(content);
+      }
+
+      content = content.toString('utf-8');
+    } catch (error) {
+      if (error.response?.status === 403 && !isSitemap) {
+        global.auditcore.logger.info('403 Forbidden - Falling back to Puppeteer');
+        return await processWithPuppeteer(url, limit);
+      }
+      throw error;
     }
 
-    content = content.toString('utf-8');
     global.auditcore.logger.debug(`Content length: ${content.length}`);
 
     let urls = [];
-    if (isValidXML(content)) {
+    if (isSitemap && isValidXML(content)) {
       global.auditcore.logger.info('Processing as XML sitemap');
       const parsed = await parseStringPromise(content);
       urls = await processSitemapContent(parsed, limit);
@@ -69,6 +86,187 @@ export async function getUrlsFromSitemap(url, limit = -1) {
     global.auditcore.logger.error(`Error fetching ${url}:`, error);
     throw error;
   }
+}
+
+/**
+ * Process URL with Puppeteer when blocked
+ */
+async function processWithPuppeteer(baseUrl, limit) {
+  return await executePuppeteerOperation(async (page) => {
+    global.auditcore.logger.info(`Processing ${baseUrl} with Puppeteer`);
+    
+    try {
+      // Create results directory if it doesn't exist
+      await fs.mkdir(global.auditcore.options.output, { recursive: true });
+
+      // Set up request interception to wait for all resources
+      await page.setRequestInterception(true);
+      const pendingRequests = new Set();
+      const finishedRequests = new Set();
+      
+      const requestHandler = (request) => {
+        // Skip font requests to prevent hanging
+        if (request.resourceType() === 'font') {
+          global.auditcore.logger.debug(`Skipping font request: ${request.url()}`);
+          request.abort();
+          return;
+        }
+
+        pendingRequests.add(request);
+        request.continue();
+      };
+
+      const requestFinishedHandler = (request) => {
+        pendingRequests.delete(request);
+        finishedRequests.add(request);
+      };
+
+      const requestFailedHandler = (request) => {
+        pendingRequests.delete(request);
+        finishedRequests.add(request);
+      };
+
+      page.on('request', requestHandler);
+      page.on('requestfinished', requestFinishedHandler);
+      page.on('requestfailed', requestFailedHandler);
+
+      // Navigate to the page and wait for network activity
+      await page.goto(baseUrl, {
+        waitUntil: 'networkidle2',
+        timeout: 60000
+      });
+
+      // Take a screenshot for debugging
+      const screenshotPath = path.join(global.auditcore.options.output, 'screenshot.png');
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      global.auditcore.logger.info(`Saved screenshot to: ${screenshotPath}`);
+
+      // Wait for additional network activity with timeout
+      const maxWaitTime = 10000; // 10 seconds
+      const startTime = Date.now();
+      while (pendingRequests.size > 0 && Date.now() - startTime < maxWaitTime) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        global.auditcore.logger.debug(`Waiting for ${pendingRequests.size} pending requests...`);
+        
+        // Log details of pending requests
+        if (pendingRequests.size > 0) {
+          const pendingUrls = Array.from(pendingRequests).map(req => req.url());
+          global.auditcore.logger.debug(`Pending requests: ${pendingUrls.join(', ')}`);
+        }
+      }
+
+      // If there are still pending requests, abort them
+      if (pendingRequests.size > 0) {
+        global.auditcore.logger.warn(`Aborting ${pendingRequests.size} pending requests after timeout`);
+        for (const request of pendingRequests) {
+          try {
+            request.abort('timedout');
+          } catch (error) {
+            global.auditcore.logger.debug(`Error aborting request: ${error.message}`);
+          }
+        }
+      }
+
+      // Clean up request listeners
+      page.off('request', requestHandler);
+      page.off('requestfinished', requestFinishedHandler);
+      page.off('requestfailed', requestFailedHandler);
+
+      // Debug page state
+      const pageState = await page.evaluate(() => {
+        return {
+          documentReadyState: document.readyState,
+          bodyExists: !!document.body,
+          bodyContentLength: document.body?.innerHTML?.length || 0,
+          headContentLength: document.head?.innerHTML?.length || 0,
+          windowLocation: window.location.href,
+          windowInnerWidth: window.innerWidth,
+          windowInnerHeight: window.innerHeight,
+          scriptsCount: document.scripts.length,
+          stylesheetsCount: document.styleSheets.length,
+          iframesCount: document.querySelectorAll('iframe').length
+        };
+      });
+      global.auditcore.logger.debug('Page state:', pageState);
+
+      // Get the rendered HTML content using multiple methods
+      let content = '';
+      try {
+        // Try getting outer HTML first
+        content = await page.evaluate(() => document.documentElement.outerHTML);
+        if (!content || content.length < 100) {
+          // Fallback to inner HTML if outer HTML is empty
+          content = await page.evaluate(() => document.documentElement.innerHTML);
+        }
+        if (!content || content.length < 100) {
+          // Final fallback to body content
+          content = await page.evaluate(() => document.body.innerHTML);
+        }
+      } catch (error) {
+        global.auditcore.logger.error('Error extracting HTML content:', error);
+      }
+
+      global.auditcore.logger.debug('Rendered HTML content:', content.substring(0, 1000) + '...');
+
+      // Extract links using Puppeteer's DOM access - only <a> tags with href
+      const links = await page.evaluate((baseUrl) => {
+        const results = [];
+        const baseUrlObj = new URL(baseUrl);
+        
+        // Function to recursively extract links from shadow DOM
+        function extractFromShadow(root) {
+          // Extract only <a> tags with href
+          const elements = root.querySelectorAll('a[href]');
+          elements.forEach(el => {
+            try {
+              const href = el.href;
+              if (href && !href.startsWith('javascript:')) {
+                const url = new URL(href, baseUrl);
+                if (url.hostname === baseUrlObj.hostname) {
+                  results.push({
+                    href: url.href,
+                    text: el.textContent?.trim() || el.innerText?.trim() || ''
+                  });
+                }
+              }
+            } catch (error) {
+              console.warn('Error processing link:', error);
+            }
+          });
+
+          // Check for shadow roots
+          const shadowRoots = root.querySelectorAll('*');
+          shadowRoots.forEach(el => {
+            if (el.shadowRoot) {
+              extractFromShadow(el.shadowRoot);
+            }
+          });
+        }
+
+        // Start extraction from document body
+        extractFromShadow(document.body);
+        
+        return results;
+      }, baseUrl);
+
+      global.auditcore.logger.debug(`Found ${links.length} links using Puppeteer`);
+      
+      // Process the extracted links
+      const urls = links.map(link => ({
+        url: link.href,
+        lastmod: new Date().toISOString(),
+        changefreq: 'daily',
+        priority: 0.7,
+        text: link.text
+      }));
+
+      global.auditcore.logger.info(`Found ${urls.length} internal URLs using Puppeteer`);
+      return limit > 0 ? urls.slice(0, limit) : urls;
+    } catch (error) {
+      global.auditcore.logger.error('Error in Puppeteer processing:', error);
+      throw error;
+    }
+  }, 'Puppeteer URL processing');
 }
 
 /**
