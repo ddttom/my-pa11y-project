@@ -1,59 +1,3 @@
-import { countSyllables } from './formatUtils.js';
-
-/**
- * Calculate readability score using Flesch Reading Ease
- */
-export function calculateReadabilityScore(content) {
-  if (!content || typeof content !== 'string') {
-    global.auditcore.logger.debug('Invalid content for readability analysis');
-    return 0;
-  }
-  
-  const words = content.split(/\s+/).length;
-  const sentences = content.split(/[.!?]+/).length;
-  const syllables = countSyllables(content);
-
-  if (sentences === 0 || words === 0) {
-    global.auditcore.logger.debug('Insufficient content for readability analysis');
-    return 0;
-  }
-
-  // Flesch Reading Ease score
-  const score = 206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words);
-  return Math.max(0, Math.min(100, score));
-}
-
-/**
- * Calculate keyword density
- */
-export function calculateKeywordDensity(content) {
-  if (!content || typeof content !== 'string') {
-    global.auditcore.logger.debug('Invalid content for keyword density analysis');
-    return 0;
-  }
-  
-  const words = content.toLowerCase().split(/\s+/);
-  const wordCount = words.length;
-  
-  if (wordCount === 0) {
-    global.auditcore.logger.debug('No words found for keyword density analysis');
-    return 0;
-  }
-
-  const frequency = words.reduce((acc, word) => {
-    if (word.length > 3) { // Skip short words
-      acc[word] = (acc[word] || 0) + 1;
-    }
-    return acc;
-  }, {});
-
-  const topKeywords = Object.entries(frequency)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5);
-
-  return topKeywords.reduce((sum, [,count]) => sum + (count / wordCount), 0) / 5;
-}
-
 /**
  * Analyze heading structure
  */
@@ -161,8 +105,6 @@ export function analyzeContentQuality(page) {
   if (!page) {
     global.auditcore.logger.warn('No page data provided for content analysis');
     return {
-      readabilityScore: 0,
-      keywordDensity: 0,
       headingStructureScore: 0,
       freshnessScore: 0,
       uniquenessScore: 0,
@@ -175,8 +117,6 @@ export function analyzeContentQuality(page) {
 
   global.auditcore.logger.debug(`Analyzing content quality for page: ${page.url}`);
   
-  const readabilityScore = calculateReadabilityScore(page.content);
-  const keywordDensity = calculateKeywordDensity(page.content);
   const headingStructureScore = analyzeHeadingStructure({
     h1Count: page.h1Count,
     h2Count: page.h2Count,
@@ -194,20 +134,16 @@ export function analyzeContentQuality(page) {
     interactiveElements: page.interactiveElements
   });
 
-  // Calculate overall score with weights
+  // Calculate overall score with updated weights
   const weights = {
-    readability: 0.2,
-    keywords: 0.15,
-    headings: 0.15,
-    freshness: 0.15,
-    uniqueness: 0.1,
-    grammar: 0.1,
+    headings: 0.3,
+    freshness: 0.25,
+    uniqueness: 0.15,
+    grammar: 0.15,
     media: 0.15
   };
 
   const overallScore = (
-    readabilityScore * weights.readability +
-    keywordDensity * 100 * weights.keywords +
     headingStructureScore * weights.headings +
     freshnessScore * weights.freshness +
     uniquenessScore * weights.uniqueness +
@@ -216,8 +152,6 @@ export function analyzeContentQuality(page) {
   );
 
   return {
-    readabilityScore,
-    keywordDensity,
     headingStructureScore,
     freshnessScore,
     uniquenessScore,

@@ -51,8 +51,6 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Content Analysis
 
 - Word count metrics
-- Readability scoring
-- Keyword density analysis
 - Heading structure validation
 - Content freshness evaluation
 - Media richness scoring
@@ -134,8 +132,6 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Content Report (content_quality.csv)
 
 - Word count
-- Readability scores
-- Keyword density
 - Heading structure
 - Content freshness
 - Media richness

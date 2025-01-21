@@ -25,7 +25,7 @@
   - Enhanced issue categorization by severity and impact
   - Required manual checks tracking
   - Improved remediation suggestions
-- Content analysis (readability, keywords, headings)
+- Content analysis (headings, freshness, media richness)
 - Link structure analysis (internal/external links with quality scores)
 - Image optimization analysis (complete with recommendations)
 - Security analysis (HTTPS, headers, vulnerabilities)
@@ -38,7 +38,7 @@
 - Accessibility report (WCAG 2.1 compliance, issues by severity and guideline)
 - Image optimization report (detailed analysis with recommendations)
 - Link analysis report (complete link structure analysis)
-- Content quality report (readability and structure scoring)
+- Content quality report (structure and freshness scoring)
 - Security report (full security feature analysis)
 
 ### Recent Improvements
@@ -50,7 +50,6 @@
   - Improved remediation suggestions
 - Implemented detailed image optimization recommendations
 - Added security vulnerability detection
-- Enhanced content analysis with readability scoring
 - Added link quality assessment
 - Implemented robust error handling
 - Added detailed logging throughout

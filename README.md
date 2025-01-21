@@ -7,7 +7,7 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **SEO Analysis**: Detailed SEO metrics and scoring
 - **Performance Metrics**: Comprehensive page load analysis
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
-- **Content Quality**: Readability and structure analysis
+- **Content Quality**: Structure and freshness analysis
 - **Security Analysis**: HTTPS implementation and vulnerability scanning
 - **Automatic Cache Management**: .cache directory creation and management
 - **Robust Error Handling**: Network error recovery and retry mechanism
