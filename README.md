@@ -11,6 +11,7 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **Security Analysis**: HTTPS implementation and vulnerability scanning
 - **Automatic Cache Management**: .cache directory creation and management
 - **Robust Error Handling**: Network error recovery and retry mechanism
+- **URL Processing Control**: Limit number of URLs processed using count parameter
 
 ## Data Structure
 
@@ -140,6 +141,7 @@ seo-audit-tool/
 - Graceful error recovery
 - Enhanced network error handling with retry mechanism
 - Automatic cache directory management
+- URL processing control with count parameter
 
 ## Network Error Handling
 
@@ -178,6 +180,7 @@ npm start -- -s <url> -o <output-dir> [options]
 - `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")
 - `-o, --output <directory>`: Output directory for results (default: "results")
 - `-l, --limit <number>`: Limit the number of URLs to test (-1 for all)
+- `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
 - `--no-puppeteer`: Bypass Puppeteer execution

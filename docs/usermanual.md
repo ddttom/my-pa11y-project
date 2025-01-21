@@ -36,6 +36,9 @@ npm start -- -s https://example.com/sitemap.xml -o custom-results
 
 # Limit the number of URLs to analyze
 npm start -- -s https://example.com/sitemap.xml -l 10
+
+# Limit number of files to include in both passes
+npm start -- -s https://example.com/sitemap.xml -c 50
 ```
 
 ## Command Line Options
@@ -50,6 +53,7 @@ npm start -- -s https://example.com/sitemap.xml -l 10
 
 - `-o, --output <directory>`: Output directory for results (default: "results")
 - `-l, --limit <number>`: Maximum URLs to process (-1 for all)
+- `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--log-level <level>`: Set logging detail (error, warn, info, debug)
 
 ### Cache Control
@@ -296,7 +300,7 @@ Memory Issues
 JavaScript heap out of memory
 ```
 
-Solution: Reduce number of URLs using -l option
+Solution: Reduce number of URLs using -l or -c options
 
 ### Error Messages
 
@@ -309,7 +313,7 @@ Solution: Reduce number of URLs using -l option
 
 1. Start Small
    - Test with few URLs first
-   - Use -l option to limit processing
+   - Use -l or -c options to limit processing
 
 2. Monitor Logs
    - Check error.log for issues

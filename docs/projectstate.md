@@ -14,6 +14,7 @@
 - Implemented caching for better performance
 - Enhanced network error handling with retry mechanism
 - Automatic .cache directory creation during initialization
+- Added count parameter to limit number of URLs processed
 
 ✅ **Analysis Features**
 
@@ -60,6 +61,7 @@
 - Fixed module import/export issues
 - Improved code organization and module structure
 - Added automatic .cache directory creation during initialization
+- Added count parameter to limit number of URLs processed
 
 ### Fixed Issues
 
@@ -126,6 +128,7 @@ None currently identified.
 - Network error handling: ✅
 - Module imports/exports: ✅
 - Cache directory initialization: ✅
+- Count parameter implementation: ✅
 
 ## Dependencies
 

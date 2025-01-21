@@ -14,6 +14,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - URL normalization and caching
 - Handle redirects and errors
 - Automatic .cache directory creation during initialization
+- Limit number of URLs processed using count parameter
 
 ### Analysis Features
 

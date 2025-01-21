@@ -13,6 +13,9 @@ const logFiles = ['error.log', 'combined.log'];
 // Default URL for analysis when none is provided
 const defurl ='https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
 
+// Default count of files to include in both passes (-1 means infinite)
+const defcount = -1;
+
 // Clear existing log files before starting new session
 logFiles.forEach((file) => {
   if (fs.existsSync(file)) {
@@ -37,7 +40,13 @@ program
     '-l, --limit <number>',
     'Limit the number of URLs to test. Use -1 to test all URLs.',
     (value) => parseInt(value, 10),
-    -1
+    defcount
+  )
+  .option(
+    '-c, --count <number>',
+    'Number of files to include in both passes (virtual XML creation and analysis). Use -1 for infinite.',
+    (value) => parseInt(value, 10),
+    defcount
   )
   .option('--cache-only', 'Use only cached data, do not fetch new data')
   .option('--no-cache', 'Disable caching, always fetch fresh data')

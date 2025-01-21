@@ -7,7 +7,7 @@ import { executeNetworkOperation, executeBrowserNetworkOperation } from './utils
  * Run tests on a sitemap or webpage
  */
 export async function runTestsOnSitemap() {
-  const { sitemap: sitemapUrl, output: outputDir, limit } = global.auditcore.options;
+  const { sitemap: sitemapUrl, output: outputDir, count } = global.auditcore.options;
 
   // Setup shutdown handler at the start
   setupShutdownHandler();
@@ -19,7 +19,7 @@ export async function runTestsOnSitemap() {
     // Phase 1: Get URLs
     global.auditcore.logger.info('Phase 1: Getting sitemap URLs...');
     const urls = await executeNetworkOperation(
-      () => getUrlsFromSitemap(sitemapUrl, limit),
+      () => getUrlsFromSitemap(sitemapUrl, count),
       'sitemap URL retrieval'
     );
     
@@ -33,7 +33,7 @@ export async function runTestsOnSitemap() {
     // Phase 2: Process URLs
     global.auditcore.logger.info('Phase 2: Processing URLs...');
     const results = await executeBrowserNetworkOperation(
-      () => processSitemapUrls(urls),
+      () => processSitemapUrls(urls.slice(0, count === -1 ? urls.length : count)),
       'URL processing'
     );
 

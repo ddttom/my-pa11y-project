@@ -31,13 +31,6 @@ const axiosInstance = createAxiosInstance();
  * @param {String} url - URL to process (sitemap or HTML page)
  * @param {Number} limit - Maximum number of URLs to return (-1 for all)
  * @returns {Promise<Array>} - Array of processed URLs
- * 
- * Features:
- * - Handles both XML sitemaps and HTML pages
- * - Automatic gzip decompression
- * - Fallback to Puppeteer for blocked requests
- * - URL validation and filtering
- * - Virtual sitemap generation
  */
 export async function getUrlsFromSitemap(url, limit = -1) {
   try {
@@ -108,12 +101,6 @@ export async function getUrlsFromSitemap(url, limit = -1) {
  * @param {String} baseUrl - URL to process
  * @param {Number} limit - Maximum number of URLs to return
  * @returns {Promise<Array>} - Array of processed URLs
- * 
- * Features:
- * - Realistic browser simulation
- * - Resource interception and management
- * - Shadow DOM support
- * - Screenshot debugging
  */
 async function processWithPuppeteer(baseUrl, limit) {
   return await executePuppeteerOperation(async (page) => {
@@ -233,7 +220,7 @@ async function processWithPuppeteer(baseUrl, limit) {
       global.auditcore.logger.debug('Rendered HTML content:', content.substring(0, 1000) + '...');
 
       // Extract links using Puppeteer's DOM access - only <a> tags with href
-      const links = await page.evaluate((baseUrl) => {
+      const links = await page.evaluate((baseUrl, limit) => {
         const results = [];
         const baseUrlObj = new URL(baseUrl);
         
@@ -243,6 +230,11 @@ async function processWithPuppeteer(baseUrl, limit) {
           const elements = root.querySelectorAll('a[href]');
           elements.forEach(el => {
             try {
+              // Stop if we've reached the limit
+              if (limit > 0 && results.length >= limit) {
+                return;
+              }
+
               const href = el.href;
               if (href && !href.startsWith('javascript:')) {
                 const url = new URL(href, baseUrl);
@@ -271,7 +263,7 @@ async function processWithPuppeteer(baseUrl, limit) {
         extractFromShadow(document.body);
         
         return results;
-      }, baseUrl);
+      }, baseUrl, limit);
 
       global.auditcore.logger.debug(`Found ${links.length} links using Puppeteer`);
       
@@ -285,7 +277,7 @@ async function processWithPuppeteer(baseUrl, limit) {
       }));
 
       global.auditcore.logger.info(`Found ${urls.length} internal URLs using Puppeteer`);
-      return limit > 0 ? urls.slice(0, limit) : urls;
+      return urls;
     } catch (error) {
       global.auditcore.logger.error('Error in Puppeteer processing:', error);
       throw error;
@@ -356,6 +348,11 @@ async function processHtmlContent(content, baseUrl, limit) {
   
   for (const link of links) {
     try {
+      // Stop if we've reached the limit
+      if (limit > 0 && urls.length >= limit) {
+        break;
+      }
+
       const href = link.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
         continue;
@@ -380,7 +377,7 @@ async function processHtmlContent(content, baseUrl, limit) {
   global.auditcore.logger.info(`Found ${urls.length} internal URLs`);
   global.auditcore.logger.debug('Internal URLs:', urls.map(u => u.url).join('\n'));
   
-  return limit > 0 ? urls.slice(0, limit) : urls;
+  return urls;
 }
 
 /**
@@ -425,17 +422,21 @@ export async function processSitemapUrls(urls) {
  * @returns {Object} - Virtual sitemap object
  */
 export async function generateVirtualSitemap(urls) {
-  global.auditcore.logger.info(`Generating virtual sitemap for ${urls.length} URLs`);
-  
   if (!Array.isArray(urls) || urls.length === 0) {
     global.auditcore.logger.warn('No URLs provided for virtual sitemap');
     return null;
   }
 
+  // Apply count limit if specified
+  const count = global.auditcore.options.count;
+  const limitedUrls = count > 0 ? urls.slice(0, count) : urls;
+  
+  global.auditcore.logger.info(`Generating virtual sitemap for ${limitedUrls.length} URLs`);
+
   const sitemap = {
     urlset: {
       '@xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
-      url: urls.map((url) => ({
+      url: limitedUrls.map((url) => ({
         loc: url.url,
         lastmod: url.lastmod || new Date().toISOString(),
         changefreq: url.changefreq || 'monthly',
