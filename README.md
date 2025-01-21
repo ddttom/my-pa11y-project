@@ -1,6 +1,16 @@
 # SEO Analysis Tool
 
-A Node.js tool for analyzing website SEO and performance metrics.
+A Node.js tool for analyzing website SEO and performance metrics with comprehensive accessibility testing.
+
+## Key Features
+
+- **SEO Analysis**: Detailed SEO metrics and scoring
+- **Performance Metrics**: Comprehensive page load analysis
+- **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
+- **Content Quality**: Readability and structure analysis
+- **Security Analysis**: HTTPS implementation and vulnerability scanning
+- **Automatic Cache Management**: .cache directory creation and management
+- **Robust Error Handling**: Network error recovery and retry mechanism
 
 ## Data Structure
 
@@ -21,6 +31,13 @@ The tool collects comprehensive data about each page and stores it in `results.j
 - Image analysis (count, dimensions, alt text)
 - Internal and external link counts
 - Meta information (title, description)
+
+#### Accessibility Metrics
+
+- WCAG 2.1 compliance levels (A, AA, AAA)
+- Issue severity tracking (Critical, Serious, Moderate, Minor)
+- Required manual checks
+- Remediation suggestions
 
 #### Technical Metrics
 
@@ -57,7 +74,12 @@ The tool collects comprehensive data about each page and stores it in `results.j
     }
   ],
   "pageSize": 43104,
-  "pa11yIssuesCount": 5
+  "pa11yIssuesCount": 5,
+  "wcagCompliance": {
+    "A": 0,
+    "AA": 2,
+    "AAA": 1
+  }
 }
 ```
 
@@ -98,6 +120,7 @@ seo-audit-tool/
 │       │   └── reportGenerators.js   # Report generation functions
 │       ├── networkUtils.js # Network error handling
 │       └── reports.js    # Main report coordination
+├── .cache/        # Cache directory (automatically created)
 ├── index.js       # Entry point
 ├── README.md
 ├── combined.log   # Complete activity log
@@ -112,10 +135,11 @@ seo-audit-tool/
 - Internal/external link analysis
 - SEO score calculation
 - Performance metrics
-- Accessibility testing (Pa11y)
+- WCAG 2.1 accessibility testing (Pa11y)
 - Virtual and final sitemap generation
 - Graceful error recovery
 - Enhanced network error handling with retry mechanism
+- Automatic cache directory management
 
 ## Network Error Handling
 
@@ -176,6 +200,12 @@ npm start -- -s <url> -o <output-dir> [options]
   - First contentful paint timing
   - Page size
   - Resource count
+
+- `accessibility_report.csv`: WCAG 2.1 compliance analysis
+  - Total issues by severity
+  - WCAG compliance levels
+  - Required manual checks
+  - Remediation suggestions
 
 - `seo_scores.csv`: Detailed SEO scoring
   - Overall score

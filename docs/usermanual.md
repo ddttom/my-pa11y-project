@@ -108,9 +108,10 @@ Fields:
 
 ### Accessibility Report (accessibility_report.csv)
 
-- WCAG compliance issues
-- Issues by severity level
-- ARIA and contrast problems
+- WCAG 2.1 compliance analysis
+- Issues by severity level and guideline
+- Required manual checks
+- Remediation suggestions
 
 Fields:
 
@@ -123,10 +124,12 @@ Fields:
 - WCAG A Issues
 - WCAG AA Issues
 - WCAG AAA Issues
-- Accessibility Score
+- WCAG 2.1 Compliance Percentage
 - Missing ARIA Labels
 - Contrast Ratio Issues
 - Keyboard Navigation Issues
+- Required Manual Checks
+- Remediation Suggestions
 
 ### Image Optimization Report (image_optimization.csv)
 
@@ -221,7 +224,7 @@ Fields:
 
 The tool maintains a cache to improve performance:
 
-- Cache location: `.cache` directory
+- Cache location: `.cache` directory (automatically created if missing)
 - Cache format: JSON files
 - Cache naming: MD5 hash of URLs
 

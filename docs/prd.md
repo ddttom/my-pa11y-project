@@ -13,6 +13,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Validate URL formats
 - URL normalization and caching
 - Handle redirects and errors
+- Automatic .cache directory creation during initialization
 
 ### Analysis Features
 
@@ -39,13 +40,12 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 
 #### Accessibility Analysis
 
-- WCAG 2.1 compliance checking
-- Automated accessibility testing
-- Issue categorization by severity
-- ARIA label validation
-- Color contrast checking
-- Keyboard navigation testing
-- Screen reader compatibility
+- WCAG 2.1 compliance checking across all levels (A, AA, AAA)
+- Automated accessibility testing with Pa11y integration
+- Issue categorization by severity and impact
+- Remediation suggestions for identified issues
+- Required manual checks tracking
+- Detailed WCAG guideline mapping
 
 #### Content Analysis
 
@@ -101,12 +101,13 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 
 #### Accessibility Report (accessibility_report.csv)
 
-- Total issues count
-- Issues by severity
-- WCAG compliance levels
-- ARIA issues
-- Contrast issues
-- Navigation issues
+- URL of analyzed page
+- Total number of accessibility issues
+- Breakdown by WCAG guideline violations
+- Issue severity levels (Critical, Serious, Moderate, Minor)
+- Automated test results
+- Required manual checks list
+- WCAG 2.1 compliance percentage
 - Remediation suggestions
 
 #### Image Report (image_optimization.csv)
@@ -167,6 +168,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Request rate limiting
 - Caching support
 - Parallel processing where possible
+- Automatic cache directory management
 
 ### Code Quality
 
@@ -211,7 +213,8 @@ project/
 │   └── utils/     # Utilities
 ├── tests/         # Test files
 ├── results/       # Generated reports
-└── logs/          # Log files
+├── logs/          # Log files
+└── .cache/        # Cache directory
 ```
 
 ### Error Handling

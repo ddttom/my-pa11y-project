@@ -13,12 +13,17 @@
 - Validates and normalizes URLs
 - Implemented caching for better performance
 - Enhanced network error handling with retry mechanism
+- Automatic .cache directory creation during initialization
 
 ✅ **Analysis Features**
 
 - SEO analysis (complete analysis with weighted scoring)
 - Performance metrics (load time, paint metrics, etc.)
 - Accessibility testing (Pa11y integration with detailed reporting)
+  - WCAG 2.1 compliance tracking
+  - Enhanced issue categorization by severity and impact
+  - Required manual checks tracking
+  - Improved remediation suggestions
 - Content analysis (readability, keywords, headings)
 - Link structure analysis (internal/external links with quality scores)
 - Image optimization analysis (complete with recommendations)
@@ -29,7 +34,7 @@
 - SEO report (all key metrics and scores)
 - Performance analysis (comprehensive metrics)
 - SEO scores (weighted scoring with detailed breakdown)
-- Accessibility report (WCAG compliance, issues by severity)
+- Accessibility report (WCAG 2.1 compliance, issues by severity and guideline)
 - Image optimization report (detailed analysis with recommendations)
 - Link analysis report (complete link structure analysis)
 - Content quality report (readability and structure scoring)
@@ -38,6 +43,10 @@
 ### Recent Improvements
 
 - Added comprehensive accessibility analysis with Pa11y integration
+  - WCAG 2.1 compliance tracking
+  - Enhanced issue categorization
+  - Required manual checks tracking
+  - Improved remediation suggestions
 - Implemented detailed image optimization recommendations
 - Added security vulnerability detection
 - Enhanced content analysis with readability scoring
@@ -50,6 +59,7 @@
 - Added browser-specific network error handling
 - Fixed module import/export issues
 - Improved code organization and module structure
+- Added automatic .cache directory creation during initialization
 
 ### Fixed Issues
 
@@ -59,6 +69,7 @@
 - Added proper data validation
 - Improved error reporting
 - Added missing metrics
+- Enhanced accessibility report format
 
 ✅ Analysis Modules
 
@@ -67,6 +78,7 @@
 - Enhanced content scoring
 - Fixed image analysis
 - Fixed module import/export issues
+- Improved WCAG compliance tracking
 
 ✅ Code Quality
 
@@ -76,6 +88,7 @@
 - Better type checking
 - Enhanced network error handling
 - Improved module organization
+- Added cache directory initialization
 
 ## Known Issues
 
@@ -112,6 +125,7 @@ None currently identified.
 - Code style: ✅
 - Network error handling: ✅
 - Module imports/exports: ✅
+- Cache directory initialization: ✅
 
 ## Dependencies
 

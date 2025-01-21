@@ -1,8 +1,21 @@
+/**
+ * Network utilities for handling HTTP requests with robust error handling
+ * Includes retry mechanisms, Puppeteer fallback, and request throttling
+ */
+
 import axios from 'axios';
 import puppeteer from 'puppeteer';
 
 /**
- * Execute a network operation with enhanced error handling
+ * Executes a network operation with enhanced error handling and retries
+ * @param {Function} operation - Network operation to execute
+ * @param {String} operationName - Name of operation for logging
+ * @returns {Promise} - Result of the network operation
+ * 
+ * Features:
+ * - Automatic retries with exponential backoff
+ * - Fallback to Puppeteer for blocked requests
+ * - Detailed error logging
  */
 export async function executeNetworkOperation(operation, operationName) {
   let retryCount = 0;
@@ -45,7 +58,15 @@ export async function executeNetworkOperation(operation, operationName) {
 }
 
 /**
- * Execute a browser-based network operation using Puppeteer
+ * Executes a network operation using Puppeteer for browser-based requests
+ * @param {Function} operation - Operation to execute in browser context
+ * @param {String} operationName - Name of operation for logging
+ * @returns {Promise} - Result of the browser operation
+ * 
+ * Features:
+ * - Realistic browser headers and settings
+ * - Automatic resource cleanup
+ * - Error handling and logging
  */
 export async function executePuppeteerOperation(operation, operationName) {
   let browser;
@@ -63,7 +84,7 @@ export async function executePuppeteerOperation(operation, operationName) {
 
     const page = await browser.newPage();
     
-    // Set realistic browser headers
+    // Set realistic browser headers to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',
@@ -87,7 +108,15 @@ export async function executePuppeteerOperation(operation, operationName) {
 }
 
 /**
- * Execute a browser-based network operation with enhanced error handling
+ * Executes browser-based network operations with enhanced error handling
+ * @param {Function} operation - Browser operation to execute
+ * @param {String} operationName - Name of operation for logging
+ * @returns {Promise} - Result of the browser operation
+ * 
+ * Features:
+ * - Retry mechanism for browser-specific errors
+ * - Fallback to Puppeteer when blocked
+ * - Exponential backoff for retries
  */
 export async function executeBrowserNetworkOperation(operation, operationName) {
   let retryCount = 0;
@@ -130,7 +159,9 @@ export async function executeBrowserNetworkOperation(operation, operationName) {
 }
 
 /**
- * Check if an error is network-related
+ * Determines if an error is network-related
+ * @param {Error} error - Error to check
+ * @returns {Boolean} - True if error is network-related
  */
 function isNetworkError(error) {
   const networkErrorCodes = [
@@ -152,7 +183,9 @@ function isNetworkError(error) {
 }
 
 /**
- * Check if an error indicates the request was blocked
+ * Determines if an error indicates the request was blocked
+ * @param {Error} error - Error to check
+ * @returns {Boolean} - True if request was blocked
  */
 function isBlockedError(error) {
   return error.response?.status === 403 || // Forbidden
@@ -165,7 +198,13 @@ function isBlockedError(error) {
 }
 
 /**
- * Create axios instance with default headers and throttling
+ * Creates a configured axios instance with throttling and headers
+ * @returns {Object} - Configured axios instance
+ * 
+ * Features:
+ * - Realistic browser headers
+ * - Request throttling
+ * - Timeout handling
  */
 export function createAxiosInstance() {
   const instance = axios.create({
@@ -185,7 +224,7 @@ export function createAxiosInstance() {
     }
   });
 
-  // Add request throttling
+  // Add request throttling to avoid rate limiting
   instance.interceptors.request.use(async config => {
     await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay between requests
     return config;

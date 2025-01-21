@@ -1,28 +1,36 @@
-// index.js
+// Main entry point for the SEO analysis tool
+// Handles command line arguments, initialization, and main execution flow
 
 import { program } from 'commander';
 import winston from 'winston';
 import fs from 'fs';
+import path from 'path';
 import { runTestsOnSitemap } from './src/main.js';
 
+// Log files to manage application logging
 const logFiles = ['error.log', 'combined.log'];
 
-// Clear log files before starting
+// Default URL for analysis when none is provided
+const defurl ='https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
+
+// Clear existing log files before starting new session
 logFiles.forEach((file) => {
   if (fs.existsSync(file)) {
     try {
-      fs.writeFileSync(file, '', { flag: 'w' }); // Truncate the file
+      // Truncate log files to ensure fresh start
+      fs.writeFileSync(file, '', { flag: 'w' });
     } catch (err) {
       console.error(`Failed to clear log file ${file}:`, err);
     }
   }
 });
 
+// Configure command line options using Commander
 program
   .option(
     '-s, --sitemap <url>', 
     'URL of the sitemap to process', 
-    'https://www.icann.org'
+    defurl
   )
   .option('-o, --output <directory>', 'Output directory for results', 'results')
   .option(
@@ -42,14 +50,16 @@ program
   )
   .parse(process.argv);
 
+// Global configuration object for shared state
 global.auditcore = {
   logger: null,
   options: program.opts(),
 };
 
+// Destructure output directory from options
 const { output: outputDir } = global.auditcore.options;
 
-// Clear output directory at startup
+// Clear existing output directory to ensure fresh results
 if (fs.existsSync(outputDir)) {
   try {
     fs.rmSync(outputDir, { recursive: true, force: true });
@@ -60,7 +70,7 @@ if (fs.existsSync(outputDir)) {
   }
 }
 
-// Setup logger
+// Configure Winston logger with console and file transports
 global.auditcore.logger = winston.createLogger({
   level: global.auditcore.options.logLevel,
   format: winston.format.combine(
@@ -76,10 +86,38 @@ global.auditcore.logger = winston.createLogger({
   ],
 });
 
+/**
+ * Ensures cache directory exists for storing temporary data
+ * Creates directory if it doesn't exist and handles errors
+ */
+function ensureCacheDirectory() {
+  const cacheDir = path.join(process.cwd(), '.cache');
+  try {
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+      global.auditcore.logger.info(`Created cache directory at ${cacheDir}`);
+    }
+  } catch (error) {
+    global.auditcore.logger.error(`Failed to create cache directory: ${error.message}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Main execution function
+ * - Initializes cache directory
+ * - Runs analysis on sitemap
+ * - Handles results and errors
+ */
 async function main() {
   try {
+    // Ensure cache directory exists before running tests
+    ensureCacheDirectory();
+    
+    // Execute main analysis process
     const results = await runTestsOnSitemap();
     
+    // Handle specific analysis errors
     if (results && results.errors) {
       results.errors.forEach((error) => {
         if (error.includes('openGraphTags must be an object')) {
@@ -95,6 +133,7 @@ async function main() {
   }
 }
 
+// Execute main function with error handling
 main().catch((error) => {
   global.auditcore.logger.error('Uncaught exception:', error);
   process.exit(1);

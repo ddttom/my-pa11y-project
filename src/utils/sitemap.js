@@ -1,3 +1,8 @@
+/**
+ * Sitemap processing utilities for extracting and managing URLs
+ * Includes XML sitemap parsing, HTML link extraction, and Puppeteer fallback
+ */
+
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 
@@ -22,7 +27,17 @@ const gunzipAsync = promisify(gunzip);
 const axiosInstance = createAxiosInstance();
 
 /**
- * Gets URLs from a sitemap or HTML page
+ * Main function for extracting URLs from sitemap or HTML page
+ * @param {String} url - URL to process (sitemap or HTML page)
+ * @param {Number} limit - Maximum number of URLs to return (-1 for all)
+ * @returns {Promise<Array>} - Array of processed URLs
+ * 
+ * Features:
+ * - Handles both XML sitemaps and HTML pages
+ * - Automatic gzip decompression
+ * - Fallback to Puppeteer for blocked requests
+ * - URL validation and filtering
+ * - Virtual sitemap generation
  */
 export async function getUrlsFromSitemap(url, limit = -1) {
   try {
@@ -89,7 +104,16 @@ export async function getUrlsFromSitemap(url, limit = -1) {
 }
 
 /**
- * Process URL with Puppeteer when blocked
+ * Fallback to Puppeteer for blocked requests
+ * @param {String} baseUrl - URL to process
+ * @param {Number} limit - Maximum number of URLs to return
+ * @returns {Promise<Array>} - Array of processed URLs
+ * 
+ * Features:
+ * - Realistic browser simulation
+ * - Resource interception and management
+ * - Shadow DOM support
+ * - Screenshot debugging
  */
 async function processWithPuppeteer(baseUrl, limit) {
   return await executePuppeteerOperation(async (page) => {
@@ -271,6 +295,9 @@ async function processWithPuppeteer(baseUrl, limit) {
 
 /**
  * Process URLs from sitemap content
+ * @param {Object} parsed - Parsed XML content
+ * @param {Number} limit - Maximum number of URLs to return
+ * @returns {Promise<Array>} - Array of processed URLs
  */
 async function processSitemapContent(parsed, limit) {
   const urls = [];
@@ -306,6 +333,10 @@ async function processSitemapContent(parsed, limit) {
 
 /**
  * Process URLs from HTML content
+ * @param {String} content - HTML content to process
+ * @param {String} baseUrl - Base URL for relative links
+ * @param {Number} limit - Maximum number of URLs to return
+ * @returns {Promise<Array>} - Array of processed URLs
  */
 async function processHtmlContent(content, baseUrl, limit) {
   if (!content || !baseUrl) {
@@ -354,6 +385,8 @@ async function processHtmlContent(content, baseUrl, limit) {
 
 /**
  * Extract URLs from sitemap urlset
+ * @param {Object} urlset - Parsed urlset object
+ * @returns {Array} - Array of extracted URLs
  */
 function extractUrlsFromUrlset(urlset) {
   if (!urlset?.url) {
@@ -378,6 +411,8 @@ function extractUrlsFromUrlset(urlset) {
 
 /**
  * Process sitemap URLs with the URL processor
+ * @param {Array} urls - URLs to process
+ * @returns {Promise<Array>} - Processed URLs
  */
 export async function processSitemapUrls(urls) {
   const processor = new UrlProcessor();
@@ -386,6 +421,8 @@ export async function processSitemapUrls(urls) {
 
 /**
  * Generate a virtual sitemap from processed URLs
+ * @param {Array} urls - URLs to include in sitemap
+ * @returns {Object} - Virtual sitemap object
  */
 export async function generateVirtualSitemap(urls) {
   global.auditcore.logger.info(`Generating virtual sitemap for ${urls.length} URLs`);
@@ -412,6 +449,9 @@ export async function generateVirtualSitemap(urls) {
 
 /**
  * Save virtual sitemap to file
+ * @param {Object} sitemap - Sitemap object to save
+ * @param {String} outputDir - Directory to save sitemap
+ * @returns {Promise<String>} - Path to saved sitemap
  */
 export async function saveVirtualSitemap(sitemap, outputDir) {
   if (!sitemap) {
@@ -436,6 +476,9 @@ export async function saveVirtualSitemap(sitemap, outputDir) {
 
 /**
  * Generate and save final sitemap with all unique URLs
+ * @param {Object} results - Analysis results containing URLs
+ * @param {String} outputDir - Directory to save sitemap
+ * @returns {Promise<String>} - Path to saved sitemap
  */
 export async function saveFinalSitemap(results, outputDir) {
   try {
