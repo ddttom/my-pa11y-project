@@ -10,11 +10,21 @@ import { runTestsOnSitemap } from './src/main.js';
 // Log files to manage application logging
 const logFiles = ['error.log', 'combined.log'];
 
-// Default URL for analysis when none is provided
-const defurl ='https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
+const testnum = 2;
 
+let defurl;
+let defcount;
+
+if (testnum == 1) {
+// Default URL for analysis when none is provided
+defurl ='https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
 // Default count of files to include in both passes (-1 means infinite)
-const defcount = -1;
+defcount = 7;
+}
+else {
+  defurl = 'https://www.icann.org'
+  defcount = 7;
+}
 
 // Clear existing log files before starting new session
 logFiles.forEach((file) => {
