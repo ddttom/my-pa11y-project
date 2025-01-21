@@ -20,11 +20,10 @@ import { create } from 'xmlbuilder2';
 // Local modules
 import { UrlProcessor } from './urlProcessor.js';
 import { isValidUrl, isValidXML } from './urlUtils.js';
-import { createAxiosInstance, executePuppeteerOperation } from './networkUtils.js';
+import { executeNetworkOperation, executePuppeteerOperation } from './networkUtils.js';
 
 const { JSDOM } = jsdom;
 const gunzipAsync = promisify(gunzip);
-const axiosInstance = createAxiosInstance();
 
 /**
  * Main function for extracting URLs from sitemap or HTML page
@@ -41,11 +40,31 @@ export async function getUrlsFromSitemap(url, limit = -1) {
     
     let content;
     try {
-      const response = await axiosInstance.get(url, { 
-        responseType: 'arraybuffer'
-      });
+      const response = await executeNetworkOperation(
+        async () => {
+          const res = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+              'Accept-Encoding': 'gzip, deflate, br'
+            }
+          });
+          
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          
+          const buffer = await res.arrayBuffer();
+          return {
+            data: Buffer.from(buffer),
+            headers: Object.fromEntries(res.headers.entries())
+          };
+        },
+        'URL fetch'
+      );
       
-      const { 'content-type': contentType } = response.headers;
+      const contentType = response.headers['content-type'];
       content = response.data;
 
       if (contentType?.includes('gzip')) {
@@ -55,7 +74,7 @@ export async function getUrlsFromSitemap(url, limit = -1) {
 
       content = content.toString('utf-8');
     } catch (error) {
-      if (error.response?.status === 403 && !isSitemap) {
+      if (error.message.includes('403') && !isSitemap) {
         global.auditcore.logger.info('403 Forbidden - Falling back to Puppeteer');
         return await processWithPuppeteer(url, limit);
       }

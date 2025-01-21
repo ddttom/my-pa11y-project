@@ -1,7 +1,7 @@
 import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
 import { generateReports } from './utils/reports.js';
 import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHandler.js';
-import { executeNetworkOperation, executeBrowserNetworkOperation } from './utils/networkUtils.js';
+import { executeNetworkOperation } from './utils/networkUtils.js';
 
 /**
  * Run tests on a sitemap or webpage
@@ -32,7 +32,7 @@ export async function runTestsOnSitemap() {
 
     // Phase 2: Process URLs
     global.auditcore.logger.info('Phase 2: Processing URLs...');
-    const results = await executeBrowserNetworkOperation(
+    const results = await executeNetworkOperation(
       () => processSitemapUrls(urls.slice(0, count === -1 ? urls.length : count)),
       'URL processing'
     );

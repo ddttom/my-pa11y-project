@@ -3,166 +3,29 @@
  * Includes retry mechanisms, Puppeteer fallback, and request throttling
  */
 
-import axios from 'axios';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
-/**
- * Executes a network operation with enhanced error handling and retries
- * @param {Function} operation - Network operation to execute
- * @param {String} operationName - Name of operation for logging
- * @returns {Promise} - Result of the network operation
- * 
- * Features:
- * - Automatic retries with exponential backoff
- * - Fallback to Puppeteer for blocked requests
- * - Detailed error logging
- */
-export async function executeNetworkOperation(operation, operationName) {
-  let retryCount = 0;
-  const maxRetries = 3;
-  const baseDelay = 1000; // 1 second base delay
+// Add stealth plugin to avoid detection
+puppeteer.use(StealthPlugin());
 
-  while (retryCount < maxRetries) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (isBlockedError(error)) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          // Fallback to Puppeteer for blocked requests
-          global.auditcore.logger.warn('Falling back to Puppeteer for blocked request');
-          return await executePuppeteerOperation(operation, operationName);
-        }
-
-        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        global.auditcore.logger.warn(`Blocked during ${operationName}, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      
-      if (isNetworkError(error)) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          throw new Error(`Network operation failed after ${maxRetries} attempts: ${error.message}`);
-        }
-
-        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        global.auditcore.logger.warn(`Network error during ${operationName}, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-
-      throw error;
-    }
-  }
+// Helper functions
+function isCloudflareChallenge(error) {
+  return error.response?.status === 403 && 
+         error.response?.headers['cf-ray'] && 
+         error.response?.data?.includes('Cloudflare');
 }
 
-/**
- * Executes a network operation using Puppeteer for browser-based requests
- * @param {Function} operation - Operation to execute in browser context
- * @param {String} operationName - Name of operation for logging
- * @returns {Promise} - Result of the browser operation
- * 
- * Features:
- * - Realistic browser headers and settings
- * - Automatic resource cleanup
- * - Error handling and logging
- */
-export async function executePuppeteerOperation(operation, operationName) {
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu'
-      ]
-    });
-
-    const page = await browser.newPage();
-    
-    // Set realistic browser headers to avoid detection
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'Referer': 'https://www.google.com/',
-      'Connection': 'keep-alive'
-    });
-
-    // Execute the operation in the browser context
-    const result = await operation(page);
-    return result;
-  } catch (error) {
-    global.auditcore.logger.error(`Puppeteer operation failed during ${operationName}:`, error);
-    throw error;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
+function isBlockedError(error) {
+  return error.response?.status === 403 || // Forbidden
+         error.response?.status === 429 || // Too Many Requests
+         error.message.includes('blocked') ||
+         error.message.includes('denied') ||
+         error.message.includes('restricted') ||
+         error.message.includes('rate limit') ||
+         error.message.includes('captcha');
 }
 
-/**
- * Executes browser-based network operations with enhanced error handling
- * @param {Function} operation - Browser operation to execute
- * @param {String} operationName - Name of operation for logging
- * @returns {Promise} - Result of the browser operation
- * 
- * Features:
- * - Retry mechanism for browser-specific errors
- * - Fallback to Puppeteer when blocked
- * - Exponential backoff for retries
- */
-export async function executeBrowserNetworkOperation(operation, operationName) {
-  let retryCount = 0;
-  const maxRetries = 3;
-  const baseDelay = 1000; // 1 second base delay
-
-  while (retryCount < maxRetries) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (isBlockedError(error)) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          // Fallback to Puppeteer for blocked requests
-          global.auditcore.logger.warn('Falling back to Puppeteer for blocked request');
-          return await executePuppeteerOperation(operation, operationName);
-        }
-
-        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        global.auditcore.logger.warn(`Browser blocked during ${operationName}, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      
-      if (isNetworkError(error)) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          throw new Error(`Browser network operation failed after ${maxRetries} attempts: ${error.message}`);
-        }
-
-        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        global.auditcore.logger.warn(`Browser network error during ${operationName}, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-
-      throw error;
-    }
-  }
-}
-
-/**
- * Determines if an error is network-related
- * @param {Error} error - Error to check
- * @returns {Boolean} - True if error is network-related
- */
 function isNetworkError(error) {
   const networkErrorCodes = [
     'ENOTFOUND', // DNS lookup failed
@@ -182,53 +45,147 @@ function isNetworkError(error) {
          error.message.includes('net::ERR_CONNECTION_TIMED_OUT');
 }
 
-/**
- * Determines if an error indicates the request was blocked
- * @param {Error} error - Error to check
- * @returns {Boolean} - True if request was blocked
- */
-function isBlockedError(error) {
-  return error.response?.status === 403 || // Forbidden
-         error.response?.status === 429 || // Too Many Requests
-         error.message.includes('blocked') ||
-         error.message.includes('denied') ||
-         error.message.includes('restricted') ||
-         error.message.includes('rate limit') ||
-         error.message.includes('captcha');
-}
+// Main functions
+async function executePuppeteerOperation(operation, operationName, options = {}) {
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920,1080',
+        '--disable-blink-features=AutomationControlled'
+      ],
+      ...options
+    });
 
-/**
- * Creates a configured axios instance with throttling and headers
- * @returns {Object} - Configured axios instance
- * 
- * Features:
- * - Realistic browser headers
- * - Request throttling
- * - Timeout handling
- */
-export function createAxiosInstance() {
-  const instance = axios.create({
-    timeout: 10000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
+    const page = await browser.newPage();
+    
+    // Randomize browser fingerprint
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => false,
+      });
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3],
+      });
+    });
+
+    // Set realistic headers and settings
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9',
       'Accept-Encoding': 'gzip, deflate, br',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none',
-      'Sec-Fetch-User': '?1',
-      'Cache-Control': 'max-age=0'
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+      'Referer': 'https://www.google.com/',
+      'Connection': 'keep-alive'
+    });
+
+    // Randomize viewport and mouse movements
+    await page.setViewport({
+      width: 1920 + Math.floor(Math.random() * 100),
+      height: 1080 + Math.floor(Math.random() * 100),
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      isLandscape: false
+    });
+
+    // Add random delays to mimic human behavior
+    const randomDelay = (min, max) => 
+      new Promise(resolve => setTimeout(resolve, Math.random() * (max - min) + min));
+
+    // Execute the operation with random delays
+    await randomDelay(500, 1500);
+    const result = await operation(page);
+    await randomDelay(500, 1500);
+
+    return result;
+  } catch (error) {
+    global.auditcore.logger.error(`Puppeteer operation failed during ${operationName}:`, error);
+    throw error;
+  } finally {
+    if (browser) {
+      await browser.close();
     }
-  });
-
-  // Add request throttling to avoid rate limiting
-  instance.interceptors.request.use(async config => {
-    await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay between requests
-    return config;
-  });
-
-  return instance;
+  }
 }
+
+async function handleCloudflareChallenge(operation, operationName) {
+  try {
+    global.auditcore.logger.info('Attempting to bypass Cloudflare challenge...');
+    return await executePuppeteerOperation(operation, operationName, {
+      headless: false, // Need visible browser for challenges
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920,1080',
+        '--disable-blink-features=AutomationControlled'
+      ]
+    });
+  } catch (error) {
+    global.auditcore.logger.error('Failed to bypass Cloudflare challenge:', error);
+    throw new Error('Unable to bypass Cloudflare protection. Please try again later or skip this site.');
+  }
+}
+
+async function executeNetworkOperation(operation, operationName) {
+  let retryCount = 0;
+  const maxRetries = 3;
+  const baseDelay = 1000;
+
+  while (retryCount < maxRetries) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (isCloudflareChallenge(error)) {
+        return await handleCloudflareChallenge(operation, operationName);
+      }
+      
+      if (isBlockedError(error)) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          global.auditcore.logger.warn('Falling back to Puppeteer for blocked request');
+          return await executePuppeteerOperation(operation, operationName);
+        }
+
+        const delay = baseDelay * Math.pow(2, retryCount);
+        global.auditcore.logger.warn(`Blocked during ${operationName}, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      if (isNetworkError(error)) {
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          throw new Error(`Network operation failed after ${maxRetries} attempts: ${error.message}`);
+        }
+
+        const delay = baseDelay * Math.pow(2, retryCount);
+        global.auditcore.logger.warn(`Network error during ${operationName}, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
+
+// Export all functions
+export {
+  executeNetworkOperation,
+  executePuppeteerOperation,
+  isCloudflareChallenge,
+  isBlockedError,
+  isNetworkError
+};
