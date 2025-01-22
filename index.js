@@ -21,7 +21,7 @@ import { runTestsOnSitemap } from './src/main.js';
 const logFiles = ['error.log', 'combined.log'];
 
 // Test configuration variables
-const testnum = 2;
+const testnum = 1;
 let defurl;
 let defcount;
 
