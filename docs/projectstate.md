@@ -23,11 +23,19 @@
   - Can be overridden with --include-all-languages flag
   - Enhanced URL extraction logic with automatic detection
   - Centralized language variant checking in report generation
+- Added URL validation with country code restrictions
+  - Skips URLs containing two-character country codes (except /en/)
+  - Returns default metrics for skipped URLs
+  - Logs appropriate warnings for skipped URLs
 
 ✅ **Analysis Features**
 
 - SEO analysis (complete analysis with weighted scoring)
 - Performance metrics (load time, paint metrics, etc.)
+  - Enhanced performance analysis with robust error handling
+  - Added context validation before evaluations
+  - Improved navigation handling
+  - Better cleanup of browser resources
 - Accessibility testing (Pa11y integration with detailed reporting)
   - WCAG 2.1 compliance tracking
   - Enhanced issue categorization by severity and impact
@@ -90,6 +98,11 @@
   - Centralized language variant checking in report generation
   - Updated report generation functions to use new filtering logic
   - Added helper function in reportGenerators.js for consistent checks
+- Enhanced performance analysis with:
+  - Improved navigation handling
+  - Better context validation
+  - Robust error handling
+  - URL validation with country code restrictions
 
 ### Fixed Issues
 
@@ -113,6 +126,8 @@
 - Fixed module import/export issues
 - Improved WCAG compliance tracking
 - Fixed sampling limit handling
+- Fixed performance analysis context destruction issues
+- Improved URL validation handling
 
 ✅ Code Quality
 
@@ -139,6 +154,7 @@ None currently identified.
    - Add performance tests
    - Add sampling limit tests
    - Add results.json detection tests
+   - Add URL validation tests
 
 2. Documentation:
    - Add API documentation
@@ -172,6 +188,7 @@ None currently identified.
 - Results.json detection: ✅
 - Sampling limits: ✅
 - Language variant filtering: ✅
+- URL validation: ✅
 
 ## Dependencies
 
@@ -195,6 +212,7 @@ None currently identified.
 - [src/utils/urlUtils.js](../src/utils/urlUtils.js) - URL processing
 - [src/utils/networkUtils.js](../src/utils/networkUtils.js) - Network error handling
 - [src/utils/reportUtils/](../src/utils/reportUtils/) - Report utilities
+- [src/utils/performanceAnalyzer.js](../src/utils/performanceAnalyzer.js) - Performance analysis
 
 ### Output Files
 
