@@ -98,9 +98,9 @@ export function getImageFormat(src) {
     const cleanSrc = src.split('?')[0];
     // Get the last part after splitting by dots
     const ext = cleanSrc.split('.').pop().toLowerCase();
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext) ? ext : 'unknown';
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext) ? ext : 'img unknown';
   } catch {
-    return 'unknown';
+    return 'img unknown';
   }
 }
 

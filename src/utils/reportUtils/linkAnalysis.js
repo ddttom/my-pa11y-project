@@ -30,7 +30,7 @@ export function analyzeLinkQuality(link) {
  * Determine content type based on URL and response
  */
 function determineContentType(link) {
-  if (!link?.url) return 'unknown';
+  if (!link?.url) return 'link unknown';
   
   // If content type is explicitly provided, use that
   if (link.contentType) {

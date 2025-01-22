@@ -345,7 +345,7 @@ export async function generateLinkAnalysisReport(results, outputDir) {
           followType: link.rel?.includes('nofollow') ? 'NoFollow' : 'Follow',
           status: link.status || 200,
           redirectChain: (link.redirects || []).join(' → '),
-          contentType: link.contentType || 'unknown',
+          contentType: link.contentType || 'html',
           inNavigation: isInNavigation(link) ? 'Yes' : 'No',
           linkDepth: calculateLinkDepth(link.url),
           linkQuality: analysis.qualityScore.toFixed(2)

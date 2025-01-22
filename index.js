@@ -33,7 +33,7 @@ if (testnum == 1) {
   defcount = 7;
 } else {
   defurl = 'https://www.icann.org';
-  defcount = 7;
+  defcount = 20;
 }
 
 // Clear existing log files before starting new session
