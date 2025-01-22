@@ -78,15 +78,17 @@ global.auditcore = {
 // Destructure output directory from options
 const { output: outputDir } = global.auditcore.options;
 
-// Clear existing output directory to ensure fresh results
-if (fs.existsSync(outputDir)) {
-  try {
-    fs.rmSync(outputDir, { recursive: true, force: true });
-    console.log(`Output directory '${outputDir}' removed successfully.`);
-  } catch (err) {
-    console.error(`Failed to remove output directory '${outputDir}':`, err);
-    process.exit(1);
+// Ensure output directory exists
+try {
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+    console.log(`Output directory '${outputDir}' created successfully.`);
+  } else {
+    console.log(`Output directory '${outputDir}' already exists.`);
   }
+} catch (err) {
+  console.error(`Failed to create output directory '${outputDir}':`, err);
+  process.exit(1);
 }
 
 // Configure Winston logger with console and file transports

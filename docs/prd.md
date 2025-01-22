@@ -9,19 +9,22 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 ### URL Processing
 
 - Process sitemap URLs
-- Handle relative/absolute URLs
+- Handle relative/absolute URLs  
 - Validate URL formats
 - URL normalization and caching
 - Handle redirects and errors
 - Automatic .cache directory creation during initialization
 - Limit number of URLs processed using count parameter
+- Preserve existing output directory contents
+- Results file detection and report generation
+- Configurable sampling limits for testing
 
 ### Analysis Features
 
 #### SEO Analysis
 
 - Title and meta description evaluation
-- Heading structure analysis
+- Heading structure analysis  
 - URL structure analysis
 - Internal/external link analysis
 - Image alt text validation
@@ -33,7 +36,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Load time measurement
 - First paint timing
 - First contentful paint
-- Largest contentful paint
+- Largest contentful paint  
 - Time to interactive
 - Speed index
 - Total blocking time
@@ -43,14 +46,14 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 
 - WCAG 2.1 compliance checking across all levels (A, AA, AAA)
 - Automated accessibility testing with Pa11y integration
-- Issue categorization by severity and impact
+- Issue categorization by severity and impact  
 - Remediation suggestions for identified issues
 - Required manual checks tracking
 - Detailed WCAG guideline mapping
 
 #### Content Analysis
 
-- Word count metrics
+- Word count metrics  
 - Heading structure validation
 - Content freshness evaluation
 - Media richness scoring
@@ -59,7 +62,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Link Analysis
 
 - Internal/external link validation
-- Dead link detection
+- Dead link detection  
 - Redirect chain analysis
 - Link depth calculation
 - Navigation structure analysis
@@ -69,30 +72,31 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Security Analysis
 
 - HTTPS implementation check
-- Security headers validation
+- Security headers validation  
 - Mixed content detection
 - Cookie security analysis
 - Content Security Policy validation
 - XSS protection verification
 - SSL certificate validation
 - Vulnerability scanning
+- Cloudflare challenge bypass using Puppeteer with randomized browser fingerprinting and human-like behavior simulation
 
 ### Report Generation
 
 #### SEO Report (seo_report.csv)
 
 - URL
-- Title presence and content
+- Title presence and content  
 - Meta description analysis
 - H1 tag count
 - Image count and alt text
-- Internal/external link counts
+- Internal/external link counts  
 - Page size and word count
 
 #### Performance Report (performance_analysis.csv)
 
 - Load time metrics
-- Paint timing metrics
+- Paint timing metrics  
 - Interactive timing
 - Performance scores
 - Resource usage
@@ -101,7 +105,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Accessibility Report (accessibility_report.csv)
 
 - URL of analyzed page
-- Total number of accessibility issues
+- Total number of accessibility issues  
 - Breakdown by WCAG guideline violations
 - Issue severity levels (Critical, Serious, Moderate, Minor)
 - Automated test results
@@ -112,7 +116,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Image Report (image_optimization.csv)
 
 - Image dimensions
-- File sizes
+- File sizes  
 - Alt text quality
 - Responsive image implementation
 - Lazy loading status
@@ -122,7 +126,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Link Report (link_analysis.csv)
 
 - Source and target URLs
-- Link types
+- Link types  
 - HTTP status
 - Redirect chains
 - Navigation context
@@ -132,7 +136,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Content Report (content_quality.csv)
 
 - Word count
-- Heading structure
+- Heading structure  
 - Content freshness
 - Media richness
 - Overall quality score
@@ -140,13 +144,14 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 #### Security Report (security_report.csv)
 
 - HTTPS status
-- Security headers
+- Security headers  
 - Mixed content issues
 - Cookie security
 - CSP analysis
 - XSS protection
 - SSL certificate details
 - Vulnerability count
+- Cloudflare challenge bypass success rate
 
 ### Data Quality
 
@@ -156,6 +161,10 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Error handling for missing data
 - Data consistency checks
 - Complete error logging
+- Results file detection for report generation
+- Configurable sampling limits for testing
+- Preserved output directory contents
+- Automatic results.json validation
 
 ### Performance Requirements
 
@@ -166,6 +175,8 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Caching support
 - Parallel processing where possible
 - Automatic cache directory management
+- Preserved output directory contents
+- Configurable sampling limits
 
 ### Code Quality
 
@@ -184,6 +195,8 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Performance benchmarks
 - Error case coverage
 - Data validation tests
+- Sampling limit testing
+- Results file detection testing
 
 ## Technical Requirements
 
@@ -199,6 +212,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Commander (CLI)
 - Cheerio (HTML parsing)
 - Axios (HTTP requests)
+- Puppeteer (Cloudflare bypass)
 
 ### File Organization
 
@@ -228,6 +242,7 @@ project/
   - Maximum retry attempts (3 by default)
   - Clear console messages about network issues
   - Support for both regular and browser network operations
+  - Cloudflare challenge detection and bypass capability
 
 ### Logging
 
@@ -241,6 +256,7 @@ project/
   - Retry attempt tracking
   - User interaction logging
   - Browser-specific error details
+  - Cloudflare challenge attempts and outcomes
 
 ## Security Considerations
 
@@ -255,6 +271,7 @@ project/
   - Protected user interaction
   - Browser operation sandboxing
   - Network timeout handling
+  - Cloudflare challenge handling with randomized fingerprints
 
 ## Future Enhancements
 

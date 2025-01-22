@@ -12,6 +12,10 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **Automatic Cache Management**: .cache directory creation and management
 - **Robust Error Handling**: Network error recovery and retry mechanism
 - **URL Processing Control**: Limit number of URLs processed using count parameter
+- **Output Directory Preservation**: Existing output directory contents are preserved
+- **Configurable Sampling**: Test with small samples before full analysis
+- **Results File Detection**: Automatic detection of results.json for report generation
+- **Iterative Testing**: Test reports with small samples, then run full analysis
 
 ## Data Structure
 
@@ -23,7 +27,11 @@ The tool collects comprehensive data about each page and stores it in `results.j
 
 - Load time and DOM content loaded
 - First paint and first contentful paint
-- Time to interactive and largest contentful paint
+- Largest contentful paint
+- Time to interactive
+- Speed index
+- Total blocking time
+- Resource usage metrics
 
 #### Content Analysis
 
@@ -142,6 +150,13 @@ seo-audit-tool/
 - Enhanced network error handling with retry mechanism
 - Automatic cache directory management
 - URL processing control with count parameter
+- Preserved output directory contents
+- Configurable sampling limits for testing
+- Results file detection for report generation
+- Iterative testing workflow:
+  - Test with small samples (e.g., 10 pages)
+  - Review and adjust reports
+  - Run full analysis when satisfied
 
 ## Network Error Handling
 
@@ -157,6 +172,13 @@ The tool includes robust network error handling that:
    - Connection timeouts
    - Host unreachable errors
    - Browser network errors
+7. Includes Cloudflare challenge bypass capability with:
+   - Automatic detection of Cloudflare challenges
+   - Randomized browser fingerprinting
+   - Human-like behavior simulation
+   - Fallback to visible browser mode when needed
+   - Detailed logging of bypass attempts
+   - Configurable retry logic for persistent challenges
 
 ## Requirements
 
@@ -179,6 +201,8 @@ npm start -- -s <url> -o <output-dir> [options]
 
 - `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")
 - `-o, --output <directory>`: Output directory for results (default: "results")
+  - Preserves existing contents if directory exists
+  - Creates directory if it doesn't exist
 - `-l, --limit <number>`: Limit the number of URLs to test (-1 for all)
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--cache-only`: Use only cached data

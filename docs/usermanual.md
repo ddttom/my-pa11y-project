@@ -39,6 +39,15 @@ npm start -- -s https://example.com/sitemap.xml -l 10
 
 # Limit number of files to include in both passes
 npm start -- -s https://example.com/sitemap.xml -c 50
+
+# Test with small sample before full analysis
+npm start -- -s https://example.com/sitemap.xml -l 10 -o test-results
+# Review reports in test-results directory
+# When satisfied, run full analysis:
+npm start -- -s https://example.com/sitemap.xml -l -1 -o final-results
+
+# Generate reports from existing results.json
+npm start -- --cache-only -o reports-from-cache
 ```
 
 ## Command Line Options
@@ -52,6 +61,8 @@ npm start -- -s https://example.com/sitemap.xml -c 50
 ### Optional Settings
 
 - `-o, --output <directory>`: Output directory for results (default: "results")
+  - Preserves existing contents if directory exists
+  - Creates directory if it doesn't exist
 - `-l, --limit <number>`: Maximum URLs to process (-1 for all)
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--log-level <level>`: Set logging detail (error, warn, info, debug)
