@@ -19,9 +19,13 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Results file detection and report generation
 - Configurable sampling limits for testing
 - Language variant filtering (skip non-English variants by default)
+  - Enhanced URL extraction logic with automatic detection
+  - Centralized language variant checking in report generation
   - Default: Skip 2-character language variants (e.g., /ar, /fr)
   - Only process /en and /us variants by default
   - Override with --include-all-languages flag
+  - Helper function in reportGenerators.js for consistent checks
+  - Updated report generation functions to use new filtering logic
 
 ### Analysis Features
 

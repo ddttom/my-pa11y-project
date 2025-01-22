@@ -21,6 +21,8 @@
 - Added language variant filtering (skip non-English variants by default)
   - Only processes /en and /us variants by default
   - Can be overridden with --include-all-languages flag
+  - Enhanced URL extraction logic with automatic detection
+  - Centralized language variant checking in report generation
 
 ✅ **Analysis Features**
 
@@ -84,6 +86,10 @@
 - Added count parameter to limit number of URLs processed
 - Modified output directory handling to preserve existing contents
 - Added language variant filtering for URL processing
+  - Enhanced URL extraction logic with automatic detection
+  - Centralized language variant checking in report generation
+  - Updated report generation functions to use new filtering logic
+  - Added helper function in reportGenerators.js for consistent checks
 
 ### Fixed Issues
 

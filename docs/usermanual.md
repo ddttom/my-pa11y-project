@@ -51,6 +51,10 @@ npm start -- --cache-only -o reports-from-cache
 
 # Include all language variants in analysis
 npm start -- -s https://example.com/sitemap.xml --include-all-languages
+  - By default, only processes /en and /us variants
+  - Skips other language variants (e.g., /fr, /es)
+  - Uses enhanced URL extraction logic with automatic detection
+  - Centralized language variant checking in report generation
 ```
 
 ## Command Line Options
@@ -69,7 +73,10 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 - `-l, --limit <number>`: Maximum URLs to process (-1 for all)
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--log-level <level>`: Set logging detail (error, warn, info, debug)
-- `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
+- `--include-all-languages`: Include all language variants in analysis
+  - Overrides default behavior of only processing /en and /us variants
+  - Uses enhanced URL extraction logic with automatic detection
+  - Centralized language variant checking in report generation
 
 ### Cache Control
 

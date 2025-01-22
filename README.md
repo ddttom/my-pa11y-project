@@ -5,7 +5,7 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 ## Key Features
 
 - **SEO Analysis**: Detailed SEO metrics and scoring
-- **Performance Metrics**: Comprehensive page load analysis
+- **Performance Metrics**: Comprehensive page load analysis  
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
   - Detailed markdown reports for better readability
 - **Content Quality**: Structure and freshness analysis
@@ -18,6 +18,8 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **Results File Detection**: Automatic detection of results.json for report generation
 - **Iterative Testing**: Test reports with small samples, then run full analysis
 - **Language Variant Filtering**: Skip non-English variants by default (only process /en and /us)
+  - Enhanced URL extraction logic with automatic language variant detection
+  - Centralized language variant checking in report generation
   - Can be overridden with --include-all-languages flag
 
 ## Data Structure
@@ -166,6 +168,8 @@ seo-audit-tool/
 - Language variant filtering:
   - Skip non-English variants by default
   - Only process /en and /us variants
+  - Enhanced URL extraction logic with automatic detection
+  - Centralized language variant checking in report generation
   - Override with --include-all-languages flag
 
 ## Network Error Handling
