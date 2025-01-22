@@ -4,6 +4,7 @@
  * This module provides web performance analysis capabilities including:
  * - Core Web Vitals collection
  * - Navigation timing metrics
+ * - Resource usage metrics
  * - Retry mechanism for flaky tests
  * - Detailed performance metrics reporting
  */
@@ -30,11 +31,15 @@ function sleep(ms) {
  * @param {string} url - URL to analyze
  * @returns {Promise<Object>} Performance metrics containing:
  *   - loadTime: Full page load time
- *   - domContentLoaded: DOMContentLoaded event time
  *   - firstPaint: First paint time
  *   - firstContentfulPaint: First contentful paint time
- *   - timeToInteractive: Time to interactive
  *   - largestContentfulPaint: Largest contentful paint time
+ *   - timeToInteractive: Time to interactive
+ *   - speedIndex: Speed Index
+ *   - totalBlockingTime: Total Blocking Time
+ *   - cumulativeLayoutShift: Cumulative Layout Shift
+ *   - resourceCount: Number of resources loaded
+ *   - totalResourceSize: Total size of resources in KB
  * @throws {Error} If analysis fails
  */
 async function attemptAnalysis(url) {
@@ -58,13 +63,30 @@ async function attemptAnalysis(url) {
       const paint = performance.getEntriesByType('paint');
       const tti = performance.getEntriesByType('measure').find((entry) => entry.name === 'TTI');
       const lcp = performance.getEntriesByType('largest-contentful-paint').pop();
+      const longTasks = performance.getEntriesByType('longtask');
+      const resources = performance.getEntriesByType('resource');
+      
+      // Calculate resource metrics
+      const resourceCount = resources.length;
+      const totalResourceSize = resources.reduce((total, resource) => {
+        return total + (resource.transferSize || 0);
+      }, 0) / 1024; // Convert to KB
+
       return {
-        loadTime: navigationTiming.loadEventEnd,
-        domContentLoaded: navigationTiming.domContentLoadedEventEnd,
-        firstPaint: paint[0] ? paint[0].startTime : null,
-        firstContentfulPaint: paint[1] ? paint[1].startTime : null,
-        timeToInteractive: tti ? tti.duration : null,
-        largestContentfulPaint: lcp ? lcp.startTime : null,
+        loadTime: navigationTiming.loadEventEnd || 0,
+        firstPaint: paint[0]?.startTime || 0,
+        firstContentfulPaint: paint[1]?.startTime || 0,
+        largestContentfulPaint: lcp?.startTime || 0,
+        timeToInteractive: tti?.duration || 0,
+        speedIndex: performance.timing.loadEventEnd - performance.timing.navigationStart,
+        totalBlockingTime: longTasks.reduce((total, task) => {
+          const blockingTime = task.duration - 50;
+          return total + Math.max(0, blockingTime);
+        }, 0),
+        cumulativeLayoutShift: performance.getEntriesByType('layout-shift')
+          .reduce((total, entry) => total + entry.value, 0),
+        resourceCount,
+        totalResourceSize: Math.round(totalResourceSize * 100) / 100 // Round to 2 decimal places
       };
     });
 
@@ -90,15 +112,16 @@ async function attemptAnalysis(url) {
  * @param {string} url - URL to analyze
  * @returns {Promise<Object>} Performance metrics containing:
  *   - loadTime: Full page load time
- *   - domContentLoaded: DOMContentLoaded event time
  *   - firstPaint: First paint time
  *   - firstContentfulPaint: First contentful paint time
- *   - timeToInteractive: Time to interactive
  *   - largestContentfulPaint: Largest contentful paint time
+ *   - timeToInteractive: Time to interactive
+ *   - speedIndex: Speed Index
+ *   - totalBlockingTime: Total Blocking Time
+ *   - cumulativeLayoutShift: Cumulative Layout Shift
+ *   - resourceCount: Number of resources loaded
+ *   - totalResourceSize: Total size of resources in KB
  * @throws {Error} If URL is invalid
- * @example
- * // Returns performance metrics
- * const metrics = await analyzePerformance('https://example.com');
  */
 async function analyzePerformance(url) {
   if (typeof url !== 'string' || !url.startsWith('http')) {
@@ -119,12 +142,16 @@ async function analyzePerformance(url) {
       if (attempt === MAX_RETRIES) {
         global.auditcore.logger.error(`All ${MAX_RETRIES} attempts failed for ${url}`);
         return {
-          loadTime: null,
-          domContentLoaded: null,
-          firstPaint: null,
-          firstContentfulPaint: null,
-          timeToInteractive: null,
-          largestContentfulPaint: null,
+          loadTime: 0,
+          firstPaint: 0,
+          firstContentfulPaint: 0,
+          largestContentfulPaint: 0,
+          timeToInteractive: 0,
+          speedIndex: 0,
+          totalBlockingTime: 0,
+          cumulativeLayoutShift: 0,
+          resourceCount: 0,
+          totalResourceSize: 0
         };
       }
 
@@ -135,12 +162,16 @@ async function analyzePerformance(url) {
   }
 
   return {
-    loadTime: null,
-    domContentLoaded: null,
-    firstPaint: null,
-    firstContentfulPaint: null,
-    timeToInteractive: null,
-    largestContentfulPaint: null,
+    loadTime: 0,
+    firstPaint: 0,
+    firstContentfulPaint: 0,
+    largestContentfulPaint: 0,
+    timeToInteractive: 0,
+    speedIndex: 0,
+    totalBlockingTime: 0,
+    cumulativeLayoutShift: 0,
+    resourceCount: 0,
+    totalResourceSize: 0
   };
 }
 
