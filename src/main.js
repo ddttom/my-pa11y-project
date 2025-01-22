@@ -6,23 +6,50 @@ import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * Run tests on a sitemap or webpage
+ * Main function to run accessibility and SEO tests on a sitemap or webpage
+ * 
+ * This function orchestrates the entire testing process in three phases:
+ * 1. URL Collection: Retrieves URLs from sitemap or processes single page
+ * 2. URL Processing: Analyzes each URL for accessibility and SEO metrics
+ * 3. Report Generation: Creates detailed reports from collected data
+ * 
+ * @returns {Promise<Object|null>} Analysis results object containing:
+ *   - urls: Array of processed URLs
+ *   - contentAnalysis: Content quality metrics
+ *   - performanceAnalysis: Performance metrics
+ *   - seoScores: SEO scoring data
+ *   - pa11y: Accessibility analysis results
+ *   - internalLinks: Link analysis data
+ * @throws {Error} If any phase fails
+ * @example
+ * // Run tests with default options
+ * const results = await runTestsOnSitemap();
+ * 
+ * // Results structure:
+ * {
+ *   urls: ['https://example.com'],
+ *   contentAnalysis: [...],
+ *   performanceAnalysis: [...],
+ *   seoScores: [...],
+ *   pa11y: [...],
+ *   internalLinks: [...]
+ * }
  */
 export async function runTestsOnSitemap() {
   const { sitemap: sitemapUrl, output: outputDir, count } = global.auditcore.options;
 
-  // Setup shutdown handler at the start
+  // Setup shutdown handler at the start to ensure graceful termination
   setupShutdownHandler();
 
   global.auditcore.logger.info(`Starting process for sitemap or page: ${sitemapUrl}`);
   global.auditcore.logger.info(`Results will be saved to: ${outputDir}`);
 
-  // Check for existing results
+  // Check for existing results to support resume functionality
   const resultsPath = path.join(outputDir, 'results.json');
   let results;
   
   try {
-    // Try to load existing results
+    // Try to load existing results to support resume functionality
     const existingResults = await fs.readFile(resultsPath, 'utf-8');
     results = JSON.parse(existingResults);
     global.auditcore.logger.info('Found existing results, using cached data');
@@ -32,7 +59,7 @@ export async function runTestsOnSitemap() {
 
   try {
     if (!results) {
-      // Phase 1: Get URLs
+      // Phase 1: Get URLs from sitemap or process single page
       global.auditcore.logger.info('Phase 1: Getting sitemap URLs...');
       const urls = await executeNetworkOperation(
         () => getUrlsFromSitemap(sitemapUrl, count),
@@ -46,21 +73,21 @@ export async function runTestsOnSitemap() {
 
       global.auditcore.logger.info(`Found ${urls.length} URLs to process`);
 
-      // Phase 2: Process URLs
+      // Phase 2: Process URLs through analysis pipeline
       global.auditcore.logger.info('Phase 2: Processing URLs...');
       results = await executeNetworkOperation(
         () => processSitemapUrls(urls.slice(0, count === -1 ? urls.length : count)),
         'URL processing'
       );
 
-      // Save results for future use
+      // Save results for future use and resume capability
       await fs.writeFile(resultsPath, JSON.stringify(results));
     }
 
-    // Update current results for shutdown handler
+    // Update current results for shutdown handler to ensure data persistence
     updateCurrentResults(results);
 
-    // Phase 3: Generate Reports
+    // Phase 3: Generate comprehensive reports from collected data
     global.auditcore.logger.info('Phase 3: Generating reports...');
     await executeNetworkOperation(
       () => generateReports(results, results.urls || [], outputDir),

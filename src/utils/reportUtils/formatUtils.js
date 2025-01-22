@@ -1,9 +1,21 @@
-// Basic utility functions
+// Core formatting utilities for accessibility analysis reports
+// Handles score formatting, WCAG guideline mapping, and data structure creation
+
+/**
+ * Formats numerical scores to two decimal places
+ * @param {number|string} score - The score to format
+ * @returns {string} Formatted score as string with two decimal places
+ * @example formatScore(95.1234) => "95.12"
+ */
 export function formatScore(score) {
   return typeof score === 'number' ? score.toFixed(2) : '0.00';
 }
 
-// WCAG 2.1 guideline mapping
+/**
+ * WCAG 2.1 guideline mapping for accessibility analysis
+ * Maps guideline numbers to human-readable descriptions
+ * @type {Object}
+ */
 const WCAG_2_1_GUIDELINES = {
   '1.1': 'Text Alternatives',
   '1.2': 'Time-based Media',
@@ -20,6 +32,17 @@ const WCAG_2_1_GUIDELINES = {
   '4.1': 'Compatible'
 };
 
+/**
+ * Creates an empty accessibility analysis data structure
+ * @returns {Object} Initialized analysis object with:
+ *   - Total issues count
+ *   - Issues categorized by severity and WCAG level
+ *   - WCAG guideline-specific counts
+ *   - Specialized issue counters (ARIA, contrast, keyboard)
+ *   - Manual check tracking
+ *   - Remediation suggestions
+ *   - Initial score
+ */
 export function createEmptyAnalysis() {
   return {
     totalIssues: 0,
@@ -48,6 +71,12 @@ export function createEmptyAnalysis() {
   };
 }
 
+/**
+ * Counts syllables in text for readability analysis
+ * @param {string} text - Input text to analyze
+ * @returns {number} Total syllable count
+ * @note Uses basic vowel counting heuristic
+ */
 export function countSyllables(text) {
   return text.toLowerCase()
     .split(/\s+/)
@@ -56,6 +85,12 @@ export function countSyllables(text) {
     }, 0);
 }
 
+/**
+ * Determines image format from URL
+ * @param {string} src - Image source URL
+ * @returns {string} Image format (jpg, png, gif, webp, svg) or 'unknown'
+ * @note Handles URLs with query parameters and malformed inputs
+ */
 export function getImageFormat(src) {
   if (!src) return 'unknown';
   try {
@@ -69,6 +104,12 @@ export function getImageFormat(src) {
   }
 }
 
+/**
+ * Calculates URL path depth for link analysis
+ * @param {string} url - Full URL to analyze
+ * @returns {number} Number of path segments
+ * @example calculateLinkDepth('https://example.com/a/b/c') => 3
+ */
 export function calculateLinkDepth(url) {
   try {
     return new URL(url).pathname.split('/').filter(Boolean).length;
@@ -77,7 +118,11 @@ export function calculateLinkDepth(url) {
   }
 }
 
-// Enhanced WCAG 2.1 analysis utilities
+/**
+ * Maps accessibility issue to WCAG guideline
+ * @param {Object} issue - Accessibility issue object
+ * @returns {string|null} WCAG guideline number (e.g., '1.1') or null
+ */
 export function mapIssueToGuideline(issue) {
   const guidelineMatch = issue.code?.match(/WCAG2[ABC]\.(\d+\.\d+)/);
   if (guidelineMatch) {
@@ -86,10 +131,20 @@ export function mapIssueToGuideline(issue) {
   return null;
 }
 
+/**
+ * Gets human-readable description for WCAG guideline
+ * @param {string} guideline - WCAG guideline number (e.g., '1.1')
+ * @returns {string} Description of guideline
+ */
 export function getGuidelineDescription(guideline) {
   return WCAG_2_1_GUIDELINES[guideline] || 'Unknown Guideline';
 }
 
+/**
+ * Gets required manual checks for specific WCAG guideline
+ * @param {string} guideline - WCAG guideline number (e.g., '1.1')
+ * @returns {Array} List of manual check descriptions
+ */
 export function getRequiredManualChecks(guideline) {
   const manualChecks = {
     '1.1': ['Verify all non-text content has appropriate text alternatives'],

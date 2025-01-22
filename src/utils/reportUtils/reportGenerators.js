@@ -1,3 +1,6 @@
+// Core report generation utilities for various analysis types
+// Handles CSV report creation for SEO, performance, accessibility, and other metrics
+
 import { analyzePa11yResults } from './accessibilityAnalysis.js';
 import { createEmptyAnalysis, calculateLinkDepth, getImageFormat } from './formatUtils.js';
 import { analyzeImage } from './imageAnalysis.js';
@@ -8,7 +11,13 @@ import { createObjectCsvWriter } from 'csv-writer';
 import path from 'path';
 
 /**
- * Generate basic SEO report
+ * Generates SEO analysis report in CSV format
+ * @param {Object} results - Analysis results object containing content metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateSeoReport(results, './reports');
+ * // Creates seo_report.csv with URL, title, description, and SEO metrics
  */
 export async function generateSeoReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -55,7 +64,13 @@ export async function generateSeoReport(results, outputDir) {
 }
 
 /**
- * Generate performance analysis report
+ * Generates performance analysis report in CSV format
+ * @param {Object} results - Analysis results object containing performance metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generatePerformanceReport(results, './reports');
+ * // Creates performance_analysis.csv with Core Web Vitals metrics
  */
 export async function generatePerformanceReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -94,7 +109,13 @@ export async function generatePerformanceReport(results, outputDir) {
 }
 
 /**
- * Generate SEO scores report
+ * Generates SEO scores report in CSV format
+ * @param {Object} results - Analysis results object containing SEO scores
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateSeoScores(results, './reports');
+ * // Creates seo_scores.csv with detailed SEO scoring breakdown
  */
 export async function generateSeoScores(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -133,7 +154,13 @@ export async function generateSeoScores(results, outputDir) {
 }
 
 /**
- * Generate accessibility report
+ * Generates accessibility analysis report in CSV format
+ * @param {Object} results - Analysis results object containing accessibility metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateAccessibilityReport(results, './reports');
+ * // Creates accessibility_report.csv with WCAG compliance metrics
  */
 export async function generateAccessibilityReport(results, outputDir) {
   global.auditcore.logger.debug('Starting accessibility report generation');
@@ -186,7 +213,13 @@ export async function generateAccessibilityReport(results, outputDir) {
 }
 
 /**
- * Generate image optimization report
+ * Generates image optimization report in CSV format
+ * @param {Object} results - Analysis results object containing image metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateImageOptimizationReport(results, './reports');
+ * // Creates image_optimization.csv with image analysis metrics
  */
 export async function generateImageOptimizationReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -233,7 +266,13 @@ export async function generateImageOptimizationReport(results, outputDir) {
 }
 
 /**
- * Generate link analysis report
+ * Generates link analysis report in CSV format
+ * @param {Object} results - Analysis results object containing link metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateLinkAnalysisReport(results, './reports');
+ * // Creates link_analysis.csv with internal/external link metrics
  */
 export async function generateLinkAnalysisReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -278,7 +317,13 @@ export async function generateLinkAnalysisReport(results, outputDir) {
 }
 
 /**
- * Generate content quality report
+ * Generates content quality report in CSV format
+ * @param {Object} results - Analysis results object containing content metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateContentQualityReport(results, './reports');
+ * // Creates content_quality.csv with readability and content metrics
  */
 export async function generateContentQualityReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -314,7 +359,13 @@ export async function generateContentQualityReport(results, outputDir) {
 }
 
 /**
- * Generate security report
+ * Generates security analysis report in CSV format
+ * @param {Object} results - Analysis results object containing security metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateSecurityReport(results, './reports');
+ * // Creates security_report.csv with security headers and SSL metrics
  */
 export async function generateSecurityReport(results, outputDir) {
   const csvWriter = createObjectCsvWriter({
@@ -353,6 +404,12 @@ export async function generateSecurityReport(results, outputDir) {
   global.auditcore.logger.info(`Security report generated with ${reportData.length} records`);
 }
 
+/**
+ * Helper function to format numerical scores
+ * @param {number|string} score - The score to format
+ * @returns {string} Formatted score as string with two decimal places
+ * @private
+ */
 function formatScore(score) {
   return typeof score === 'number' ? score.toFixed(2) : '0.00';
 }

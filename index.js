@@ -1,5 +1,15 @@
-// Main entry point for the SEO analysis tool
-// Handles command line arguments, initialization, and main execution flow
+/**
+ * Main entry point for the SEO and Accessibility Analysis Tool
+ * 
+ * This module handles:
+ * - Command line argument parsing
+ * - Application initialization
+ * - Logging configuration
+ * - Main execution flow
+ * - Error handling and cleanup
+ * 
+ * @module index
+ */
 
 import { program } from 'commander';
 import winston from 'winston';
@@ -10,19 +20,19 @@ import { runTestsOnSitemap } from './src/main.js';
 // Log files to manage application logging
 const logFiles = ['error.log', 'combined.log'];
 
+// Test configuration variables
 const testnum = 2;
-
 let defurl;
 let defcount;
 
+// Set default URL and count based on test configuration
 if (testnum == 1) {
-// Default URL for analysis when none is provided
-defurl ='https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub'
-// Default count of files to include in both passes (-1 means infinite)
-defcount = 7;
-}
-else {
-  defurl = 'https://www.icann.org'
+  // Default URL for analysis when none is provided
+  defurl = 'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub';
+  // Default count of files to include in both passes (-1 means infinite)
+  defcount = 7;
+} else {
+  defurl = 'https://www.icann.org';
   defcount = 7;
 }
 
@@ -38,7 +48,20 @@ logFiles.forEach((file) => {
   }
 });
 
-// Configure command line options using Commander
+/**
+ * Configure command line options using Commander
+ * 
+ * Available options:
+ * - sitemap: URL of the sitemap to process
+ * - output: Output directory for results
+ * - limit: Number of URLs to test
+ * - count: Number of files to include in both passes
+ * - cache-only: Use only cached data
+ * - no-cache: Disable caching
+ * - no-puppeteer: Bypass Puppeteer execution
+ * - force-delete-cache: Force delete existing cache
+ * - log-level: Set logging level
+ */
 program
   .option(
     '-s, --sitemap <url>', 
@@ -91,7 +114,15 @@ try {
   process.exit(1);
 }
 
-// Configure Winston logger with console and file transports
+/**
+ * Configure Winston logger with console and file transports
+ * 
+ * Logging levels:
+ * - error: Critical errors
+ * - warn: Warnings
+ * - info: Informational messages
+ * - debug: Debugging information
+ */
 global.auditcore.logger = winston.createLogger({
   level: global.auditcore.options.logLevel,
   format: winston.format.combine(
@@ -109,7 +140,7 @@ global.auditcore.logger = winston.createLogger({
 
 /**
  * Ensures cache directory exists for storing temporary data
- * Creates directory if it doesn't exist and handles errors
+ * @throws {Error} If directory creation fails
  */
 function ensureCacheDirectory() {
   const cacheDir = path.join(process.cwd(), '.cache');
@@ -126,9 +157,15 @@ function ensureCacheDirectory() {
 
 /**
  * Main execution function
- * - Initializes cache directory
- * - Runs analysis on sitemap
- * - Handles results and errors
+ * 
+ * Handles:
+ * - Cache directory initialization
+ * - Sitemap analysis execution
+ * - Result processing
+ * - Error handling
+ * 
+ * @async
+ * @throws {Error} If any critical operation fails
  */
 async function main() {
   try {
