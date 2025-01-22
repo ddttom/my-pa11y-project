@@ -7,6 +7,7 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **SEO Analysis**: Detailed SEO metrics and scoring
 - **Performance Metrics**: Comprehensive page load analysis
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
+  - Detailed markdown reports for better readability
 - **Content Quality**: Structure and freshness analysis
 - **Security Analysis**: HTTPS implementation and vulnerability scanning
 - **Automatic Cache Management**: .cache directory creation and management
@@ -49,6 +50,7 @@ The tool collects comprehensive data about each page and stores it in `results.j
 - Issue severity tracking (Critical, Serious, Moderate, Minor)
 - Required manual checks
 - Remediation suggestions
+- Human-readable markdown reports
 
 #### Technical Metrics
 
@@ -117,6 +119,7 @@ seo-audit-tool/
 │   ├── virtual_sitemap.xml
 │   ├── final_sitemap.xml
 │   ├── results.json
+│   ├── wcag_report.md
 │   └── summary.json
 ├── src/           # Source code
 │   ├── main.js
@@ -147,6 +150,7 @@ seo-audit-tool/
 - SEO score calculation
 - Performance metrics
 - WCAG 2.1 accessibility testing (Pa11y)
+  - Detailed markdown reports for better review
 - Virtual and final sitemap generation
 - Graceful error recovery
 - Enhanced network error handling with retry mechanism
@@ -240,6 +244,13 @@ npm start -- -s <url> -o <output-dir> [options]
   - WCAG compliance levels
   - Required manual checks
   - Remediation suggestions
+
+- `wcag_report.md`: Human-readable WCAG issues report
+  - Path-by-path organization
+  - Unique issues with occurrence counts
+  - Detailed issue descriptions
+  - Remediation suggestions
+  - Required manual checks
 
 - `seo_scores.csv`: Detailed SEO scoring
   - Overall score

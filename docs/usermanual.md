@@ -150,6 +150,16 @@ Fields:
 - Required Manual Checks
 - Remediation Suggestions
 
+### WCAG Markdown Report (wcag_report.md)
+
+- Human-readable accessibility report
+- Path-by-path organization of issues
+- Unique WCAG issues with occurrence counts
+- Detailed issue descriptions
+- Remediation suggestions
+- Required manual checks
+- WCAG guideline mapping
+
 ### Image Optimization Report (image_optimization.csv)
 
 - Image metrics and recommendations

@@ -54,6 +54,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Remediation suggestions for identified issues
 - Required manual checks tracking
 - Detailed WCAG guideline mapping
+- Markdown report generation for better readability
 
 #### Content Analysis
 
@@ -116,6 +117,16 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Required manual checks list
 - WCAG 2.1 compliance percentage
 - Remediation suggestions
+
+#### WCAG Markdown Report (wcag_report.md)
+
+- Path-by-path organization of issues
+- Unique WCAG issues with occurrence counts
+- Detailed issue descriptions
+- Remediation suggestions
+- Required manual checks
+- WCAG guideline mapping
+- Human-readable format for better accessibility review
 
 #### Image Report (image_optimization.csv)
 

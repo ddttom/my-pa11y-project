@@ -26,6 +26,72 @@ function formatTimestamp(date) {
 }
 
 /**
+ * Generates markdown content for WCAG issues report
+ * @param {Object} results - Analysis results object
+ * @param {String} sectionName - Name of the section being analyzed
+ * @returns {String} - Markdown content string
+ */
+function generateWCAGMarkdownContent(results, sectionName = 'Initial Accessibility Analysis') {
+  const issueMap = new Map();
+
+  // Process all issues and group by URL and issue code
+  results.pa11y.forEach(result => {
+    result.issues?.forEach(issue => {
+      const key = `${result.url}|${issue.code}`;
+      if (!issueMap.has(key)) {
+        issueMap.set(key, {
+          url: result.url,
+          code: issue.code,
+          message: issue.message,
+          context: issue.context,
+          severity: issue.severity,
+          wcagLevel: issue.wcagLevel,
+          guideline: issue.guideline || 'N/A',
+          guidelineDescription: issue.guidelineDescription || 'N/A',
+          remediation: issue.remediation || 'N/A',
+          requiresManualCheck: issue.requiresManualCheck ? 'Yes' : 'No',
+          count: 0
+        });
+      }
+      issueMap.get(key).count++;
+    });
+  });
+
+  // Generate markdown content dynamically
+  let content = `# Accessibility Report - WCAG Issues by Path\n\n`;
+  content += `## Section: ${sectionName}\n\n`;
+
+  // Group by URL
+  const urlMap = new Map();
+  issueMap.forEach(issue => {
+    const url = issue.url;
+    if (!urlMap.has(url)) {
+      urlMap.set(url, []);
+    }
+    urlMap.get(url).push(issue);
+  });
+
+  // Add issues for each URL
+  urlMap.forEach((issues, url) => {
+    content += `### Path: ${url}\n`;
+    issues.forEach(issue => {
+      content += `- **Issue Code**: ${issue.code}\n`;
+      content += `  - **Description**: ${issue.message}\n`;
+      content += `  - **Context**: ${issue.context}\n`;
+      content += `  - **Severity**: ${issue.severity}\n`;
+      content += `  - **WCAG Level**: ${issue.wcagLevel}\n`;
+      content += `  - **Guideline**: ${issue.guideline}\n`;
+      content += `  - **Guideline Description**: ${issue.guidelineDescription}\n`;
+      content += `  - **Remediation**: ${issue.remediation}\n`;
+      content += `  - **Manual Check Required**: ${issue.requiresManualCheck}\n`;
+      content += `  - **Count**: ${issue.count}\n\n`;
+    });
+  });
+
+  return content;
+}
+
+/**
  * Generates accessibility report CSV content with enhanced WCAG 2.1 compliance
  * @param {Object} results - Analysis results object
  * @returns {String} - CSV content string
@@ -114,6 +180,28 @@ export async function generateAccessibilityReport(results, outputDir) {
     return reportPath;
   } catch (error) {
     global.auditcore.logger.error('Error generating accessibility report:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generates and saves WCAG issues markdown report
+ * @param {Object} results - Analysis results object
+ * @param {String} outputDir - Directory to save report
+ * @param {String} sectionName - Name of the section being analyzed
+ * @returns {Promise<String>} - Path to generated report
+ */
+export async function generateWCAGMarkdownReport(results, outputDir, sectionName = 'Initial Accessibility Analysis') {
+  try {
+    const timestamp = formatTimestamp(new Date());
+    const reportPath = path.join(outputDir, `wcag_report_${timestamp}.md`);
+    const content = generateWCAGMarkdownContent(results, sectionName);
+    await writeFile(reportPath, content);
+    
+    global.auditcore.logger.info(`WCAG markdown report generated at: ${reportPath}`);
+    return reportPath;
+  } catch (error) {
+    global.auditcore.logger.error('Error generating WCAG markdown report:', error);
     throw error;
   }
 }

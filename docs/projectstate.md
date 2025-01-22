@@ -31,6 +31,7 @@
   - Enhanced issue categorization by severity and impact
   - Required manual checks tracking
   - Improved remediation suggestions
+  - Added markdown report format for better readability
 - Content analysis (headings, freshness, media richness)
 - Link structure analysis (internal/external links with quality scores)
 - Image optimization analysis (complete with recommendations)
@@ -42,6 +43,7 @@
 - Performance analysis (comprehensive metrics)
 - SEO scores (weighted scoring with detailed breakdown)
 - Accessibility report (WCAG 2.1 compliance, issues by severity and guideline)
+  - Added markdown format for better readability and review
 - Image optimization report (detailed analysis with recommendations)
 - Link analysis report (complete link structure analysis)
 - Content quality report (structure and freshness scoring)
@@ -56,6 +58,7 @@
   - Enhanced issue categorization
   - Required manual checks tracking
   - Improved remediation suggestions
+  - Added markdown report format
 - Implemented detailed image optimization recommendations
 - Added security vulnerability detection
 - Added link quality assessment
@@ -91,6 +94,7 @@
 - Improved error reporting
 - Added missing metrics
 - Enhanced accessibility report format
+  - Added markdown format option
 - Fixed results.json detection
 - Improved sampling limit implementation
 
@@ -192,6 +196,7 @@ None currently identified.
 - performance_analysis.csv
 - seo_scores.csv
 - accessibility_report.csv
+- wcag_report.md
 - image_optimization.csv
 - link_analysis.csv
 - content_quality.csv
