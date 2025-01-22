@@ -61,6 +61,7 @@ logFiles.forEach((file) => {
  * - no-puppeteer: Bypass Puppeteer execution
  * - force-delete-cache: Force delete existing cache
  * - log-level: Set logging level
+ * - include-all-languages: Include all language variants in sitemap
  */
 program
   .option(
@@ -89,6 +90,10 @@ program
     '--log-level <level>',
     'Set logging level (error, warn, info, debug)',
     'debug'
+  )
+  .option(
+    '--include-all-languages',
+    'Include all language variants in sitemap (default: only /en and /us)'
   )
   .parse(process.argv);
 

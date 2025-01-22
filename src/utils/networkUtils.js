@@ -1,6 +1,12 @@
 /**
  * Network utilities for handling HTTP requests with robust error handling
- * Includes retry mechanisms, Puppeteer fallback, and request throttling
+ * 
+ * This module provides comprehensive network operation capabilities including:
+ * - Retry mechanisms with exponential backoff
+ * - Puppeteer integration for bypassing restrictions
+ * - Cloudflare challenge handling
+ * - Request throttling and rate limiting
+ * - Advanced error detection and handling
  */
 
 import puppeteer from 'puppeteer-extra';
@@ -9,13 +15,24 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 // Add stealth plugin to avoid detection
 puppeteer.use(StealthPlugin());
 
-// Helper functions
+/**
+ * Checks if error is a Cloudflare challenge
+ * 
+ * @param {Error} error - Error to check
+ * @returns {boolean} True if error is a Cloudflare challenge
+ */
 function isCloudflareChallenge(error) {
   return error.response?.status === 403 && 
          error.response?.headers['cf-ray'] && 
          error.response?.data?.includes('Cloudflare');
 }
 
+/**
+ * Checks if error indicates a blocked request
+ * 
+ * @param {Error} error - Error to check
+ * @returns {boolean} True if request was blocked
+ */
 function isBlockedError(error) {
   return error.response?.status === 403 || // Forbidden
          error.response?.status === 429 || // Too Many Requests
@@ -26,6 +43,12 @@ function isBlockedError(error) {
          error.message.includes('captcha');
 }
 
+/**
+ * Checks if error is a network-related error
+ * 
+ * @param {Error} error - Error to check
+ * @returns {boolean} True if error is network-related
+ */
 function isNetworkError(error) {
   const networkErrorCodes = [
     'ENOTFOUND', // DNS lookup failed
@@ -45,7 +68,21 @@ function isNetworkError(error) {
          error.message.includes('net::ERR_CONNECTION_TIMED_OUT');
 }
 
-// Main functions
+/**
+ * Executes a Puppeteer operation with enhanced configuration
+ * 
+ * Implements:
+ * - Stealth mode to avoid detection
+ * - Randomized browser fingerprint
+ * - Realistic user behavior simulation
+ * - Automatic browser cleanup
+ * 
+ * @param {Function} operation - Puppeteer operation to execute
+ * @param {string} operationName - Name of operation for logging
+ * @param {Object} options - Puppeteer launch options
+ * @returns {Promise<any>} Operation result
+ * @throws {Error} If operation fails
+ */
 async function executePuppeteerOperation(operation, operationName, options = {}) {
   let browser;
   try {
@@ -117,6 +154,14 @@ async function executePuppeteerOperation(operation, operationName, options = {})
   }
 }
 
+/**
+ * Handles Cloudflare challenges using Puppeteer
+ * 
+ * @param {Function} operation - Operation to execute
+ * @param {string} operationName - Name of operation for logging
+ * @returns {Promise<any>} Operation result
+ * @throws {Error} If challenge cannot be bypassed
+ */
 async function handleCloudflareChallenge(operation, operationName) {
   try {
     global.auditcore.logger.info('Attempting to bypass Cloudflare challenge...');
@@ -138,6 +183,20 @@ async function handleCloudflareChallenge(operation, operationName) {
   }
 }
 
+/**
+ * Executes a network operation with robust error handling
+ * 
+ * Implements:
+ * - Retry mechanism with exponential backoff
+ * - Automatic fallback to Puppeteer for blocked requests
+ * - Cloudflare challenge handling
+ * - Network error recovery
+ * 
+ * @param {Function} operation - Network operation to execute
+ * @param {string} operationName - Name of operation for logging
+ * @returns {Promise<any>} Operation result
+ * @throws {Error} If operation fails after retries
+ */
 async function executeNetworkOperation(operation, operationName) {
   let retryCount = 0;
   const maxRetries = 3;
@@ -181,7 +240,6 @@ async function executeNetworkOperation(operation, operationName) {
   }
 }
 
-// Export all functions
 export {
   executeNetworkOperation,
   executePuppeteerOperation,

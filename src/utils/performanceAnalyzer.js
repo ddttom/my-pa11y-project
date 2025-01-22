@@ -1,18 +1,42 @@
-/* eslint-disable import/prefer-default-export */
-/* eslint-disable no-await-in-loop */
-// performanceAnalyzer.js
+/**
+ * Performance analysis utilities using Puppeteer
+ * 
+ * This module provides web performance analysis capabilities including:
+ * - Core Web Vitals collection
+ * - Navigation timing metrics
+ * - Retry mechanism for flaky tests
+ * - Detailed performance metrics reporting
+ */
 
-// performanceAnalyzer.js
+/* eslint-disable no-await-in-loop */
 
 import puppeteer from 'puppeteer';
 import { globalOptions, performanceOptions } from '../config/options.js';
 
 const { MAX_RETRIES, INITIAL_BACKOFF } = globalOptions;
 
+/**
+ * Helper function to pause execution
+ * @param {number} ms - Milliseconds to sleep
+ * @returns {Promise} Resolves after specified time
+ */
 function sleep(ms) {
   return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
+/**
+ * Attempts to analyze page performance with error handling
+ * 
+ * @param {string} url - URL to analyze
+ * @returns {Promise<Object>} Performance metrics containing:
+ *   - loadTime: Full page load time
+ *   - domContentLoaded: DOMContentLoaded event time
+ *   - firstPaint: First paint time
+ *   - firstContentfulPaint: First contentful paint time
+ *   - timeToInteractive: Time to interactive
+ *   - largestContentfulPaint: Largest contentful paint time
+ * @throws {Error} If analysis fails
+ */
 async function attemptAnalysis(url) {
   let browser;
   try {
@@ -56,11 +80,27 @@ async function attemptAnalysis(url) {
 }
 
 /**
- * Analyzes the performance of a web page.
- * @param {string} url - The URL of the page to analyze.
- * @returns {Promise<Object>} The performance metrics.
+ * Analyzes web page performance with retry mechanism
+ * 
+ * Implements exponential backoff retry strategy with:
+ * - Configurable max retries (MAX_RETRIES)
+ * - Configurable initial backoff (INITIAL_BACKOFF)
+ * - Detailed error logging
+ * 
+ * @param {string} url - URL to analyze
+ * @returns {Promise<Object>} Performance metrics containing:
+ *   - loadTime: Full page load time
+ *   - domContentLoaded: DOMContentLoaded event time
+ *   - firstPaint: First paint time
+ *   - firstContentfulPaint: First contentful paint time
+ *   - timeToInteractive: Time to interactive
+ *   - largestContentfulPaint: Largest contentful paint time
+ * @throws {Error} If URL is invalid
+ * @example
+ * // Returns performance metrics
+ * const metrics = await analyzePerformance('https://example.com');
  */
-export async function analyzePerformance(url) {
+async function analyzePerformance(url) {
   if (typeof url !== 'string' || !url.startsWith('http')) {
     throw new Error('Invalid URL provided');
   }
@@ -103,3 +143,5 @@ export async function analyzePerformance(url) {
     largestContentfulPaint: null,
   };
 }
+
+export default analyzePerformance;

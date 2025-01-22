@@ -1,6 +1,12 @@
 /**
  * Sitemap processing utilities for extracting and managing URLs
- * Includes XML sitemap parsing, HTML link extraction, and Puppeteer fallback
+ * 
+ * This module provides comprehensive sitemap processing capabilities including:
+ * - XML sitemap parsing and extraction
+ * - HTML link extraction with fallback to Puppeteer
+ * - Virtual sitemap generation
+ * - URL validation and processing
+ * - Final sitemap generation with unique URLs
  */
 
 /* eslint-disable no-await-in-loop */
@@ -27,9 +33,24 @@ const gunzipAsync = promisify(gunzip);
 
 /**
  * Main function for extracting URLs from sitemap or HTML page
- * @param {String} url - URL to process (sitemap or HTML page)
- * @param {Number} limit - Maximum number of URLs to return (-1 for all)
- * @returns {Promise<Array>} - Array of processed URLs
+ * 
+ * Handles:
+ * - Sitemap XML parsing
+ * - HTML link extraction
+ * - Gzip content decoding
+ * - Puppeteer fallback for blocked requests
+ * 
+ * @param {string} url - URL to process (sitemap or HTML page)
+ * @param {number} limit - Maximum number of URLs to return (-1 for all)
+ * @returns {Promise<Array>} Array of processed URLs containing:
+ *   - url: Full URL
+ *   - lastmod: Last modified date
+ *   - changefreq: Change frequency
+ *   - priority: URL priority
+ * @throws {Error} If URL processing fails
+ * @example
+ * // Returns array of processed URLs
+ * const urls = await getUrlsFromSitemap('https://example.com/sitemap.xml');
  */
 export async function getUrlsFromSitemap(url, limit = -1) {
   try {
@@ -117,9 +138,17 @@ export async function getUrlsFromSitemap(url, limit = -1) {
 
 /**
  * Fallback to Puppeteer for blocked requests
- * @param {String} baseUrl - URL to process
- * @param {Number} limit - Maximum number of URLs to return
- * @returns {Promise<Array>} - Array of processed URLs
+ * 
+ * Implements advanced Puppeteer-based URL extraction with:
+ * - Request interception and filtering
+ * - Network activity monitoring
+ * - Shadow DOM support
+ * - Screenshot capture for debugging
+ * 
+ * @param {string} baseUrl - URL to process
+ * @param {number} limit - Maximum number of URLs to return
+ * @returns {Promise<Array>} Array of processed URLs
+ * @throws {Error} If Puppeteer processing fails
  */
 async function processWithPuppeteer(baseUrl, limit) {
   return await executePuppeteerOperation(async (page) => {
@@ -306,9 +335,12 @@ async function processWithPuppeteer(baseUrl, limit) {
 
 /**
  * Process URLs from sitemap content
+ * 
+ * Handles both sitemap indexes and individual sitemaps
+ * 
  * @param {Object} parsed - Parsed XML content
- * @param {Number} limit - Maximum number of URLs to return
- * @returns {Promise<Array>} - Array of processed URLs
+ * @param {number} limit - Maximum number of URLs to return
+ * @returns {Promise<Array>} Array of processed URLs
  */
 async function processSitemapContent(parsed, limit) {
   const urls = [];
@@ -344,10 +376,13 @@ async function processSitemapContent(parsed, limit) {
 
 /**
  * Process URLs from HTML content
- * @param {String} content - HTML content to process
- * @param {String} baseUrl - Base URL for relative links
- * @param {Number} limit - Maximum number of URLs to return
- * @returns {Promise<Array>} - Array of processed URLs
+ * 
+ * Extracts internal links from HTML content
+ * 
+ * @param {string} content - HTML content to process
+ * @param {string} baseUrl - Base URL for relative links
+ * @param {number} limit - Maximum number of URLs to return
+ * @returns {Promise<Array>} Array of processed URLs
  */
 async function processHtmlContent(content, baseUrl, limit) {
   if (!content || !baseUrl) {
@@ -401,8 +436,13 @@ async function processHtmlContent(content, baseUrl, limit) {
 
 /**
  * Extract URLs from sitemap urlset
+ * 
  * @param {Object} urlset - Parsed urlset object
- * @returns {Array} - Array of extracted URLs
+ * @returns {Array} Array of extracted URLs containing:
+ *   - url: Full URL
+ *   - lastmod: Last modified date
+ *   - changefreq: Change frequency
+ *   - priority: URL priority
  */
 function extractUrlsFromUrlset(urlset) {
   if (!urlset?.url) {
@@ -427,8 +467,9 @@ function extractUrlsFromUrlset(urlset) {
 
 /**
  * Process sitemap URLs with the URL processor
+ * 
  * @param {Array} urls - URLs to process
- * @returns {Promise<Array>} - Processed URLs
+ * @returns {Promise<Array>} Processed URLs
  */
 export async function processSitemapUrls(urls) {
   const processor = new UrlProcessor();
@@ -437,8 +478,9 @@ export async function processSitemapUrls(urls) {
 
 /**
  * Generate a virtual sitemap from processed URLs
+ * 
  * @param {Array} urls - URLs to include in sitemap
- * @returns {Object} - Virtual sitemap object
+ * @returns {Object} Virtual sitemap object
  */
 export async function generateVirtualSitemap(urls) {
   if (!Array.isArray(urls) || urls.length === 0) {
@@ -469,9 +511,10 @@ export async function generateVirtualSitemap(urls) {
 
 /**
  * Save virtual sitemap to file
+ * 
  * @param {Object} sitemap - Sitemap object to save
- * @param {String} outputDir - Directory to save sitemap
- * @returns {Promise<String>} - Path to saved sitemap
+ * @param {string} outputDir - Directory to save sitemap
+ * @returns {Promise<string>} Path to saved sitemap
  */
 export async function saveVirtualSitemap(sitemap, outputDir) {
   if (!sitemap) {
@@ -496,9 +539,12 @@ export async function saveVirtualSitemap(sitemap, outputDir) {
 
 /**
  * Generate and save final sitemap with all unique URLs
+ * 
+ * Combines URLs from virtual sitemap and internal links
+ * 
  * @param {Object} results - Analysis results containing URLs
- * @param {String} outputDir - Directory to save sitemap
- * @returns {Promise<String>} - Path to saved sitemap
+ * @param {string} outputDir - Directory to save sitemap
+ * @returns {Promise<string>} Path to saved sitemap
  */
 export async function saveFinalSitemap(results, outputDir) {
   try {

@@ -1,3 +1,14 @@
+/**
+ * Page rendering and caching utilities
+ * 
+ * This module provides comprehensive page rendering and caching capabilities including:
+ * - Puppeteer-based page rendering
+ * - Cache management with file-based storage
+ * - Comprehensive page data collection
+ * - Performance metrics capture
+ * - SEO scoring integration
+ */
+
 import { executeNetworkOperation, executePuppeteerOperation } from './networkUtils.js';
 import { calculateSeoScore } from './seoScoring.js';
 import fs from 'fs/promises';
@@ -5,8 +16,31 @@ import path from 'path';
 
 /**
  * Renders a page using Puppeteer and collects various data with enhanced error handling
+ * 
+ * Implements:
+ * - Cache-first strategy with file-based storage
+ * - Comprehensive page data collection including:
+ *   - HTML content
+ *   - JavaScript errors
+ *   - Response headers
+ *   - SEO metadata
+ *   - Performance metrics
+ * - Automatic caching of results
+ * 
  * @param {string} url - The URL to render and analyze
- * @returns {Promise<Object>} The rendered and analyzed data
+ * @returns {Promise<Object>} The rendered and analyzed data containing:
+ *   - html: Full page HTML
+ *   - jsErrors: Array of JavaScript errors
+ *   - statusCode: HTTP status code
+ *   - headers: Response headers
+ *   - pageData: Collected page metadata
+ *   - performanceMetrics: Page performance metrics
+ *   - seoScore: Calculated SEO score
+ *   - lastCrawled: Timestamp of last crawl
+ * @throws {Error} If rendering fails
+ * @example
+ * // Returns rendered page data
+ * const data = await renderAndCacheData('https://example.com');
  */
 async function renderAndCacheData(url) {
   global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
