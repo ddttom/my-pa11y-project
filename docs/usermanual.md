@@ -48,6 +48,9 @@ npm start -- -s https://example.com/sitemap.xml -l -1 -o final-results
 
 # Generate reports from existing results.json
 npm start -- --cache-only -o reports-from-cache
+
+# Include all language variants in analysis
+npm start -- -s https://example.com/sitemap.xml --include-all-languages
 ```
 
 ## Command Line Options
@@ -66,6 +69,7 @@ npm start -- --cache-only -o reports-from-cache
 - `-l, --limit <number>`: Maximum URLs to process (-1 for all)
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--log-level <level>`: Set logging detail (error, warn, info, debug)
+- `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
 
 ### Cache Control
 

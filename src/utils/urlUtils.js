@@ -1,7 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-
 // urlUtils.js
 
 /**
@@ -28,6 +27,21 @@ export function isValidUrl(url, baseUrl = null) {
     const skipExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.css', '.js'];
     if (skipExtensions.some(ext => urlObj.pathname.toLowerCase().endsWith(ext))) {
       return false;
+    }
+
+    // Language variant filtering (unless --include-all-languages is set)
+    if (!global.auditcore?.options?.includeAllLanguages) {
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      if (pathParts.length > 0) {
+        const firstPath = pathParts[0];
+        // Check if first path part is a 2-character language code
+        if (/^[a-z]{2}$/i.test(firstPath)) {
+          // Only allow /en and /us language variants
+          if (!['en', 'us'].includes(firstPath.toLowerCase())) {
+            return false;
+          }
+        }
+      }
     }
 
     return true;

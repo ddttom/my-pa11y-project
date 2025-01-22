@@ -18,6 +18,9 @@
 - Preserves existing output directory contents
 - Added results.json detection for report generation
 - Implemented configurable sampling limits for testing
+- Added language variant filtering (skip non-English variants by default)
+  - Only processes /en and /us variants by default
+  - Can be overridden with --include-all-languages flag
 
 ✅ **Analysis Features**
 
@@ -77,6 +80,7 @@
 - Added automatic .cache directory creation during initialization
 - Added count parameter to limit number of URLs processed
 - Modified output directory handling to preserve existing contents
+- Added language variant filtering for URL processing
 
 ### Fixed Issues
 
@@ -157,6 +161,7 @@ None currently identified.
 - Output directory preservation: ✅
 - Results.json detection: ✅
 - Sampling limits: ✅
+- Language variant filtering: ✅
 
 ## Dependencies
 

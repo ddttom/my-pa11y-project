@@ -7,7 +7,7 @@
 import { getOrRenderData } from './caching.js';
 import { processUrl } from './pageAnalyzer.js';
 import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js';
-import { analyzePerformance } from './performanceAnalyzer.js';
+import analyzePerformance from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
 import { writeToInvalidUrlFile } from './urlUtils.js';
 

@@ -16,6 +16,8 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **Configurable Sampling**: Test with small samples before full analysis
 - **Results File Detection**: Automatic detection of results.json for report generation
 - **Iterative Testing**: Test reports with small samples, then run full analysis
+- **Language Variant Filtering**: Skip non-English variants by default (only process /en and /us)
+  - Can be overridden with --include-all-languages flag
 
 ## Data Structure
 
@@ -157,6 +159,10 @@ seo-audit-tool/
   - Test with small samples (e.g., 10 pages)
   - Review and adjust reports
   - Run full analysis when satisfied
+- Language variant filtering:
+  - Skip non-English variants by default
+  - Only process /en and /us variants
+  - Override with --include-all-languages flag
 
 ## Network Error Handling
 
@@ -210,6 +216,7 @@ npm start -- -s <url> -o <output-dir> [options]
 - `--no-puppeteer`: Bypass Puppeteer execution
 - `--force-delete-cache`: Force delete existing cache
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
+- `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
 
 ### Output Files
 

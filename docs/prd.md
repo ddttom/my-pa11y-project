@@ -18,6 +18,10 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Preserve existing output directory contents
 - Results file detection and report generation
 - Configurable sampling limits for testing
+- Language variant filtering (skip non-English variants by default)
+  - Default: Skip 2-character language variants (e.g., /ar, /fr)
+  - Only process /en and /us variants by default
+  - Override with --include-all-languages flag
 
 ### Analysis Features
 
