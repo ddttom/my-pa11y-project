@@ -128,6 +128,26 @@ function extractUrlsFromResults(results) {
   global.auditcore.logger.debug('Extracting URLs from results');
 
   function addOrUpdateUrl(url, data) {
+    // Handle both absolute and relative URLs
+    let pathname;
+    try {
+      const urlObj = new URL(url, global.auditcore.options.sitemap);
+      pathname = urlObj.pathname;
+    } catch (error) {
+      // If URL parsing fails, treat as relative path
+      pathname = url.startsWith('/') ? url : `/${url}`;
+    }
+
+    // Skip URLs with 2-character language variants unless --include-all-languages is set
+    const pathParts = pathname.split('/').filter(Boolean);
+    const hasLanguageVariant = pathParts.length > 0 && pathParts[0].length === 2;
+    const isAllowedVariant = ['en', 'us'].includes(pathParts[0]);
+    
+    if (hasLanguageVariant && !isAllowedVariant && !global.auditcore.options.includeAllLanguages) {
+      global.auditcore.logger.debug(`Skipping URL with language variant: ${url}`);
+      return;
+    }
+
     if (urlMap.has(url)) {
       global.auditcore.logger.debug(`Updating existing URL: ${url}`);
       const existingData = urlMap.get(url);

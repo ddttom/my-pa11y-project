@@ -11,6 +11,35 @@ import { createObjectCsvWriter } from 'csv-writer';
 import path from 'path';
 
 /**
+ * Helper function to check if URL should be included based on language variants
+ * @param {string} url - URL to check
+ * @returns {boolean} True if URL should be included
+ */
+function shouldIncludeUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/').filter(Boolean);
+    const hasLanguageVariant = pathParts.length > 0 && pathParts[0].length === 2;
+    const isAllowedVariant = ['en', 'us'].includes(pathParts[0]);
+    
+    // Include all URLs if --include-all-languages is set
+    if (global.auditcore.options.includeAllLanguages) {
+      return true;
+    }
+    
+    // Skip URLs with language variants unless they're allowed
+    if (hasLanguageVariant && !isAllowedVariant) {
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    global.auditcore.logger.debug(`Error checking URL ${url}:`, error);
+    return true;
+  }
+}
+
+/**
  * Generates SEO analysis report in CSV format
  * @param {Object} results - Analysis results object containing content metrics
  * @param {string} outputDir - Directory path to save the report
@@ -41,23 +70,25 @@ export async function generateSeoReport(results, outputDir) {
     ]
   });
 
-  const reportData = results.contentAnalysis?.map(page => ({
-    url: page.url || '',
-    title: page.title || '',
-    description: page.metaDescription || '',
-    h1Count: Math.round(page.h1Count || 0),
-    imageCount: Math.round(page.imagesCount || 0),
-    imagesWithoutAlt: Math.round(page.imagesWithoutAlt || 0),
-    internalLinks: Math.round(page.internalLinksCount || 0),
-    externalLinks: Math.round(page.externalLinksCount || 0),
-    pageSize: Math.round(page.pageSize || 0),
-    wordCount: Math.round(page.wordCount || 0),
-    titleLength: page.title?.length || 0,
-    descriptionLength: page.metaDescription?.length || 0,
-    hasStructuredData: page.structuredData?.length > 0 ? 'Yes' : 'No',
-    hasSocialTags: (page.openGraphTags?.length > 0 || page.twitterTags?.length > 0) ? 'Yes' : 'No',
-    lastModified: page.lastmod || 'Unknown'
-  })) || [];
+  const reportData = results.contentAnalysis
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.map(page => ({
+      url: page.url || '',
+      title: page.title || '',
+      description: page.metaDescription || '',
+      h1Count: Math.round(page.h1Count || 0),
+      imageCount: Math.round(page.imagesCount || 0),
+      imagesWithoutAlt: Math.round(page.imagesWithoutAlt || 0),
+      internalLinks: Math.round(page.internalLinksCount || 0),
+      externalLinks: Math.round(page.externalLinksCount || 0),
+      pageSize: Math.round(page.pageSize || 0),
+      wordCount: Math.round(page.wordCount || 0),
+      titleLength: page.title?.length || 0,
+      descriptionLength: page.metaDescription?.length || 0,
+      hasStructuredData: page.structuredData?.length > 0 ? 'Yes' : 'No',
+      hasSocialTags: (page.openGraphTags?.length > 0 || page.twitterTags?.length > 0) ? 'Yes' : 'No',
+      lastModified: page.lastmod || 'Unknown'
+    })) || [];
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`SEO report generated with ${reportData.length} records`);
@@ -90,19 +121,21 @@ export async function generatePerformanceReport(results, outputDir) {
     ]
   });
 
-  const reportData = results.performanceAnalysis?.map(page => ({
-    url: page.url || '',
-    loadTime: Math.round(page.loadTime || 0),
-    firstPaint: Math.round(page.firstPaint || 0),
-    firstContentfulPaint: Math.round(page.firstContentfulPaint || 0),
-    largestContentfulPaint: Math.round(page.largestContentfulPaint || 0),
-    timeToInteractive: Math.round(page.timeToInteractive || 0),
-    speedIndex: Math.round(page.speedIndex || 0),
-    totalBlockingTime: Math.round(page.totalBlockingTime || 0),
-    cumulativeLayoutShift: page.cumulativeLayoutShift?.toFixed(3) || 0,
-    resourceCount: page.resourceCount || 0,
-    resourceSize: Math.round((page.resourceSize || 0) / 1024)
-  })) || [];
+  const reportData = results.performanceAnalysis
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.map(page => ({
+      url: page.url || '',
+      loadTime: Math.round(page.loadTime || 0),
+      firstPaint: Math.round(page.firstPaint || 0),
+      firstContentfulPaint: Math.round(page.firstContentfulPaint || 0),
+      largestContentfulPaint: Math.round(page.largestContentfulPaint || 0),
+      timeToInteractive: Math.round(page.timeToInteractive || 0),
+      speedIndex: Math.round(page.speedIndex || 0),
+      totalBlockingTime: Math.round(page.totalBlockingTime || 0),
+      cumulativeLayoutShift: page.cumulativeLayoutShift?.toFixed(3) || 0,
+      resourceCount: page.resourceCount || 0,
+      resourceSize: Math.round((page.resourceSize || 0) / 1024)
+    })) || [];
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Performance report generated with ${reportData.length} records`);
@@ -135,19 +168,21 @@ export async function generateSeoScores(results, outputDir) {
     ]
   });
 
-  const reportData = results.seoScores?.map(page => ({
-    url: page.url || '',
-    overallScore: formatScore(page.score),
-    titleScore: formatScore(page.details?.titleOptimization),
-    metaScore: formatScore(page.details?.metaDescriptionOptimization),
-    contentScore: formatScore(page.details?.contentQuality),
-    technicalScore: formatScore(page.details?.technicalOptimization),
-    linksScore: formatScore(page.details?.internalLinking),
-    imagesScore: formatScore(page.details?.imageOptimization),
-    mobileScore: formatScore(page.details?.mobileOptimization),
-    performanceScore: formatScore(page.details?.performanceScore),
-    securityScore: formatScore(page.details?.securityScore)
-  })) || [];
+  const reportData = results.seoScores
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.map(page => ({
+      url: page.url || '',
+      overallScore: formatScore(page.score),
+      titleScore: formatScore(page.details?.titleOptimization),
+      metaScore: formatScore(page.details?.metaDescriptionOptimization),
+      contentScore: formatScore(page.details?.contentQuality),
+      technicalScore: formatScore(page.details?.technicalOptimization),
+      linksScore: formatScore(page.details?.internalLinking),
+      imagesScore: formatScore(page.details?.imageOptimization),
+      mobileScore: formatScore(page.details?.mobileOptimization),
+      performanceScore: formatScore(page.details?.performanceScore),
+      securityScore: formatScore(page.details?.securityScore)
+    })) || [];
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`SEO scores report generated with ${reportData.length} records`);
@@ -185,7 +220,9 @@ export async function generateAccessibilityReport(results, outputDir) {
   });
 
   // Get all URLs from content analysis to ensure we have a complete list
-  const allUrls = new Set(results.contentAnalysis?.map(page => page.url) || []);
+  const allUrls = new Set(results.contentAnalysis
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.map(page => page.url) || []);
   
   const reportData = Array.from(allUrls).map(url => {
     const pa11yResult = results.pa11y?.find(p => p.url === url || p.pageUrl === url);
@@ -241,25 +278,27 @@ export async function generateImageOptimizationReport(results, outputDir) {
   });
 
   const reportData = [];
-  results.contentAnalysis?.forEach(page => {
-    page.images?.forEach(image => {
-      const analysis = analyzeImage(image);
-      reportData.push({
-        pageUrl: page.url,
-        imageUrl: image.src,
-        fileSize: Math.round((image.size || 0) / 1024),
-        dimensions: `${image.width || '?'}x${image.height || '?'}`,
-        format: getImageFormat(image.src),
-        altText: image.alt || '',
-        altScore: analysis.altScore.toFixed(2),
-        isResponsive: image.srcset ? 'Yes' : 'No',
-        lazyLoaded: image.loading === 'lazy' ? 'Yes' : 'No',
-        compressionLevel: analysis.compressionLevel,
-        optimizationScore: analysis.optimizationScore.toFixed(2),
-        recommendations: analysis.recommendations.join('; ')
+  results.contentAnalysis
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.forEach(page => {
+      page.images?.forEach(image => {
+        const analysis = analyzeImage(image);
+        reportData.push({
+          pageUrl: page.url,
+          imageUrl: image.src,
+          fileSize: Math.round((image.size || 0) / 1024),
+          dimensions: `${image.width || '?'}x${image.height || '?'}`,
+          format: getImageFormat(image.src),
+          altText: image.alt || '',
+          altScore: analysis.altScore.toFixed(2),
+          isResponsive: image.srcset ? 'Yes' : 'No',
+          lazyLoaded: image.loading === 'lazy' ? 'Yes' : 'No',
+          compressionLevel: analysis.compressionLevel,
+          optimizationScore: analysis.optimizationScore.toFixed(2),
+          recommendations: analysis.recommendations.join('; ')
+        });
       });
     });
-  });
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Image optimization report generated with ${reportData.length} records`);
@@ -293,24 +332,26 @@ export async function generateLinkAnalysisReport(results, outputDir) {
   });
 
   const reportData = [];
-  results.internalLinks?.forEach(page => {
-    page.links?.forEach(link => {
-      const analysis = analyzeLinkQuality(link);
-      reportData.push({
-        sourceUrl: page.url,
-        targetUrl: link.url,
-        linkText: link.text,
-        linkType: getLinkType(link.url, page.url),
-        followType: link.rel?.includes('nofollow') ? 'NoFollow' : 'Follow',
-        status: link.status || 200,
-        redirectChain: (link.redirects || []).join(' → '),
-        contentType: link.contentType || 'unknown',
-        inNavigation: isInNavigation(link) ? 'Yes' : 'No',
-        linkDepth: calculateLinkDepth(link.url),
-        linkQuality: analysis.qualityScore.toFixed(2)
+  results.internalLinks
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.forEach(page => {
+      page.links?.forEach(link => {
+        const analysis = analyzeLinkQuality(link);
+        reportData.push({
+          sourceUrl: page.url,
+          targetUrl: link.url,
+          linkText: link.text,
+          linkType: getLinkType(link.url, page.url),
+          followType: link.rel?.includes('nofollow') ? 'NoFollow' : 'Follow',
+          status: link.status || 200,
+          redirectChain: (link.redirects || []).join(' → '),
+          contentType: link.contentType || 'unknown',
+          inNavigation: isInNavigation(link) ? 'Yes' : 'No',
+          linkDepth: calculateLinkDepth(link.url),
+          linkQuality: analysis.qualityScore.toFixed(2)
+        });
       });
     });
-  });
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Link analysis report generated with ${reportData.length} records`);
@@ -340,19 +381,21 @@ export async function generateContentQualityReport(results, outputDir) {
     ]
   });
 
-  const reportData = results.contentAnalysis?.map(page => {
-    const analysis = analyzeContentQuality(page);
-    return {
-      url: page.url,
-      wordCount: page.wordCount || 0,
-      contentFreshness: analysis.freshnessScore.toFixed(2),
-      uniqueContent: analysis.uniquenessScore.toFixed(2),
-      grammarScore: analysis.grammarScore.toFixed(2),
-      mediaRichness: analysis.mediaRichnessScore.toFixed(2),
-      topKeywords: analysis.topKeywords.join(', '),
-      contentScore: analysis.overallScore.toFixed(2)
-    };
-  }) || [];
+  const reportData = results.contentAnalysis
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.map(page => {
+      const analysis = analyzeContentQuality(page);
+      return {
+        url: page.url,
+        wordCount: page.wordCount || 0,
+        contentFreshness: analysis.freshnessScore.toFixed(2),
+        uniqueContent: analysis.uniquenessScore.toFixed(2),
+        grammarScore: analysis.grammarScore.toFixed(2),
+        mediaRichness: analysis.mediaRichnessScore.toFixed(2),
+        topKeywords: analysis.topKeywords.join(', '),
+        contentScore: analysis.overallScore.toFixed(2)
+      };
+    }) || [];
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Content quality report generated with ${reportData.length} records`);
@@ -384,21 +427,23 @@ export async function generateSecurityReport(results, outputDir) {
     ]
   });
 
-  const reportData = results.performanceAnalysis?.map(page => {
-    const security = analyzeSecurityFeatures(page);
-    return {
-      url: page.url,
-      httpsScore: formatScore(security.httpsScore),
-      headerScore: formatScore(security.headerScore),
-      mixedContent: security.mixedContentIssues,
-      cookieSecure: formatScore(security.cookieScore),
-      cspScore: formatScore(security.cspScore),
-      xssProtection: formatScore(security.xssScore),
-      certificateDetails: security.certificateInfo,
-      vulnerabilities: security.vulnerabilitiesCount,
-      securityScore: formatScore(security.overallScore)
-    };
-  }) || [];
+  const reportData = results.performanceAnalysis
+    ?.filter(page => shouldIncludeUrl(page.url))
+    ?.map(page => {
+      const security = analyzeSecurityFeatures(page);
+      return {
+        url: page.url,
+        httpsScore: formatScore(security.httpsScore),
+        headerScore: formatScore(security.headerScore),
+        mixedContent: security.mixedContentIssues,
+        cookieSecure: formatScore(security.cookieScore),
+        cspScore: formatScore(security.cspScore),
+        xssProtection: formatScore(security.xssScore),
+        certificateDetails: security.certificateInfo,
+        vulnerabilities: security.vulnerabilitiesCount,
+        securityScore: formatScore(security.overallScore)
+      };
+    }) || [];
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Security report generated with ${reportData.length} records`);

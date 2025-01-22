@@ -453,7 +453,23 @@ function extractUrlsFromUrlset(urlset) {
   global.auditcore.logger.debug(`Processing ${urlset.url.length} URLs from urlset`);
   
   const extractedUrls = urlset.url
-    .filter((url) => url?.loc?.[0])
+    .filter((url) => {
+      if (!url?.loc?.[0]) return false;
+      
+      // Parse URL and check for language variants
+      const urlObj = new URL(url.loc[0]);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      const hasLanguageVariant = pathParts.length > 0 && pathParts[0].length === 2;
+      const isAllowedVariant = ['en', 'us'].includes(pathParts[0]);
+      
+      // Skip if URL has a language variant and --include-all-languages is not set
+      if (hasLanguageVariant && !isAllowedVariant && !global.auditcore.options.includeAllLanguages) {
+        global.auditcore.logger.debug(`Skipping URL with language variant: ${url.loc[0]}`);
+        return false;
+      }
+      
+      return true;
+    })
     .map((url) => ({
       url: url.loc[0],
       lastmod: url.lastmod?.[0] || null,
