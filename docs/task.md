@@ -1,56 +1,121 @@
-# Purpose
+# Improve and implement the following URL validation requirements
 
-Create a centralized URL validation system for handling localized site variants by adding a new validation layer that wraps around existing code WITHOUT modifying any current functionality. This system will serve as a new, additional checkpoint while keeping all existing code unchanged.
+The system must validate URLs to exclude two-letter country code suffixes (e.g., domain.org/ru, domain.org/fr) with exceptions for /us and /en paths. This validation must be implemented through a single, central utility function that existing code will call.
 
-Critical Preservation Requirements:
+Key Requirements:
 
-1. All existing code must remain exactly as is - no modifications to current functions
-2. The new validation system must be implemented entirely through new functions
-3. Current code paths must continue to work exactly as they do now
-4. The new validator must be implemented as a wrapper around existing functionality
+1. Create one central utility function that ALL URL validation must use
+2. This function validates URLs against language codes
+3. Only /us and /en paths are allowed
+4. Existing code must remain unchanged
+5. A command flag 'allow-all-languages' can bypass restrictions
 
-Core Architecture Principle:
-The system must implement a single, centralized validation utility that becomes an additional checkpoint before existing URL processing occurs. This approach ensures:
+The central function must be used for:
 
-- Existing code remains untouched and continues functioning as before
-- New validation logic stays separate from current implementation
-- All current functionality is preserved exactly as is
-- Validation is added through new wrapper functions only
+- URL parsing
+- Site interpretation
+- Analytics tracking
+- Virtual routing
+- Sitemap generation
+- All report generation specified in docs/prd.md
 
-Central Validation Function:
-Create a utility function `isAllowedLanguageUrl` that serves as the canonical validator:
+Implementation Requirements:
+Every implementation must provide complete, production-ready code. All code must include full error handling, logging, edge case management, and documentation. Never use placeholders, comments indicating "code remains same", or similar shortcuts.
 
-- Must be called by all new wrapper functions that process URLs
-- Validates URLs based on these rules:
-  - Block URLs containing two-letter country codes (e.g., domain.org/fr, domain.org/ru)
-  - Allow exceptions for /us and /en paths
-  - Return true for allowed URLs, false for blocked ones
-- Include comprehensive documentation explaining:
-  - The validation logic
-  - Integration requirements for wrapper implementation
-  - Examples of correct wrapper patterns
-  - Common pitfalls to avoid
+Reference Implementation Pattern:
 
-Integration Requirements:
-All URL processing points must integrate with the central validator through new wrapper functions while preserving their current behavior entirely intact:
+```javascript
+/**
+ * Validates URL language codes against allowed patterns
+ * @param {string} url - The full URL to validate
+ * @param {Object} options - Configuration options
+ * @param {boolean} options.allowAllLanguages - Flag to bypass language restrictions
+ * @param {Object} options.logger - Logger instance for tracking validation
+ * @returns {boolean} - True if URL is allowed, false if it should be blocked
+ * @throws {ValidationError} - If URL is malformed or validation fails
+ */
+function validateLanguageUrl(url, options = { allowAllLanguages: false, logger: console }) {
+    if (!url || typeof url !== 'string') {
+        options.logger.error('Invalid URL format provided', { url });
+        throw new ValidationError('Invalid URL format');
+    }
 
-1. URL Processing Components:
-   Each component must be wrapped with new validation logic:
-   - URL parsing system
-   - Site interpretation engine
-   - Analytics tracking service
-   - Virtual routing system
-   - Sitemap generation utility
+    try {
+        const urlPath = new URL(url).pathname;
+        
+        if (options.allowAllLanguages) {
+            options.logger.info('All languages allowed, bypassing validation', { url });
+            return true;
+        }
 
-   Example wrapper pattern:
+        if (urlPath.match(/^\/(us|en)($|\/)/)) {
+            options.logger.info('Allowed language path detected', { url, path: urlPath });
+            return true;
+        }
 
-   ```javascript
-   // New wrapper function - does not modify existing code
-   function validateAndProcessUrl(url) {
-     // First, check with central validator
-     if (!isAllowedLanguageUrl(url)) {
-       return handleDisallowedUrl(url);
-     }
-     // Call existing function without any modifications
-     return existingUrlProcessor(url);
-   }
+        if (urlPath.match(/^\/[a-z]{2}($|\/)/i)) {
+            options.logger.warn('Blocked restricted language path', { url, path: urlPath });
+            return false;
+        }
+
+        options.logger.info('URL passed language validation', { url });
+        return true;
+    } catch (error) {
+        options.logger.error('URL validation failed', { url, error: error.message });
+        throw new ValidationError(`URL validation failed: ${error.message}`);
+    }
+}
+
+function integrateWithSiteCollection(url) {
+    const logger = createLogger('site-collection');
+    const config = loadConfiguration();
+    
+    try {
+        const isAllowed = validateLanguageUrl(url, {
+            allowAllLanguages: config.allowAllLanguages,
+            logger: logger
+        });
+
+        if (!isAllowed) {
+            logger.warn('URL blocked by language validation', { url });
+            return {
+                status: 'blocked',
+                reason: 'language_restricted',
+                url: url
+            };
+        }
+
+        const result = processSiteCollection(url);
+        logger.info('Site collection processed successfully', { url });
+        return result;
+    } catch (error) {
+        logger.error('Site collection processing failed', {
+            url,
+            error: error.message,
+            stack: error.stack
+        });
+        throw new ProcessingError(`Failed to process site collection: ${error.message}`);
+    }
+}
+
+function generateSitemap(urls) {
+    const logger = createLogger('sitemap-generator');
+    const config = loadConfiguration();
+    
+    try {
+        const allowedUrls = urls.filter(url => validateLanguageUrl(url, {
+            allowAllLanguages: config.allowAllLanguages,
+            logger: logger
+        }));
+
+        logger.info('Filtered URLs for sitemap', {
+            total: urls.length,
+            allowed: allowedUrls.length
+        });
+
+        return generateSitemapXml(allowedUrls);
+    } catch (error) {
+        logger.error('Sitemap generation failed', { error: error.message });
+        throw new SitemapError(`Failed to generate sitemap: ${error.message}`);
+    }
+}
