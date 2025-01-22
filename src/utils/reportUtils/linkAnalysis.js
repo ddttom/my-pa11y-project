@@ -66,7 +66,7 @@ function determineContentType(link) {
 
     return knownTypes[extension] || 'text/html';
   } catch {
-    return 'unknown';
+    return 'text/html';
   }
 }
 
