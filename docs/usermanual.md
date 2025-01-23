@@ -116,7 +116,9 @@ Fields:
 
 - Loading speed metrics
 - Paint timing measurements
-- Resource usage statistics
+- Interactive timing
+- Cumulative layout shift
+- Total blocking time
 
 Fields:
 
@@ -126,11 +128,8 @@ Fields:
 - First Contentful Paint (ms)
 - Largest Contentful Paint (ms)
 - Time to Interactive (ms)
-- Speed Index
 - Total Blocking Time (ms)
 - Cumulative Layout Shift
-- Resource Count
-- Resource Size (KB)
 
 ### Accessibility Report (accessibility_report.csv)
 

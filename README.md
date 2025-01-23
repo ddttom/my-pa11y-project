@@ -34,9 +34,8 @@ The tool collects comprehensive data about each page and stores it in `results.j
 - First paint and first contentful paint
 - Largest contentful paint
 - Time to interactive
-- Speed index
 - Total blocking time
-- Resource usage metrics
+- Cumulative layout shift
 
 #### Content Analysis
 
@@ -240,8 +239,10 @@ npm start -- -s <url> -o <output-dir> [options]
   - Load time
   - First paint timing
   - First contentful paint timing
-  - Page size
-  - Resource count
+  - Largest contentful paint
+  - Time to interactive
+  - Total blocking time
+  - Cumulative layout shift
 
 - `accessibility_report.csv`: WCAG 2.1 compliance analysis
   - Total issues by severity

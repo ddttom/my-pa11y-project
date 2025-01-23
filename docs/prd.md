@@ -46,9 +46,8 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - First contentful paint
 - Largest contentful paint  
 - Time to interactive
-- Speed index
 - Total blocking time
-- Resource usage metrics
+- Cumulative layout shift
 
 #### Accessibility Analysis
 
@@ -107,9 +106,8 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - Load time metrics
 - Paint timing metrics  
 - Interactive timing
-- Performance scores
-- Resource usage
-- Page size analysis
+- Cumulative layout shift
+- Total blocking time
 
 #### Accessibility Report (accessibility_report.csv)
 
