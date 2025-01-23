@@ -6,7 +6,6 @@ import { createEmptyAnalysis, calculateLinkDepth, getImageFormat } from './forma
 import { analyzeImage } from './imageAnalysis.js';
 import { analyzeLinkQuality, getLinkType, isInNavigation } from './linkAnalysis.js';
 import { analyzeContentQuality } from './contentAnalysis.js';
-import { analyzeSecurityFeatures } from './securityAnalysis.js';
 import { createObjectCsvWriter } from 'csv-writer';
 import path from 'path';
 
@@ -157,8 +156,7 @@ export async function generateSeoScores(results, outputDir) {
       { id: 'linksScore', title: 'Links Score' },
       { id: 'imagesScore', title: 'Images Score' },
       { id: 'mobileScore', title: 'Mobile Score' },
-      { id: 'performanceScore', title: 'Performance Score' },
-      { id: 'securityScore', title: 'Security Score' }
+      { id: 'performanceScore', title: 'Performance Score' }
     ]
   });
 
@@ -174,8 +172,7 @@ export async function generateSeoScores(results, outputDir) {
       linksScore: formatScore(page.details?.internalLinking),
       imagesScore: formatScore(page.details?.imageOptimization),
       mobileScore: formatScore(page.details?.mobileOptimization),
-      performanceScore: formatScore(page.details?.performanceScore),
-      securityScore: formatScore(page.details?.securityScore)
+      performanceScore: formatScore(page.details?.performanceScore)
     })) || [];
 
   await csvWriter.writeRecords(reportData);
@@ -393,54 +390,6 @@ export async function generateContentQualityReport(results, outputDir) {
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Content quality report generated with ${reportData.length} records`);
-}
-
-/**
- * Generates security analysis report in CSV format
- * @param {Object} results - Analysis results object containing security metrics
- * @param {string} outputDir - Directory path to save the report
- * @returns {Promise<void>}
- * @example
- * await generateSecurityReport(results, './reports');
- * // Creates security_report.csv with security headers and SSL metrics
- */
-export async function generateSecurityReport(results, outputDir) {
-  const csvWriter = createObjectCsvWriter({
-    path: path.join(outputDir, 'security_report.csv'),
-    header: [
-      { id: 'url', title: 'URL' },
-      { id: 'httpsScore', title: 'HTTPS Implementation' },
-      { id: 'headerScore', title: 'Security Headers' },
-      { id: 'mixedContent', title: 'Mixed Content Issues' },
-      { id: 'cookieSecure', title: 'Cookie Security' },
-      { id: 'cspScore', title: 'Content Security Policy' },
-      { id: 'xssProtection', title: 'XSS Protection' },
-      { id: 'certificateDetails', title: 'SSL Certificate Details' },
-      { id: 'vulnerabilities', title: 'Vulnerabilities Found' },
-      { id: 'securityScore', title: 'Overall Security Score' }
-    ]
-  });
-
-  const reportData = results.performanceAnalysis
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.map(page => {
-      const security = analyzeSecurityFeatures(page);
-      return {
-        url: page.url,
-        httpsScore: formatScore(security.httpsScore),
-        headerScore: formatScore(security.headerScore),
-        mixedContent: security.mixedContentIssues,
-        cookieSecure: formatScore(security.cookieScore),
-        cspScore: formatScore(security.cspScore),
-        xssProtection: formatScore(security.xssScore),
-        certificateDetails: security.certificateInfo,
-        vulnerabilities: security.vulnerabilitiesCount,
-        securityScore: formatScore(security.overallScore)
-      };
-    }) || [];
-
-  await csvWriter.writeRecords(reportData);
-  global.auditcore.logger.info(`Security report generated with ${reportData.length} records`);
 }
 
 /**

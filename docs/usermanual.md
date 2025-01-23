@@ -2,7 +2,7 @@
 
 ## Overview
 
-This tool performs comprehensive website analysis, generating detailed reports on SEO, performance, accessibility, content quality, and security metrics.
+This tool performs comprehensive website analysis, generating detailed reports on SEO, performance, accessibility, and content quality metrics.
 
 ## Getting Started
 
@@ -223,25 +223,6 @@ Fields:
 - Media Richness Score
 - Top Keywords
 - Overall Content Score
-
-### Security Report (security_report.csv)
-
-- Security implementation analysis
-- Vulnerability detection
-- SSL certificate details
-
-Fields:
-
-- URL
-- HTTPS Implementation
-- Security Headers
-- Mixed Content Issues
-- Cookie Security
-- Content Security Policy
-- XSS Protection
-- SSL Certificate Details
-- Vulnerabilities Found
-- Overall Security Score
 
 ## Log Files
 
