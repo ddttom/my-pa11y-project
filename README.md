@@ -9,7 +9,6 @@ A Node.js tool for analyzing website SEO and performance metrics with comprehens
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
   - Detailed markdown reports for better readability
 - **Content Quality**: Structure and freshness analysis
-- **Security Analysis**: HTTPS implementation and vulnerability scanning
 - **Automatic Cache Management**: .cache directory creation and management
 - **Robust Error Handling**: Network error recovery and retry mechanism
 - **URL Processing Control**: Limit number of URLs processed using count parameter
@@ -131,7 +130,6 @@ seo-audit-tool/
 │       │   ├── imageAnalysis.js      # Image analysis
 │       │   ├── linkAnalysis.js       # Link analysis
 │       │   ├── contentAnalysis.js    # Content quality analysis
-│       │   ├── securityAnalysis.js   # Security analysis
 │       │   └── reportGenerators.js   # Report generation functions
 │       ├── networkUtils.js # Network error handling
 │       └── reports.js    # Main report coordination
@@ -220,7 +218,6 @@ npm start -- -s <url> -o <output-dir> [options]
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--no-puppeteer`: Bypass Puppeteer execution
 - `--force-delete-cache`: Force delete existing cache
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
