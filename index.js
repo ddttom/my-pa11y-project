@@ -21,7 +21,7 @@ import { runTestsOnSitemap } from './src/main.js';
 const logFiles = ['error.log', 'combined.log'];
 
 // Test configuration variables
-const testnum = 2;
+const testnum = 1;
 let defurl;
 let defcount;
 
@@ -30,7 +30,7 @@ if (testnum == 1) {
   // Default URL for analysis when none is provided
   defurl = 'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub';
   // Default count of files to include in both passes (-1 means infinite)
-  defcount = 7;
+  defcount = -1;
 } else {
   defurl = 'https://www.icann.org';
   defcount = 20;
