@@ -113,11 +113,8 @@ export async function generatePerformanceReport(results, outputDir) {
       { id: 'firstContentfulPaint', title: 'First Contentful Paint (ms)' },
       { id: 'largestContentfulPaint', title: 'Largest Contentful Paint (ms)' },
       { id: 'timeToInteractive', title: 'Time to Interactive (ms)' },
-      { id: 'speedIndex', title: 'Speed Index' },
       { id: 'totalBlockingTime', title: 'Total Blocking Time (ms)' },
-      { id: 'cumulativeLayoutShift', title: 'Cumulative Layout Shift' },
-      { id: 'resourceCount', title: 'Resource Count' },
-      { id: 'resourceSize', title: 'Total Resource Size (KB)' }
+      { id: 'cumulativeLayoutShift', title: 'Cumulative Layout Shift' }
     ]
   });
 
@@ -130,11 +127,8 @@ export async function generatePerformanceReport(results, outputDir) {
       firstContentfulPaint: Math.round(page.firstContentfulPaint || 0),
       largestContentfulPaint: Math.round(page.largestContentfulPaint || 0),
       timeToInteractive: Math.round(page.timeToInteractive || 0),
-      speedIndex: Math.round(page.speedIndex || 0),
       totalBlockingTime: Math.round(page.totalBlockingTime || 0),
-      cumulativeLayoutShift: page.cumulativeLayoutShift?.toFixed(3) || 0,
-      resourceCount: page.resourceCount || 0,
-      resourceSize: Math.round((page.resourceSize || 0) / 1024)
+      cumulativeLayoutShift: page.cumulativeLayoutShift?.toFixed(3) || 0
     })) || [];
 
   await csvWriter.writeRecords(reportData);
