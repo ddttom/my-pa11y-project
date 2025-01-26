@@ -2,6 +2,8 @@
 
 A Node.js tool for analyzing website SEO and performance metrics with comprehensive accessibility testing.
 
+The folder /docs, in the repo, contains prompts in .md format that are useful for extending this project
+
 ## Key Features
 
 - **SEO Analysis**: Detailed SEO metrics and scoring
