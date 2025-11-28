@@ -454,7 +454,9 @@ export async function generateSpecificUrlReport(results, outputDir) {
     path: path.join(outputDir, 'specific_url_report.csv'),
     header: [
       { id: 'pageUrl', title: 'Page URL' },
-      { id: 'foundUrl', title: 'Found URL' }
+      { id: 'foundUrl', title: 'Found URL' },
+      { id: 'elementType', title: 'Element Type' },
+      { id: 'attribute', title: 'Attribute' }
     ]
   });
 
