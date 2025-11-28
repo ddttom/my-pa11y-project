@@ -142,8 +142,6 @@ export async function updateContentMetrics($, results, testUrl) {
 
 export function updateSpecificUrlMetrics($, results, testUrl) {
   const targetSubstring = 'main--allaboutv2--ddttom.hlx.live';
-  global.auditcore.logger.debug(`Searching for ${targetSubstring} in ${testUrl}`);
-  // global.auditcore.logger.debug(`HTML content: ${$.html()}`); // Uncomment if needed, but might be too large
   const matches = [];
 
   // Helper to check and add matches
