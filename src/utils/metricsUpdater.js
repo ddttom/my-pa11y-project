@@ -141,7 +141,7 @@ export async function updateContentMetrics($, results, testUrl) {
 }
 
 export function updateSpecificUrlMetrics($, results, testUrl) {
-  const targetSubstring = 'allabout.network';
+  const targetSubstring = 'main--allaboutv2--ddttom.hlx.live';
   const links = $('a').filter((i, el) => {
     const href = $(el).attr('href');
     return href && href.includes(targetSubstring);

@@ -20,21 +20,13 @@ import { runTestsOnSitemap } from './src/main.js';
 // Log files to manage application logging
 const logFiles = ['error.log', 'combined.log'];
 
-// Test configuration variables
-const testnum = 1;
 let defurl;
 let defcount;
 
-// Set default URL and count based on test configuration
-if (testnum == 1) {
-  // Default URL for analysis when none is provided
-  defurl = 'https://allabout.network/blogs/ddt/';
-  // Default count of files to include in both passes (-1 means infinite)
-  defcount = -1;
-} else {
-  defurl = 'https://www.icann.org';
-  defcount = 20;
-}
+// Default URL for analysis when none is provided
+defurl = 'https://allabout.network/blogs/ddt/';
+// Default count for analysis when none is provided, -1 = infinite
+defcount = -1
 
 // Clear existing log files before starting new session
 logFiles.forEach((file) => {
