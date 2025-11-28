@@ -8,7 +8,8 @@ import {
   generateImageOptimizationReport,
   generateLinkAnalysisReport,
   generateContentQualityReport,
-  generateSecurityReport
+  generateSecurityReport,
+  generateSpecificUrlReport
 } from './reportUtils/reportGenerators.js';
 
 /**
@@ -30,6 +31,7 @@ export async function generateReports(results, urls, outputDir) {
     await generateLinkAnalysisReport(results, outputDir);
     await generateContentQualityReport(results, outputDir);
     await generateSecurityReport(results, outputDir);
+    await generateSpecificUrlReport(results, outputDir);
 
     // Save complete results as JSON
     await fs.writeFile(

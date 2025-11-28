@@ -14,6 +14,7 @@ module.exports = {
   },
   plugins: [
     'node',
+    'import',
   ],
   rules: {
     'node/file-extension-in-import': ['error', 'always'],
@@ -28,4 +29,15 @@ module.exports = {
       version: '>=20.0.0',
     },
   },
+  overrides: [
+    {
+      files: ['test/**/*.js'],
+      env: {
+        mocha: true,
+      },
+      rules: {
+        'node/no-unpublished-import': 'off',
+      },
+    },
+  ],
 };

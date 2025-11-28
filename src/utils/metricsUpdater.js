@@ -139,6 +139,25 @@ export async function updateContentMetrics($, results, testUrl) {
 
   global.auditcore.logger.debug(`[END] Updating content metrics for ${testUrl}`);
 }
+
+export function updateSpecificUrlMetrics($, results, testUrl) {
+  const targetSubstring = 'allabout.network';
+  const links = $('a').filter((i, el) => {
+    const href = $(el).attr('href');
+    return href && href.includes(targetSubstring);
+  });
+
+  if (links.length > 0) {
+    results.specificUrlMetrics = results.specificUrlMetrics || [];
+    links.each((i, el) => {
+      results.specificUrlMetrics.push({
+        pageUrl: testUrl,
+        foundUrl: $(el).attr('href')
+      });
+    });
+    global.auditcore.logger.info(`Found ${links.length} occurrences of ${targetSubstring} on ${testUrl}`);
+  }
+}
 export function updateUrlMetrics(url, baseUrl, html, statusCode, results) {
   results.urlMetrics = results.urlMetrics || {
     total: 0,

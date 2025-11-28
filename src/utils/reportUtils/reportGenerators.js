@@ -393,6 +393,42 @@ export async function generateContentQualityReport(results, outputDir) {
 }
 
 /**
+ * Generates security analysis report in CSV format
+ * @param {Object} results - Analysis results object containing security metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ */
+export async function generateSecurityReport(results, outputDir) {
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'security_report.csv'),
+    header: [
+      { id: 'url', title: 'URL' },
+      { id: 'https', title: 'HTTPS' },
+      { id: 'hsts', title: 'HSTS' },
+      { id: 'csp', title: 'CSP' },
+      { id: 'xFrameOptions', title: 'X-Frame-Options' },
+      { id: 'xContentTypeOptions', title: 'X-Content-Type-Options' }
+    ]
+  });
+
+  const reportData = results.securityMetrics
+    ? Object.entries(results.securityMetrics)
+        .filter(([url]) => shouldIncludeUrl(url))
+        .map(([url, metrics]) => ({
+          url,
+          https: metrics.https ? 'Yes' : 'No',
+          hsts: metrics.hasHsts ? 'Yes' : 'No',
+          csp: metrics.hasCsp ? 'Yes' : 'No',
+          xFrameOptions: metrics.hasXFrameOptions ? 'Yes' : 'No',
+          xContentTypeOptions: metrics.hasXContentTypeOptions ? 'Yes' : 'No'
+        }))
+    : [];
+
+  await csvWriter.writeRecords(reportData);
+  global.auditcore.logger.info(`Security report generated with ${reportData.length} records`);
+}
+
+/**
  * Helper function to format numerical scores
  * @param {number|string} score - The score to format
  * @returns {string} Formatted score as string with two decimal places
@@ -400,4 +436,28 @@ export async function generateContentQualityReport(results, outputDir) {
  */
 function formatScore(score) {
   return typeof score === 'number' ? score.toFixed(2) : '0.00';
+}
+
+/**
+ * Generates specific URL report in CSV format
+ * @param {Object} results - Analysis results object containing specific URL metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ */
+export async function generateSpecificUrlReport(results, outputDir) {
+  if (!results.specificUrlMetrics || results.specificUrlMetrics.length === 0) {
+    global.auditcore.logger.info('No specific URL matches found, skipping report generation');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'specific_url_report.csv'),
+    header: [
+      { id: 'pageUrl', title: 'Page URL' },
+      { id: 'foundUrl', title: 'Found URL' }
+    ]
+  });
+
+  await csvWriter.writeRecords(results.specificUrlMetrics);
+  global.auditcore.logger.info(`Specific URL report generated with ${results.specificUrlMetrics.length} records`);
 }

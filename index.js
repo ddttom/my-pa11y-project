@@ -28,7 +28,7 @@ let defcount;
 // Set default URL and count based on test configuration
 if (testnum == 1) {
   // Default URL for analysis when none is provided
-  defurl = 'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub';
+  defurl = 'https://allabout.network/blogs/ddt/';
   // Default count of files to include in both passes (-1 means infinite)
   defcount = -1;
 } else {

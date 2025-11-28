@@ -112,6 +112,11 @@ export async function getUrlsFromSitemap(url, limit = -1) {
     } else {
       global.auditcore.logger.info('Processing as HTML page');
       urls = await processHtmlContent(content, url, limit);
+      
+      if (urls.length === 0) {
+        global.auditcore.logger.info('No URLs found with JSDOM, falling back to Puppeteer');
+        urls = await processWithPuppeteer(url, limit);
+      }
     }
 
     // Filter and validate URLs
@@ -408,11 +413,16 @@ async function processHtmlContent(content, baseUrl, limit) {
       }
 
       const href = link.getAttribute('href');
+      global.auditcore.logger.debug(`Checking link href: ${href}`);
+
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
+        global.auditcore.logger.debug(`Skipping invalid href: ${href}`);
         continue;
       }
 
       const url = new URL(href, baseUrl);
+      global.auditcore.logger.debug(`Resolved URL: ${url.href}`);
+      global.auditcore.logger.debug(`Comparing hostname: ${url.hostname} vs ${baseUrlObj.hostname}`);
       
       if (url.hostname === baseUrlObj.hostname) {
         global.auditcore.logger.debug(`Found internal URL: ${url.href}`);
@@ -422,6 +432,8 @@ async function processHtmlContent(content, baseUrl, limit) {
           changefreq: 'daily',
           priority: 0.7,
         });
+      } else {
+        global.auditcore.logger.debug(`Skipping external URL: ${url.href}`);
       }
     } catch (error) {
       global.auditcore.logger.debug(`Error processing link: ${error.message}`);
