@@ -12,6 +12,7 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
   - Detailed markdown reports for better readability
 - **Content Quality**: Structure and freshness analysis
 - **Automatic Cache Management**: .cache directory creation and management
+  - **Rendered Page Caching**: Automatically saves rendered HTML for debugging
 - **Robust Error Handling**: Network error recovery and retry mechanism
 - **URL Processing Control**: Limit number of URLs processed using count parameter
 - **Output Directory Preservation**: Existing output directory contents are preserved
@@ -400,6 +401,17 @@ npm start -- -s <url> -o <output-dir> [options]
 - `--force-delete-cache`: Force delete existing cache
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
+
+### Troubleshooting
+
+#### Missing Rendered Files
+
+If you don't see new files in `.cache/rendered`, the script might be using existing results. Delete `results/results.json` to force a fresh run:
+
+```bash
+rm results/results.json
+npm start
+```
 
 ### Output Files
 

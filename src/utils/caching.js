@@ -358,6 +358,16 @@ async function renderAndCacheData(url) {
       screenshot: screenshotFilename,
     };
 
+    // Save rendered HTML to .cache/rendered
+    try {
+      const cacheKey = generateCacheKey(url);
+      const renderedPath = path.join(CACHE_DIR, 'rendered', `${cacheKey}.html`);
+      await fs.writeFile(renderedPath, html, 'utf8');
+      global.auditcore.logger.debug(`Rendered HTML saved to: ${renderedPath}`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving rendered HTML for ${url}:`, error);
+    }
+
     global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
     return data;
   } catch (error) {

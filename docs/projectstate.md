@@ -14,6 +14,7 @@
 - Implemented caching for better performance
 - Enhanced network error handling with retry mechanism
 - Automatic .cache directory creation during initialization
+- Implemented rendered page caching for debugging
 - Added count parameter to limit number of URLs processed
 - Preserves existing output directory contents
 - Added results.json detection for report generation
@@ -100,6 +101,9 @@
   - Better context validation
   - Robust error handling
   - URL validation with country code restrictions
+- Implemented rendered page caching for debugging
+  - Automatically saves rendered HTML to .cache/rendered
+  - Uses MD5 hash naming convention
 
 ### Fixed Issues
 

@@ -14,6 +14,7 @@ A Node.js tool for comprehensive website analysis, including SEO, performance, a
 - URL normalization and caching
 - Handle redirects and errors
 - Automatic .cache directory creation during initialization
+- Rendered Page Caching: Automatically saves rendered HTML for debugging
 - Limit number of URLs processed using count parameter
 - Preserve existing output directory contents
 - Results file detection and report generation
@@ -219,6 +220,7 @@ project/
 ├── results/       # Generated reports
 ├── logs/          # Log files
 └── .cache/        # Cache directory
+    └── rendered/  # Saved rendered HTML files
 ```
 
 ### Error Handling

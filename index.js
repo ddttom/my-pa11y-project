@@ -142,10 +142,15 @@ global.auditcore.logger = winston.createLogger({
  */
 function ensureCacheDirectory() {
   const cacheDir = path.join(process.cwd(), '.cache');
+  const renderedDir = path.join(cacheDir, 'rendered');
   try {
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true });
       global.auditcore.logger.info(`Created cache directory at ${cacheDir}`);
+    }
+    if (!fs.existsSync(renderedDir)) {
+      fs.mkdirSync(renderedDir, { recursive: true });
+      global.auditcore.logger.info(`Created rendered cache directory at ${renderedDir}`);
     }
   } catch (error) {
     global.auditcore.logger.error(`Failed to create cache directory: ${error.message}`);
