@@ -15,6 +15,7 @@
 - Enhanced network error handling with retry mechanism
 - Automatic .cache directory creation during initialization
 - Implemented rendered page caching for debugging
+- Implemented served page caching for debugging
 - Added count parameter to limit number of URLs processed
 - Preserves existing output directory contents
 - Added results.json detection for report generation
@@ -104,6 +105,9 @@
 - Implemented rendered page caching for debugging
   - Automatically saves rendered HTML to .cache/rendered
   - Uses MD5 hash naming convention
+- Implemented served page caching for debugging
+  - Automatically saves original served HTML to .cache/served
+  - Uses MD5 hash naming convention
 
 ### Fixed Issues
 
@@ -187,6 +191,7 @@ None currently identified.
 - Sampling limits: ✅
 - Language variant filtering: ✅
 - URL validation: ✅
+- Served page caching: ✅
 
 ## Dependencies
 

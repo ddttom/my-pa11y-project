@@ -500,7 +500,7 @@ function extractUrlsFromUrlset(urlset) {
  * @returns {Promise<Array>} Processed URLs
  */
 export async function processSitemapUrls(urls) {
-  const processor = new UrlProcessor();
+  const processor = new UrlProcessor(global.auditcore.options);
   return processor.processUrls(urls);
 }
 

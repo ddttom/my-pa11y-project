@@ -152,6 +152,11 @@ function ensureCacheDirectory() {
       fs.mkdirSync(renderedDir, { recursive: true });
       global.auditcore.logger.info(`Created rendered cache directory at ${renderedDir}`);
     }
+    const servedDir = path.join(cacheDir, 'served');
+    if (!fs.existsSync(servedDir)) {
+      fs.mkdirSync(servedDir, { recursive: true });
+      global.auditcore.logger.info(`Created served cache directory at ${servedDir}`);
+    }
   } catch (error) {
     global.auditcore.logger.error(`Failed to create cache directory: ${error.message}`);
     process.exit(1);

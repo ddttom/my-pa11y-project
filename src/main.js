@@ -48,11 +48,17 @@ export async function runTestsOnSitemap() {
   const resultsPath = path.join(outputDir, 'results.json');
   let results;
   
+  // Calculate noCache based on options (same logic as in caching.js)
+  const { cache = true, noCache: explicitNoCache = false } = global.auditcore.options;
+  const noCache = explicitNoCache || !cache;
+
   try {
-    // Try to load existing results to support resume functionality
-    const existingResults = await fs.readFile(resultsPath, 'utf-8');
-    results = JSON.parse(existingResults);
-    global.auditcore.logger.info('Found existing results, using cached data');
+    if (!noCache) {
+      // Try to load existing results to support resume functionality
+      const existingResults = await fs.readFile(resultsPath, 'utf-8');
+      results = JSON.parse(existingResults);
+      global.auditcore.logger.info('Found existing results, using cached data');
+    }
   } catch (error) {
     global.auditcore.logger.debug('No existing results found, starting fresh processing');
   }

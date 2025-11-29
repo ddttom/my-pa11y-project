@@ -13,6 +13,7 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
 - **Content Quality**: Structure and freshness analysis
 - **Automatic Cache Management**: .cache directory creation and management
   - **Rendered Page Caching**: Automatically saves rendered HTML for debugging
+  - **Served Page Caching**: Automatically saves original served HTML for debugging
 - **Robust Error Handling**: Network error recovery and retry mechanism
 - **URL Processing Control**: Limit number of URLs processed using count parameter
 - **Output Directory Preservation**: Existing output directory contents are preserved
@@ -404,9 +405,9 @@ npm start -- -s <url> -o <output-dir> [options]
 
 ### Troubleshooting
 
-#### Missing Rendered Files
+#### Missing Rendered or Served Files
 
-If you don't see new files in `.cache/rendered`, the script might be using existing results. Delete `results/results.json` to force a fresh run:
+If you don't see new files in `.cache/rendered` or `.cache/served`, the script might be using existing results. Delete `results/results.json` to force a fresh run:
 
 ```bash
 rm results/results.json

@@ -180,6 +180,16 @@ async function fetchDataWithoutPuppeteer(url) {
       lastCrawled: new Date().toISOString(),
     };
 
+    // Save served HTML to .cache/served
+    try {
+      const cacheKey = generateCacheKey(url);
+      const servedPath = path.join(CACHE_DIR, 'served', `${cacheKey}.html`);
+      await fs.writeFile(servedPath, html, 'utf8');
+      global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving served HTML for ${url}:`, error);
+    }
+
     global.auditcore.logger.debug(`Successfully fetched, scored, and analyzed ${url} without Puppeteer`);
     return data;
   } catch (error) {
@@ -189,8 +199,11 @@ async function fetchDataWithoutPuppeteer(url) {
 }
 
 async function getOrRenderData(url, options = {}) {
-  const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
-  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
+  const { noPuppeteer = false, cacheOnly = false, cache = true } = options;
+  // If cache is false (from --no-cache), then noCache should be true
+  const noCache = options.noCache || !cache;
+  
+  global.auditcore.logger.debug(`getOrRenderData called for ${url} with options: ${JSON.stringify(options)}`);
 
   if (!noCache) {
     const cachedData = await getCachedData(url);
@@ -257,6 +270,7 @@ async function renderAndCacheData(url) {
     });
 
     const response = await page.goto(url, { waitUntil: 'networkidle0' });
+    const servedHtml = await response.text();
     const html = await page.content();
     const statusCode = response.status();
 
@@ -366,6 +380,16 @@ async function renderAndCacheData(url) {
       global.auditcore.logger.debug(`Rendered HTML saved to: ${renderedPath}`);
     } catch (error) {
       global.auditcore.logger.error(`Error saving rendered HTML for ${url}:`, error);
+    }
+
+    // Save served HTML to .cache/served
+    try {
+      const cacheKey = generateCacheKey(url);
+      const servedPath = path.join(CACHE_DIR, 'served', `${cacheKey}.html`);
+      await fs.writeFile(servedPath, servedHtml, 'utf8');
+      global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving served HTML for ${url}:`, error);
     }
 
     global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);

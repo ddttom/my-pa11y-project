@@ -243,6 +243,7 @@ The tool maintains a cache to improve performance:
 - Cache location: `.cache` directory (automatically created if missing)
 - Cache format: JSON files
 - Rendered pages: HTML files in `.cache/rendered`
+- Served pages: HTML files in `.cache/served`
 - Cache naming: MD5 hash of URLs
 
 ### Cache Control Options
@@ -322,9 +323,9 @@ Solution: Reduce number of URLs using -l or -c options
 - `Network error`: Check internet connection
 - `Permission denied`: Check directory permissions
 
-### Missing Rendered Files
+### Missing Rendered or Served Files
 
-If you don't see new files in `.cache/rendered`, the script might be using existing results. Delete `results/results.json` to force a fresh run:
+If you don't see new files in `.cache/rendered` or `.cache/served`, the script might be using existing results. Delete `results/results.json` to force a fresh run:
 
 ```bash
 rm results/results.json
