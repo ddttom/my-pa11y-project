@@ -167,11 +167,57 @@ export class UrlProcessor {
   }
 
   /**
-   * Processes an array of URLs one by one.
+   * Extracts newly discovered URLs from a processed page's internal links.
+   * @param {string} currentUrl - The URL that was just processed.
+   * @param {string} baseUrl - The base URL (origin) to compare against.
+   * @param {Set} processedUrls - Set of URLs that have been or will be processed.
+   * @returns {Array} Array of new URL objects to add to the queue.
+   */
+  extractDiscoveredUrls(currentUrl, baseUrl, processedUrls) {
+    // Find the internal links entry for the current URL
+    const pageLinks = this.results.internalLinks?.find(item => item.url === currentUrl);
+
+    if (!pageLinks || !pageLinks.links) {
+      return [];
+    }
+
+    const newUrls = [];
+
+    for (const link of pageLinks.links) {
+      const linkUrl = link.url;
+
+      // Skip if already processed or queued
+      if (processedUrls.has(linkUrl)) {
+        continue;
+      }
+
+      // Verify same domain
+      try {
+        const linkUrlObj = new URL(linkUrl);
+        const baseUrlObj = new URL(baseUrl);
+
+        if (linkUrlObj.origin === baseUrlObj.origin) {
+          newUrls.push({
+            url: linkUrl,
+            lastmod: new Date().toISOString(),
+            changefreq: 'daily',
+            priority: 0.5
+          });
+        }
+      } catch (error) {
+        global.auditcore.logger.debug(`Invalid URL found: ${linkUrl}`);
+      }
+    }
+
+    return newUrls;
+  }
+
+  /**
+   * Processes an array of URLs sequentially (original behavior).
    * @param {Array} urls - The URLs to process.
    * @returns {Promise<Object>} The results of processing all URLs.
    */
-  async processUrls(urls) {
+  async processUrlsSequentially(urls) {
     if (!Array.isArray(urls) || urls.length === 0) {
       global.auditcore.logger.warn('No URLs to process');
       return [];
@@ -186,6 +232,75 @@ export class UrlProcessor {
       await this.processUrl(url, lastmod, i, totalTests);
     }
 
+    return this.results;
+  }
+
+  /**
+   * Processes an array of URLs with optional recursive crawling.
+   * @param {Array} urls - The initial URLs to process.
+   * @param {boolean} recursive - Whether to recursively process discovered URLs.
+   * @returns {Promise<Object>} The results of processing all URLs.
+   */
+  async processUrls(urls, recursive = false) {
+    if (!recursive) {
+      // Original behavior: process only initial URLs
+      return await this.processUrlsSequentially(urls);
+    }
+
+    // Recursive mode: queue-based processing
+    if (!Array.isArray(urls) || urls.length === 0) {
+      global.auditcore.logger.warn('No URLs to process');
+      return [];
+    }
+
+    global.auditcore.logger.info(`Starting recursive crawling with ${urls.length} initial URLs`);
+
+    const urlQueue = [...urls]; // Copy initial URLs
+    const processedUrls = new Set(); // Track processed URLs
+    const baseUrl = urls[0]?.url ? new URL(urls[0].url).origin : null;
+
+    if (!baseUrl) {
+      global.auditcore.logger.error('Could not determine base URL for recursive crawling');
+      return await this.processUrlsSequentially(urls);
+    }
+
+    let index = 0;
+
+    while (urlQueue.length > 0) {
+      const urlObj = urlQueue.shift();
+      const { url, lastmod } = urlObj;
+
+      // Skip if already processed
+      if (processedUrls.has(url)) {
+        continue;
+      }
+
+      processedUrls.add(url);
+      const totalProcessed = processedUrls.size;
+      const totalQueued = urlQueue.length;
+
+      console.info(`Processing URL ${totalProcessed} (${totalQueued} in queue): ${url}`);
+
+      // Process this URL
+      await this.processUrl(url, lastmod, index, totalProcessed);
+      index++;
+
+      // Extract newly discovered URLs from this page's internal links
+      const discoveredUrls = this.extractDiscoveredUrls(url, baseUrl, processedUrls);
+
+      // Add discovered URLs to queue
+      if (discoveredUrls.length > 0) {
+        global.auditcore.logger.info(`Found ${discoveredUrls.length} new URLs to process from ${url}`);
+        urlQueue.push(...discoveredUrls);
+
+        // Mark discovered URLs as queued
+        for (const discoveredUrl of discoveredUrls) {
+          processedUrls.add(discoveredUrl.url);
+        }
+      }
+    }
+
+    global.auditcore.logger.info(`Recursive crawling complete. Processed ${processedUrls.size} total URLs`);
     return this.results;
   }
 }

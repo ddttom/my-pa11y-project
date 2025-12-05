@@ -495,13 +495,14 @@ function extractUrlsFromUrlset(urlset) {
 
 /**
  * Process sitemap URLs with the URL processor
- * 
+ *
  * @param {Array} urls - URLs to process
+ * @param {boolean} recursive - Whether to recursively process discovered URLs
  * @returns {Promise<Array>} Processed URLs
  */
-export async function processSitemapUrls(urls) {
+export async function processSitemapUrls(urls, recursive = false) {
   const processor = new UrlProcessor(global.auditcore.options);
-  return processor.processUrls(urls);
+  return processor.processUrls(urls, recursive);
 }
 
 /**

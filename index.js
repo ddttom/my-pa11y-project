@@ -88,6 +88,10 @@ program
     '--include-all-languages',
     'Include all language variants in sitemap (default: only /en and /us)'
   )
+  .option(
+    '--recursive',
+    'Enable recursive crawling: scan discovered URLs not in original sitemap'
+  )
   .parse(process.argv);
 
 // Global configuration object for shared state
