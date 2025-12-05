@@ -184,26 +184,34 @@ export class UrlProcessor {
     const newUrls = [];
 
     for (const link of pageLinks.links) {
-      const linkUrl = link.url;
+      let linkUrl = link.url;
 
-      // Skip if already processed or queued
-      if (processedUrls.has(linkUrl)) {
-        continue;
-      }
-
-      // Verify same domain
+      // Verify same domain and normalize URL
       try {
         const linkUrlObj = new URL(linkUrl);
         const baseUrlObj = new URL(baseUrl);
 
-        if (linkUrlObj.origin === baseUrlObj.origin) {
-          newUrls.push({
-            url: linkUrl,
-            lastmod: new Date().toISOString(),
-            changefreq: 'daily',
-            priority: 0.5
-          });
+        // Skip if different origin
+        if (linkUrlObj.origin !== baseUrlObj.origin) {
+          continue;
         }
+
+        // Normalize URL: remove hash fragment and query parameters
+        linkUrlObj.hash = '';
+        linkUrlObj.search = '';
+        const normalizedUrl = linkUrlObj.href;
+
+        // Skip if already processed or queued (check normalized URL)
+        if (processedUrls.has(normalizedUrl)) {
+          continue;
+        }
+
+        newUrls.push({
+          url: normalizedUrl,
+          lastmod: new Date().toISOString(),
+          changefreq: 'daily',
+          priority: 0.5
+        });
       } catch (error) {
         global.auditcore.logger.debug(`Invalid URL found: ${linkUrl}`);
       }
