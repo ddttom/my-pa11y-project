@@ -13,6 +13,15 @@ All notable changes to this project will be documented in this file.
   - Sorted by usage frequency to identify critical third-party dependencies
   - Console summary showing total unique resources and breakdown by type
   - Supports detection of resources from: `<script>`, `<link>`, `<img>`, `<picture>`, `<video>`, `<audio>`, `<iframe>`, `<object>`, `<embed>`, `@font-face` rules, background images, and preload/prefetch hints
+- **Sitemap Gap Analysis**: Automatic detection of same-domain URLs missing from original sitemap
+  - Tracks all same-domain URLs discovered during page analysis
+  - Compares discovered URLs against original sitemap to identify gaps
+  - New report: `missing_sitemap_urls.csv` with Discovered URL and Found On Pages Count
+  - Shows how many pages link to each discovered URL
+  - Generates perfected sitemap: `v-sitemap.xml` including all original + discovered URLs
+  - Marks discovered URLs with XML comments for transparency
+  - Console summary showing count of discovered URLs and reference to reports
+  - Helps improve search engine coverage by identifying orphaned or unlisted pages
 - **CLAUDE.md**: Comprehensive documentation for Claude Code instances
   - Detailed 4-phase architecture documentation (Rendering → Analysis → Metrics → Reporting)
   - Step-by-step guide for adding new features following existing patterns
