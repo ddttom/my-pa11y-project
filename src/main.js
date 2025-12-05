@@ -138,7 +138,8 @@ export async function runTestsOnSitemap() {
     // Missing sitemap URLs summary
     const discoveredUrls = getDiscoveredUrls(results);
     if (discoveredUrls.length > 0) {
-      global.auditcore.logger.info(`\n=== Missing Sitemap URLs ===\nFound ${discoveredUrls.length} same-domain URLs not in original sitemap\nThese URLs were discovered during page analysis\nSee missing_sitemap_urls.csv for details\nPerfected sitemap saved as v-sitemap.xml\n=====================================\n`);
+      const urlList = discoveredUrls.map((url, index) => `  ${index + 1}. ${url}`).join('\n');
+      global.auditcore.logger.info(`\n=== Missing Sitemap URLs ===\nFound ${discoveredUrls.length} same-domain URLs not in original sitemap\nThese URLs were discovered during page analysis\n\nDiscovered URLs:\n${urlList}\n\nSee missing_sitemap_urls.csv for details\nPerfected sitemap saved as v-sitemap.xml\n=====================================\n`);
     } else {
       global.auditcore.logger.info(`\n=== Missing Sitemap URLs ===\nAll discovered URLs were in the original sitemap\nPerfected sitemap saved as v-sitemap.xml\n=====================================\n`);
     }
