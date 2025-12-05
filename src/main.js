@@ -48,13 +48,23 @@ export async function runTestsOnSitemap() {
   // Check for existing results to support resume functionality
   const resultsPath = path.join(outputDir, 'results.json');
   let results;
-  
+
   // Calculate noCache based on options (same logic as in caching.js)
-  const { cache = true, noCache: explicitNoCache = false } = global.auditcore.options;
+  const { cache = true, noCache: explicitNoCache = false, forceDeleteCache = false } = global.auditcore.options;
   const noCache = explicitNoCache || !cache;
 
+  // Delete results.json if force delete cache is enabled
+  if (forceDeleteCache) {
+    try {
+      await fs.unlink(resultsPath);
+      global.auditcore.logger.info('Force delete cache: Deleted results.json');
+    } catch (error) {
+      global.auditcore.logger.debug('No results.json to delete or delete failed');
+    }
+  }
+
   try {
-    if (!noCache) {
+    if (!noCache && !forceDeleteCache) {
       // Try to load existing results to support resume functionality
       const existingResults = await fs.readFile(resultsPath, 'utf-8');
       results = JSON.parse(existingResults);
