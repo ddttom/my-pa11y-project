@@ -175,6 +175,63 @@ export function updateSpecificUrlMetrics($, results, testUrl) {
     global.auditcore.logger.info(`Found ${matches.length} occurrences of ${targetSubstring} on ${testUrl}`);
   }
 }
+
+/**
+ * Aggregates external resources across all pages
+ * @param {Object} pageData - Page data containing externalResources array
+ * @param {Object} results - Results object to store aggregated metrics
+ * @param {string} testUrl - Current page URL being processed
+ */
+export function updateExternalResourcesMetrics(pageData, results, testUrl) {
+  global.auditcore.logger.debug(`[START] Updating external resources metrics for ${testUrl}`);
+
+  try {
+    // Initialize the aggregation object if it doesn't exist
+    if (!results.externalResourcesAggregation) {
+      results.externalResourcesAggregation = {};
+    }
+
+    // Get external resources from pageData
+    const externalResources = pageData.externalResources || [];
+
+    if (externalResources.length === 0) {
+      global.auditcore.logger.debug(`No external resources found on ${testUrl}`);
+      return;
+    }
+
+    // Aggregate resources
+    externalResources.forEach(resource => {
+      const { url, type } = resource;
+
+      if (!url) return;
+
+      // Initialize entry for this resource URL if it doesn't exist
+      if (!results.externalResourcesAggregation[url]) {
+        results.externalResourcesAggregation[url] = {
+          url: url,
+          type: type,
+          count: 0,
+          pages: []
+        };
+      }
+
+      // Increment count
+      results.externalResourcesAggregation[url].count += 1;
+
+      // Track which pages use this resource (for debugging/analysis)
+      if (!results.externalResourcesAggregation[url].pages.includes(testUrl)) {
+        results.externalResourcesAggregation[url].pages.push(testUrl);
+      }
+    });
+
+    global.auditcore.logger.info(`Aggregated ${externalResources.length} external resources from ${testUrl}`);
+  } catch (error) {
+    global.auditcore.logger.error(`[ERROR] Error updating external resources metrics for ${testUrl}:`, error);
+  }
+
+  global.auditcore.logger.debug(`[END] Updating external resources metrics for ${testUrl}`);
+}
+
 export function updateUrlMetrics(url, baseUrl, html, statusCode, results) {
   results.urlMetrics = results.urlMetrics || {
     total: 0,

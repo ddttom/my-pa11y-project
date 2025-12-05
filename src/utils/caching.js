@@ -288,6 +288,212 @@ async function renderAndCacheData(url) {
         );
       }).length;
 
+      // External resources extraction
+      const pageOrigin = window.location.origin;
+
+      // Helper function to determine if URL is external
+      const isExternalUrl = (url) => {
+        if (!url || url.startsWith('#') || url.startsWith('javascript:') || url.startsWith('data:')) {
+          return false;
+        }
+        try {
+          const absoluteUrl = new URL(url, window.location.href);
+          return absoluteUrl.origin !== pageOrigin;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      // Helper to get absolute URL
+      const getAbsoluteUrl = (url) => {
+        try {
+          return new URL(url, window.location.href).href;
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const externalResources = [];
+
+      // 1. JavaScript files (<script src="">)
+      document.querySelectorAll('script[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isExternalUrl(src)) {
+          externalResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'javascript'
+          });
+        }
+      });
+
+      // 2. CSS files (<link rel="stylesheet">)
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
+        const href = el.getAttribute('href');
+        if (isExternalUrl(href)) {
+          externalResources.push({
+            url: getAbsoluteUrl(href),
+            type: 'css'
+          });
+        }
+      });
+
+      // 3. Images - all formats
+      // <img> tags
+      document.querySelectorAll('img[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isExternalUrl(src)) {
+          externalResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'image'
+          });
+        }
+      });
+
+      // <picture><source> tags
+      document.querySelectorAll('picture source[srcset]').forEach(el => {
+        const srcset = el.getAttribute('srcset');
+        if (srcset) {
+          // Parse srcset which can be: "url1 1x, url2 2x" or "url1 100w, url2 200w"
+          srcset.split(',').forEach(entry => {
+            const url = entry.trim().split(/\s+/)[0];
+            if (isExternalUrl(url)) {
+              externalResources.push({
+                url: getAbsoluteUrl(url),
+                type: 'image'
+              });
+            }
+          });
+        }
+      });
+
+      // SVG images in <object> and <embed>
+      document.querySelectorAll('object[data], embed[src]').forEach(el => {
+        const src = el.getAttribute('data') || el.getAttribute('src');
+        if (src && isExternalUrl(src)) {
+          const url = getAbsoluteUrl(src);
+          if (url && (url.endsWith('.svg') || el.type === 'image/svg+xml')) {
+            externalResources.push({
+              url: url,
+              type: 'image'
+            });
+          }
+        }
+      });
+
+      // 4. Fonts (from CSS)
+      try {
+        Array.from(document.styleSheets).forEach(sheet => {
+          try {
+            Array.from(sheet.cssRules || []).forEach(rule => {
+              if (rule.cssText && rule.cssText.includes('@font-face')) {
+                const urlMatches = rule.cssText.match(/url\(['"]?([^'"()]+)['"]?\)/g);
+                if (urlMatches) {
+                  urlMatches.forEach(match => {
+                    const url = match.replace(/url\(['"]?|['"]?\)/g, '');
+                    if (isExternalUrl(url)) {
+                      externalResources.push({
+                        url: getAbsoluteUrl(url),
+                        type: 'font'
+                      });
+                    }
+                  });
+                }
+              }
+            });
+          } catch (e) {
+            // CORS-blocked stylesheets will throw - skip them
+          }
+        });
+      } catch (e) {
+        // Stylesheet access error
+      }
+
+      // 5. Videos
+      document.querySelectorAll('video source[src], video[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isExternalUrl(src)) {
+          externalResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'video'
+          });
+        }
+      });
+
+      // <video><source srcset>
+      document.querySelectorAll('video source[srcset]').forEach(el => {
+        const srcset = el.getAttribute('srcset');
+        if (srcset) {
+          srcset.split(',').forEach(entry => {
+            const url = entry.trim().split(/\s+/)[0];
+            if (isExternalUrl(url)) {
+              externalResources.push({
+                url: getAbsoluteUrl(url),
+                type: 'video'
+              });
+            }
+          });
+        }
+      });
+
+      // 6. Iframes
+      document.querySelectorAll('iframe[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isExternalUrl(src)) {
+          externalResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'iframe'
+          });
+        }
+      });
+
+      // 7. Audio
+      document.querySelectorAll('audio source[src], audio[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isExternalUrl(src)) {
+          externalResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'audio'
+          });
+        }
+      });
+
+      // 8. Background images from inline styles
+      document.querySelectorAll('[style*="background"]').forEach(el => {
+        const style = el.getAttribute('style');
+        const urlMatches = style.match(/url\(['"]?([^'"()]+)['"]?\)/g);
+        if (urlMatches) {
+          urlMatches.forEach(match => {
+            const url = match.replace(/url\(['"]?|['"]?\)/g, '');
+            if (isExternalUrl(url)) {
+              externalResources.push({
+                url: getAbsoluteUrl(url),
+                type: 'image'
+              });
+            }
+          });
+        }
+      });
+
+      // 9. Preload/Prefetch resources
+      document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="dns-prefetch"], link[rel="preconnect"]').forEach(el => {
+        const href = el.getAttribute('href');
+        if (href && isExternalUrl(href)) {
+          const asType = el.getAttribute('as') || 'other';
+          let type = 'other';
+          if (asType === 'script') type = 'javascript';
+          else if (asType === 'style') type = 'css';
+          else if (asType === 'image') type = 'image';
+          else if (asType === 'font') type = 'font';
+          else if (asType === 'video') type = 'video';
+          else if (asType === 'audio') type = 'audio';
+
+          externalResources.push({
+            url: getAbsoluteUrl(href),
+            type: type
+          });
+        }
+      });
+
       return {
         title: document.title,
         metaDescription: document.querySelector('meta[name="description"]')?.content || '',
@@ -319,6 +525,7 @@ async function renderAndCacheData(url) {
         formsCount: document.forms.length,
         tablesCount: document.querySelectorAll('table').length,
         pageSize: document.documentElement.outerHTML.length,
+        externalResources: externalResources,
       };
     });
 

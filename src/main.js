@@ -106,6 +106,25 @@ export async function runTestsOnSitemap() {
       global.auditcore.logger.info(`\n=== Specific URL Search Results ===\nNo occurrences of the target URL were found.\n=====================================\n`);
     }
 
+    if (results.externalResourcesAggregation && Object.keys(results.externalResourcesAggregation).length > 0) {
+      const totalResources = Object.keys(results.externalResourcesAggregation).length;
+      const totalReferences = Object.values(results.externalResourcesAggregation).reduce((sum, r) => sum + r.count, 0);
+
+      // Count by type
+      const typeBreakdown = Object.values(results.externalResourcesAggregation).reduce((acc, r) => {
+        acc[r.type] = (acc[r.type] || 0) + 1;
+        return acc;
+      }, {});
+
+      const typeBreakdownStr = Object.entries(typeBreakdown)
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(', ');
+
+      global.auditcore.logger.info(`\n=== External Resources Summary ===\nFound ${totalResources} unique external resources (${totalReferences} total references)\nBreakdown: ${typeBreakdownStr}\nSee external_resources_report.csv for details.\n=====================================\n`);
+    } else {
+      global.auditcore.logger.info(`\n=== External Resources Summary ===\nNo external resources found.\n=====================================\n`);
+    }
+
     return results;
   } catch (error) {
     global.auditcore.logger.error('Error in runTestsOnSitemap:', error);

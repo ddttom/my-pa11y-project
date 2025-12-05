@@ -22,6 +22,7 @@ import {
   updateCanonicalMetrics,
   updateContentMetrics,
   updateSpecificUrlMetrics,
+  updateExternalResourcesMetrics,
 } from './metricsUpdater.js';
 
 async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config) {
@@ -147,7 +148,7 @@ async function analyzePageContent({
       links: internalLinks,
     });
 
-    await runMetricsAnalysis($, validTestUrl, validBaseUrl, headers, results);
+    await runMetricsAnalysis($, validTestUrl, validBaseUrl, headers, pageData, results);
 
     updateResults(results, validTestUrl, pa11yResult, internalLinks);
 
@@ -201,7 +202,7 @@ async function runPa11yAnalysis(testUrl, html, config) {
   }
 }
 
-async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
+async function runMetricsAnalysis($, testUrl, baseUrl, headers, pageData, results) {
   global.auditcore.logger.info(`[START] Running metrics analysis for ${testUrl}`);
   try {
     // Initialize all metric objects
@@ -242,6 +243,7 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     await updateCanonicalMetrics($, testUrl, results);
     await updateContentMetrics($, results, testUrl);
     await updateSpecificUrlMetrics($, results, testUrl);
+    await updateExternalResourcesMetrics(pageData, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
     metricsToCheck.forEach(metric => {

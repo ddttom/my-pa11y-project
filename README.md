@@ -7,10 +7,14 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
 ## Key Features
 
 - **SEO Analysis**: Detailed SEO metrics and scoring
-- **Performance Metrics**: Comprehensive page load analysis  
+- **Performance Metrics**: Comprehensive page load analysis
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
   - Detailed markdown reports for better readability
 - **Content Quality**: Structure and freshness analysis
+- **External Resources Tracking**: Complete inventory of all external dependencies
+  - JavaScript, CSS, images, fonts, videos, and other media
+  - Site-wide usage counts and frequency analysis
+  - Sorted by usage to identify critical dependencies
 - **Automatic Cache Management**: .cache directory creation and management
   - **Rendered Page Caching**: Automatically saves rendered HTML for debugging
   - **Served Page Caching**: Automatically saves original served HTML for debugging
@@ -101,6 +105,17 @@ Understand how your website fits together:
 - Quality of your internal linking
 - External link assessment
 
+### External Resources Analysis
+
+Track all external dependencies and third-party resources:
+
+- Comprehensive inventory of all external resources (JavaScript, CSS, images, fonts, videos, etc.)
+- Site-wide usage counts for each external resource
+- Identify most frequently used external dependencies
+- Detect potential single points of failure
+- Monitor third-party resource usage across your site
+- Support for CDN and external service auditing
+
 ## Reports You'll Receive
 
 ### 1. SEO Performance Report
@@ -150,6 +165,16 @@ Combines key technical metrics:
 - Technical errors
 - Server performance
 - Security indicators
+
+### 6. External Resources Report
+
+Comprehensive analysis of third-party dependencies:
+
+- Complete inventory of external JavaScript, CSS, images, fonts, and media files
+- Site-wide usage frequency for each resource
+- Resource type breakdown (JavaScript, CSS, images, fonts, videos, audio, iframes)
+- Sorted by usage count to identify critical dependencies
+- Helps assess third-party service impact
 
 ## Making the Most of Your Reports
 
@@ -452,6 +477,12 @@ npm start
   - Meta description score
   - Content quality score
   - Link structure score
+
+- `external_resources_report.csv`: External resource inventory
+  - Resource URL
+  - Resource Type (javascript, css, image, font, video, audio, iframe, other)
+  - Total Count (site-wide usage frequency)
+  - Sorted by count (most used resources first)
 
 - `virtual_sitemap.xml`: Initial crawl results
   - URLs discovered during first pass

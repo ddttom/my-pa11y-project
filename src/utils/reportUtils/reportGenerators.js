@@ -463,3 +463,40 @@ export async function generateSpecificUrlReport(results, outputDir) {
   await csvWriter.writeRecords(results.specificUrlMetrics);
   global.auditcore.logger.info(`Specific URL report generated with ${results.specificUrlMetrics.length} records`);
 }
+
+/**
+ * Generates external resources report in CSV format
+ * @param {Object} results - Analysis results object containing external resources aggregation
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateExternalResourcesReport(results, './reports');
+ * // Creates external_resources_report.csv with site-wide resource counts
+ */
+export async function generateExternalResourcesReport(results, outputDir) {
+  if (!results.externalResourcesAggregation || Object.keys(results.externalResourcesAggregation).length === 0) {
+    global.auditcore.logger.info('No external resources found, skipping external resources report generation');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'external_resources_report.csv'),
+    header: [
+      { id: 'url', title: 'Resource URL' },
+      { id: 'type', title: 'Resource Type' },
+      { id: 'count', title: 'Total Count' }
+    ]
+  });
+
+  // Convert aggregation object to array and sort by count (descending)
+  const reportData = Object.values(results.externalResourcesAggregation)
+    .map(resource => ({
+      url: resource.url || '',
+      type: resource.type || 'unknown',
+      count: resource.count || 0
+    }))
+    .sort((a, b) => b.count - a.count);  // Sort by count, highest first
+
+  await csvWriter.writeRecords(reportData);
+  global.auditcore.logger.info(`External resources report generated with ${reportData.length} unique resources`);
+}

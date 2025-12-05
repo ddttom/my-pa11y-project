@@ -9,7 +9,8 @@ import {
   generateLinkAnalysisReport,
   generateContentQualityReport,
   generateSecurityReport,
-  generateSpecificUrlReport
+  generateSpecificUrlReport,
+  generateExternalResourcesReport
 } from './reportUtils/reportGenerators.js';
 
 /**
@@ -32,6 +33,7 @@ export async function generateReports(results, urls, outputDir) {
     await generateContentQualityReport(results, outputDir);
     await generateSecurityReport(results, outputDir);
     await generateSpecificUrlReport(results, outputDir);
+    await generateExternalResourcesReport(results, outputDir);
 
     // Save complete results as JSON
     await fs.writeFile(
@@ -54,5 +56,6 @@ export {
   generateImageOptimizationReport,
   generateLinkAnalysisReport,
   generateContentQualityReport,
-  generateSecurityReport
+  generateSecurityReport,
+  generateExternalResourcesReport
 };
