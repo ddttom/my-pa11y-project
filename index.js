@@ -117,8 +117,22 @@ try {
 }
 
 /**
+ * Clear log files on startup
+ */
+try {
+  if (fs.existsSync('error.log')) {
+    fs.unlinkSync('error.log');
+  }
+  if (fs.existsSync('combined.log')) {
+    fs.unlinkSync('combined.log');
+  }
+} catch (err) {
+  console.error('Failed to clear log files:', err);
+}
+
+/**
  * Configure Winston logger with console and file transports
- * 
+ *
  * Logging levels:
  * - error: Critical errors
  * - warn: Warnings
@@ -139,6 +153,17 @@ global.auditcore.logger = winston.createLogger({
     new winston.transports.File({ filename: 'combined.log' }),
   ],
 });
+
+/**
+ * Log startup parameters
+ */
+global.auditcore.logger.info('=== Application Started ===');
+global.auditcore.logger.info(`Command: ${process.argv.join(' ')}`);
+global.auditcore.logger.info('Input Parameters:');
+Object.entries(global.auditcore.options).forEach(([key, value]) => {
+  global.auditcore.logger.info(`  ${key}: ${JSON.stringify(value)}`);
+});
+global.auditcore.logger.info('===========================');
 
 /**
  * Ensures cache directory exists for storing temporary data
