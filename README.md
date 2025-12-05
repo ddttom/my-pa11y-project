@@ -15,6 +15,11 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
   - JavaScript, CSS, images, fonts, videos, and other media
   - Site-wide usage counts and frequency analysis
   - Sorted by usage to identify critical dependencies
+- **Sitemap Gap Analysis**: Discover URLs missing from your sitemap
+  - Automatically identifies same-domain URLs discovered during analysis
+  - Tracks which pages aren't listed in your original sitemap
+  - Generates perfected sitemap (v-sitemap.xml) including all discovered URLs
+  - Helps improve search engine crawling and indexing
 - **Automatic Cache Management**: .cache directory creation and management
   - **Rendered Page Caching**: Automatically saves rendered HTML for debugging
   - **Served Page Caching**: Automatically saves original served HTML for debugging
@@ -116,6 +121,17 @@ Track all external dependencies and third-party resources:
 - Monitor third-party resource usage across your site
 - Support for CDN and external service auditing
 
+### Sitemap Gap Detection
+
+Discover and fix missing URLs in your sitemap:
+
+- Automatically tracks all same-domain URLs found during page analysis
+- Compares discovered URLs against your original sitemap
+- Identifies pages that exist but aren't in your sitemap
+- Shows how many pages link to each discovered URL
+- Generates a perfected sitemap including all discovered URLs
+- Helps ensure complete search engine coverage
+
 ## Reports You'll Receive
 
 ### 1. SEO Performance Report
@@ -175,6 +191,16 @@ Comprehensive analysis of third-party dependencies:
 - Resource type breakdown (JavaScript, CSS, images, fonts, videos, audio, iframes)
 - Sorted by usage count to identify critical dependencies
 - Helps assess third-party service impact
+
+### 7. Missing Sitemap URLs Report
+
+Identifies content gaps in your sitemap:
+
+- Lists same-domain URLs discovered during analysis but not in original sitemap
+- Shows how many pages link to each discovered URL
+- Helps identify orphaned or undiscovered pages
+- Enables sitemap improvement for better SEO
+- Generates perfected sitemap (v-sitemap.xml) with all URLs included
 
 ## Making the Most of Your Reports
 
@@ -483,6 +509,17 @@ npm start
   - Resource Type (javascript, css, image, font, video, audio, iframe, other)
   - Total Count (site-wide usage frequency)
   - Sorted by count (most used resources first)
+
+- `missing_sitemap_urls.csv`: Discovered URLs not in original sitemap
+  - Discovered URL (same-domain URLs found during analysis)
+  - Found On Pages Count (number of pages linking to this URL)
+  - Helps identify sitemap gaps and orphaned pages
+
+- `v-sitemap.xml`: Perfected sitemap
+  - Includes all original sitemap URLs
+  - Plus all discovered same-domain URLs
+  - Marks discovered URLs with XML comments
+  - Ready to submit to search engines
 
 - `virtual_sitemap.xml`: Initial crawl results
   - URLs discovered during first pass
