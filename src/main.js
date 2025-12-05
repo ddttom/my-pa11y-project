@@ -53,13 +53,16 @@ export async function runTestsOnSitemap() {
   const { cache = true, noCache: explicitNoCache = false, forceDeleteCache = false } = global.auditcore.options;
   const noCache = explicitNoCache || !cache;
 
-  // Delete results.json if force delete cache is enabled
+  // Delete entire results directory if force delete cache is enabled
   if (forceDeleteCache) {
     try {
-      await fs.unlink(resultsPath);
-      global.auditcore.logger.info('Force delete cache: Deleted results.json');
+      await fs.rm(outputDir, { recursive: true, force: true });
+      global.auditcore.logger.info('Force delete cache: Deleted results directory');
+      // Recreate the output directory
+      await fs.mkdir(outputDir, { recursive: true });
+      global.auditcore.logger.info(`Recreated output directory: ${outputDir}`);
     } catch (error) {
-      global.auditcore.logger.debug('No results.json to delete or delete failed');
+      global.auditcore.logger.debug('Error clearing results directory:', error.message);
     }
   }
 
