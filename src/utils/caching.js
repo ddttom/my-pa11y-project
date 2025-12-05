@@ -289,7 +289,6 @@ async function renderAndCacheData(url) {
       }).length;
 
       // All resources extraction (internal + external)
-      const pageOrigin = window.location.origin;
 
       // Helper function to determine if URL is valid resource
       const isValidResourceUrl = (url) => {
