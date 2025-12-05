@@ -455,11 +455,17 @@ npm start -- -s <url> -o <output-dir> [options]
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
 - `--no-recursive`: Disable recursive crawling (only scan sitemap URLs, not discovered pages)
-- `--force-delete-cache`: Force delete existing cache
+- `--force-delete-cache`: Force delete cache and results directory for completely fresh analysis
+  - Deletes `.cache/` directory (rendered HTML)
+  - Deletes `results/` directory (all CSV reports and results.json)
+  - Ensures no stale data from previous runs
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
 
-**Note**: By default, the tool uses **recursive crawling** to scan all discovered same-domain URLs in addition to sitemap URLs. This ensures complete site coverage. Use `--no-recursive` to analyze only the URLs in your sitemap.
+**Notes**:
+- By default, the tool uses **recursive crawling** to scan all discovered same-domain URLs in addition to sitemap URLs. This ensures complete site coverage. Use `--no-recursive` to analyze only the URLs in your sitemap.
+- Log files (`error.log`, `combined.log`) are automatically cleared on every startup
+- All command-line parameters are logged at startup for debugging and reproducibility
 
 ### Troubleshooting
 

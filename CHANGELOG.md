@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Startup Parameter Logging**: Automatic logging of all command-line parameters
+  - Clears log files (error.log, combined.log) on every startup
+  - Logs complete command used to start the application
+  - Logs all input parameters with their values
+  - Helps with debugging and reproducing runs
+  - Shows default values like `recursive: true`
+- **Enhanced Force Delete Cache**: Complete cleanup for fresh analysis
+  - `--force-delete-cache` now deletes entire results directory
+  - Clears all CSV reports, results.json, and cached HTML
+  - Recreates empty results directory
+  - Ensures completely fresh start with no stale data
+- **Discovered URLs Listing**: Console output shows all discovered URLs
+  - Numbered list of URLs found during recursive crawling
+  - Displayed at end of analysis for easy review
+  - Supplements the missing_sitemap_urls.csv report
 - **Recursive Site Crawling (Default)**: Automatic analysis of all discovered same-domain URLs
   - Queue-based processing automatically scans sitemap URLs + all discovered pages
   - Ensures complete site coverage with no pages left behind
