@@ -292,11 +292,6 @@ export class UrlProcessor {
       if (discoveredUrls.length > 0) {
         global.auditcore.logger.info(`Found ${discoveredUrls.length} new URLs to process from ${url}`);
         urlQueue.push(...discoveredUrls);
-
-        // Mark discovered URLs as queued
-        for (const discoveredUrl of discoveredUrls) {
-          processedUrls.add(discoveredUrl.url);
-        }
       }
     }
 
