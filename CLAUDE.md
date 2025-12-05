@@ -14,11 +14,12 @@ This is a comprehensive SEO, accessibility, and performance analysis tool built 
    - Queue-based processing continues until no new URLs are found
    - Use `--no-recursive` to revert to sitemap-only analysis
 
-2. **External Resources Tracking**
-   - Extracts all external dependencies (JavaScript, CSS, images, fonts, videos, etc.)
+2. **All Resources Tracking**
+   - Extracts ALL resources (JavaScript, CSS, images, fonts, videos, etc.) from all domains
+   - Includes both same-domain resources AND external dependencies
    - Generates site-wide usage counts showing how frequently each resource is used
-   - Helps identify critical third-party dependencies and potential single points of failure
-   - New report: `external_resources_report.csv` with Resource URL, Type, and Total Count
+   - Helps identify most-used resources and potential single points of failure
+   - New report: `all_resources_report.csv` with Resource URL, Type, and Total Count
 
 ## Commands
 
@@ -163,7 +164,7 @@ global.auditcore = {
     url, title, metaDescription,
     h1Count, wordCount, imagesCount,
     images: [{src, alt, width, height}],
-    externalResources: [{url, type}], // NEW: External resources per page
+    allResources: [{url, type}], // NEW: All resources per page (internal + external)
     // ... more fields
   }>,
   performanceAnalysis: Array<{       // Per-page performance
@@ -185,7 +186,7 @@ global.auditcore = {
   imageMetrics: {},
   linkMetrics: {},
   securityMetrics: {},
-  externalResourcesAggregation: {    // NEW: Site-wide external resources
+  allResourcesAggregation: {    // NEW: Site-wide all resources (internal + external)
     "https://cdn.example.com/script.js": {
       url: string,
       type: "javascript"|"css"|"image"|"font"|"video"|"audio"|"iframe"|"other",

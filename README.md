@@ -11,10 +11,11 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
   - Detailed markdown reports for better readability
 - **Content Quality**: Structure and freshness analysis
-- **External Resources Tracking**: Complete inventory of all external dependencies
+- **All Resources Tracking**: Complete inventory of all resources (internal + external)
   - JavaScript, CSS, images, fonts, videos, and other media
+  - Includes both same-domain resources AND external dependencies
   - Site-wide usage counts and frequency analysis
-  - Sorted by usage to identify critical dependencies
+  - Sorted by usage to identify most-used resources
 - **Recursive Site Crawling**: Complete site coverage by default
   - Automatically scans all same-domain URLs discovered during analysis
   - No pages left behind - analyzes sitemap URLs plus all discovered pages
@@ -114,16 +115,17 @@ Understand how your website fits together:
 - Quality of your internal linking
 - External link assessment
 
-### External Resources Analysis
+### All Resources Analysis
 
-Track all external dependencies and third-party resources:
+Track all resources across your website (internal and external):
 
-- Comprehensive inventory of all external resources (JavaScript, CSS, images, fonts, videos, etc.)
-- Site-wide usage counts for each external resource
-- Identify most frequently used external dependencies
+- Comprehensive inventory of ALL resources (JavaScript, CSS, images, fonts, videos, etc.)
+- Includes both same-domain resources AND external dependencies
+- Site-wide usage counts for each resource
+- Identify most frequently used resources across your site
 - Detect potential single points of failure
-- Monitor third-party resource usage across your site
-- Support for CDN and external service auditing
+- Monitor third-party and internal resource usage
+- Support for CDN, external service, and internal asset auditing
 
 ### Sitemap Gap Detection
 
@@ -186,15 +188,16 @@ Combines key technical metrics:
 - Server performance
 - Security indicators
 
-### 6. External Resources Report
+### 6. All Resources Report
 
-Comprehensive analysis of third-party dependencies:
+Comprehensive analysis of all resources (internal and external):
 
-- Complete inventory of external JavaScript, CSS, images, fonts, and media files
+- Complete inventory of JavaScript, CSS, images, fonts, and media files from all domains
+- Includes both same-domain resources AND external dependencies
 - Site-wide usage frequency for each resource
 - Resource type breakdown (JavaScript, CSS, images, fonts, videos, audio, iframes)
-- Sorted by usage count to identify critical dependencies
-- Helps assess third-party service impact
+- Sorted by usage count to identify most-used resources
+- Helps assess both internal asset usage and third-party service impact
 
 ### 7. Missing Sitemap URLs Report
 
@@ -517,7 +520,7 @@ npm start
   - Content quality score
   - Link structure score
 
-- `external_resources_report.csv`: External resource inventory
+- `all_resources_report.csv`: All resources inventory (internal + external)
   - Resource URL
   - Resource Type (javascript, css, image, font, video, audio, iframe, other)
   - Total Count (site-wide usage frequency)

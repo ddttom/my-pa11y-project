@@ -30,13 +30,15 @@ All notable changes to this project will be documented in this file.
   - Processes URLs until queue is empty (no new pages discovered)
   - Benefits: Complete SEO/accessibility/performance analysis for entire site
   - Command-line flag: `--no-recursive` to revert to sitemap-only analysis
-- **External Resources Tracking**: Comprehensive extraction and reporting of all external dependencies
-  - Tracks JavaScript, CSS, images (all formats including SVG), fonts, videos, audio, iframes, and other external resources
-  - Site-wide aggregation showing usage count for each external resource across all analyzed pages
-  - New report: `external_resources_report.csv` with Resource URL, Resource Type, and Total Count
-  - Sorted by usage frequency to identify critical third-party dependencies
+- **All Resources Tracking**: Comprehensive extraction and reporting of ALL resources (internal + external)
+  - Tracks JavaScript, CSS, images (all formats including SVG), fonts, videos, audio, iframes, and other resources
+  - Includes BOTH same-domain resources AND external dependencies
+  - Site-wide aggregation showing usage count for each resource across all analyzed pages
+  - New report: `all_resources_report.csv` with Resource URL, Resource Type, and Total Count
+  - Sorted by usage frequency to identify most-used resources
   - Console summary showing total unique resources and breakdown by type
   - Supports detection of resources from: `<script>`, `<link>`, `<img>`, `<picture>`, `<video>`, `<audio>`, `<iframe>`, `<object>`, `<embed>`, `@font-face` rules, background images, and preload/prefetch hints
+  - Provides complete inventory for performance analysis and dependency tracking
 - **Sitemap Gap Analysis**: Automatic detection of same-domain URLs missing from original sitemap
   - Tracks all same-domain URLs discovered during page analysis
   - Compares discovered URLs against original sitemap to identify gaps
