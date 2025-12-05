@@ -2,6 +2,7 @@ import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
 import { generateReports } from './utils/reports.js';
 import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHandler.js';
 import { executeNetworkOperation } from './utils/networkUtils.js';
+import { getDiscoveredUrls } from './utils/sitemapUtils.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -86,6 +87,9 @@ export async function runTestsOnSitemap() {
         'URL processing'
       );
 
+      // Store original sitemap URLs for comparison with discovered URLs
+      results.originalSitemapUrls = urls.map(u => u.url);
+
       // Save results for future use and resume capability
       await fs.writeFile(resultsPath, JSON.stringify(results));
     }
@@ -123,6 +127,14 @@ export async function runTestsOnSitemap() {
       global.auditcore.logger.info(`\n=== External Resources Summary ===\nFound ${totalResources} unique external resources (${totalReferences} total references)\nBreakdown: ${typeBreakdownStr}\nSee external_resources_report.csv for details.\n=====================================\n`);
     } else {
       global.auditcore.logger.info(`\n=== External Resources Summary ===\nNo external resources found.\n=====================================\n`);
+    }
+
+    // Missing sitemap URLs summary
+    const discoveredUrls = getDiscoveredUrls(results);
+    if (discoveredUrls.length > 0) {
+      global.auditcore.logger.info(`\n=== Missing Sitemap URLs ===\nFound ${discoveredUrls.length} same-domain URLs not in original sitemap\nThese URLs were discovered during page analysis\nSee missing_sitemap_urls.csv for details\nPerfected sitemap saved as v-sitemap.xml\n=====================================\n`);
+    } else {
+      global.auditcore.logger.info(`\n=== Missing Sitemap URLs ===\nAll discovered URLs were in the original sitemap\nPerfected sitemap saved as v-sitemap.xml\n=====================================\n`);
     }
 
     return results;

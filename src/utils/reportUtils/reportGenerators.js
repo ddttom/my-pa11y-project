@@ -500,3 +500,49 @@ export async function generateExternalResourcesReport(results, outputDir) {
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`External resources report generated with ${reportData.length} unique resources`);
 }
+
+/**
+ * Generates report of same-domain URLs discovered but not in original sitemap
+ * @param {Object} results - Analysis results
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<void>}
+ * @example
+ * await generateMissingSitemapUrlsReport(results, './reports');
+ * // Creates missing_sitemap_urls.csv with discovered URLs
+ */
+export async function generateMissingSitemapUrlsReport(results, outputDir) {
+  // Dynamically import to avoid circular dependencies
+  const { getDiscoveredUrls } = await import('../sitemapUtils.js');
+  const discoveredUrls = getDiscoveredUrls(results);
+
+  if (discoveredUrls.length === 0) {
+    global.auditcore.logger.info('No URLs discovered outside original sitemap, skipping missing sitemap URLs report');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'missing_sitemap_urls.csv'),
+    header: [
+      { id: 'url', title: 'Discovered URL' },
+      { id: 'foundOnPages', title: 'Found On Pages Count' }
+    ]
+  });
+
+  // Count how many pages link to each discovered URL
+  const urlCounts = {};
+  results.internalLinks?.forEach(page => {
+    page.links?.forEach(link => {
+      if (discoveredUrls.includes(link.url)) {
+        urlCounts[link.url] = (urlCounts[link.url] || 0) + 1;
+      }
+    });
+  });
+
+  const reportData = discoveredUrls.map(url => ({
+    url: url,
+    foundOnPages: urlCounts[url] || 0
+  }));
+
+  await csvWriter.writeRecords(reportData);
+  global.auditcore.logger.info(`Missing sitemap URLs report generated with ${discoveredUrls.length} discovered URLs`);
+}

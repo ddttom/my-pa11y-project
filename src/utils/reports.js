@@ -10,8 +10,10 @@ import {
   generateContentQualityReport,
   generateSecurityReport,
   generateSpecificUrlReport,
-  generateExternalResourcesReport
+  generateExternalResourcesReport,
+  generateMissingSitemapUrlsReport
 } from './reportUtils/reportGenerators.js';
+import { savePerfectedSitemap } from './sitemapUtils.js';
 
 /**
  * Main function to generate all reports
@@ -34,6 +36,10 @@ export async function generateReports(results, urls, outputDir) {
     await generateSecurityReport(results, outputDir);
     await generateSpecificUrlReport(results, outputDir);
     await generateExternalResourcesReport(results, outputDir);
+    await generateMissingSitemapUrlsReport(results, outputDir);
+
+    // Generate perfected sitemap with discovered URLs
+    await savePerfectedSitemap(results, outputDir);
 
     // Save complete results as JSON
     await fs.writeFile(
@@ -57,5 +63,6 @@ export {
   generateLinkAnalysisReport,
   generateContentQualityReport,
   generateSecurityReport,
-  generateExternalResourcesReport
+  generateExternalResourcesReport,
+  generateMissingSitemapUrlsReport
 };
