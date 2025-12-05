@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a comprehensive SEO, accessibility, and performance analysis tool built with Node.js. It uses Puppeteer for browser automation, Pa11y for accessibility testing, and generates detailed CSV reports from analyzed web pages.
 
+**Latest Feature (December 2025):** External Resources Tracking
+- Extracts all external dependencies (JavaScript, CSS, images, fonts, videos, etc.)
+- Generates site-wide usage counts showing how frequently each resource is used
+- Helps identify critical third-party dependencies and potential single points of failure
+- New report: `external_resources_report.csv` with Resource URL, Type, and Total Count
+
 ## Commands
 
 ### Development
@@ -19,6 +25,9 @@ npm start -- --force-delete-cache             # Delete cache before running
 npm start -- --include-all-languages          # Include all language variants (default: only /en and /us)
 npm test                                      # Run tests with Mocha
 npm run lint                                  # Run ESLint
+npm audit                                     # Check for security vulnerabilities
+npm audit fix                                 # Fix non-breaking vulnerabilities
+npm audit fix --force                         # Fix all vulnerabilities (may include breaking changes)
 ```
 
 ### Common Development Workflows
@@ -254,6 +263,40 @@ By default, the tool only processes `/en` and `/us` language variants. This is c
 - Sequential URL processing (no parallel browser instances to avoid resource exhaustion)
 - Cheerio used for fast HTML parsing where possible
 - Results cached to enable resume functionality
+
+## Dependency Management and Security
+
+### Security Vulnerability Management
+
+This project actively manages npm security vulnerabilities:
+
+**Current Status (as of latest update):**
+- Production dependencies: All critical and high-severity vulnerabilities resolved
+- Remaining vulnerabilities: 9 (7 low, 2 moderate) in devDependencies only
+- These do not affect production runtime security
+
+**Important Dependencies:**
+- **Production**: axios, cheerio, puppeteer, pa11y, lighthouse, csv-writer
+- **Development**: eslint, mocha, prettier
+
+**Vulnerability Response Process:**
+1. Run `npm audit` to identify vulnerabilities
+2. Apply `npm audit fix` for non-breaking updates
+3. Evaluate breaking changes before using `npm audit fix --force`
+4. Commit `package-lock.json` with detailed explanation
+5. Monitor remaining vulnerabilities in devDependencies
+
+**Known Acceptable Risks:**
+- **brace-expansion** (low) - ReDoS in devDependency, no production impact
+- **js-yaml** (moderate) - In xmlbuilder2, used only for report generation
+- **tmp** (low) - In eslint-config-node, development tool only
+
+### When to Update Dependencies
+
+- **Security patches**: Apply immediately with `npm audit fix`
+- **Minor updates**: Test thoroughly, especially Puppeteer and Pa11y
+- **Major updates**: Plan carefully, may require code changes
+- **Breaking changes**: Only apply when necessary, document in CHANGELOG.md
 
 ## Documentation
 
