@@ -82,12 +82,13 @@ export async function runTestsOnSitemap() {
 
       // Phase 2: Process URLs through analysis pipeline
       global.auditcore.logger.info('Phase 2: Processing URLs...');
-      const { recursive = false } = global.auditcore.options;
+      // Commander.js converts --no-recursive to recursive: false, defaults to true
+      const { recursive = true } = global.auditcore.options;
 
       results = await executeNetworkOperation(
         () => processSitemapUrls(
           urls.slice(0, count === -1 ? urls.length : count),
-          recursive  // Pass recursive flag
+          recursive  // Pass recursive flag (default: true)
         ),
         'URL processing'
       );

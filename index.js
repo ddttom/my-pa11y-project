@@ -89,8 +89,8 @@ program
     'Include all language variants in sitemap (default: only /en and /us)'
   )
   .option(
-    '--recursive',
-    'Enable recursive crawling: scan discovered URLs not in original sitemap'
+    '--no-recursive',
+    'Disable recursive crawling (only scan sitemap URLs, not discovered pages)'
   )
   .parse(process.argv);
 
