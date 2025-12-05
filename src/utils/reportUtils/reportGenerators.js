@@ -475,12 +475,12 @@ export async function generateSpecificUrlReport(results, outputDir) {
  */
 export async function generateExternalResourcesReport(results, outputDir) {
   if (!results.externalResourcesAggregation || Object.keys(results.externalResourcesAggregation).length === 0) {
-    global.auditcore.logger.info('No external resources found, skipping external resources report generation');
+    global.auditcore.logger.info('No resources found, skipping resources report generation');
     return;
   }
 
   const csvWriter = createObjectCsvWriter({
-    path: path.join(outputDir, 'external_resources_report.csv'),
+    path: path.join(outputDir, 'all_resources_report.csv'),
     header: [
       { id: 'url', title: 'Resource URL' },
       { id: 'type', title: 'Resource Type' },
@@ -498,7 +498,7 @@ export async function generateExternalResourcesReport(results, outputDir) {
     .sort((a, b) => b.count - a.count);  // Sort by count, highest first
 
   await csvWriter.writeRecords(reportData);
-  global.auditcore.logger.info(`External resources report generated with ${reportData.length} unique resources`);
+  global.auditcore.logger.info(`All resources report generated with ${reportData.length} unique resources (JS, CSS, images, fonts, etc.)`);
 }
 
 /**

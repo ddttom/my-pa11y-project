@@ -192,7 +192,7 @@ export function updateExternalResourcesMetrics(pageData, results, testUrl) {
     }
 
     // Get external resources from pageData
-    const externalResources = pageData.externalResources || [];
+    const externalResources = pageData.allResources || pageData.externalResources || [];
 
     if (externalResources.length === 0) {
       global.auditcore.logger.debug(`No external resources found on ${testUrl}`);

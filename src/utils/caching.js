@@ -288,20 +288,15 @@ async function renderAndCacheData(url) {
         );
       }).length;
 
-      // External resources extraction
+      // All resources extraction (internal + external)
       const pageOrigin = window.location.origin;
 
-      // Helper function to determine if URL is external
-      const isExternalUrl = (url) => {
+      // Helper function to determine if URL is valid resource
+      const isValidResourceUrl = (url) => {
         if (!url || url.startsWith('#') || url.startsWith('javascript:') || url.startsWith('data:')) {
           return false;
         }
-        try {
-          const absoluteUrl = new URL(url, window.location.href);
-          return absoluteUrl.origin !== pageOrigin;
-        } catch (e) {
-          return false;
-        }
+        return true;
       };
 
       // Helper to get absolute URL
@@ -313,13 +308,13 @@ async function renderAndCacheData(url) {
         }
       };
 
-      const externalResources = [];
+      const allResources = [];
 
       // 1. JavaScript files (<script src="">)
       document.querySelectorAll('script[src]').forEach(el => {
         const src = el.getAttribute('src');
-        if (isExternalUrl(src)) {
-          externalResources.push({
+        if (isValidResourceUrl(src)) {
+          allResources.push({
             url: getAbsoluteUrl(src),
             type: 'javascript'
           });
@@ -329,8 +324,8 @@ async function renderAndCacheData(url) {
       // 2. CSS files (<link rel="stylesheet">)
       document.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
         const href = el.getAttribute('href');
-        if (isExternalUrl(href)) {
-          externalResources.push({
+        if (isValidResourceUrl(href)) {
+          allResources.push({
             url: getAbsoluteUrl(href),
             type: 'css'
           });
@@ -341,8 +336,8 @@ async function renderAndCacheData(url) {
       // <img> tags
       document.querySelectorAll('img[src]').forEach(el => {
         const src = el.getAttribute('src');
-        if (isExternalUrl(src)) {
-          externalResources.push({
+        if (isValidResourceUrl(src)) {
+          allResources.push({
             url: getAbsoluteUrl(src),
             type: 'image'
           });
@@ -356,8 +351,8 @@ async function renderAndCacheData(url) {
           // Parse srcset which can be: "url1 1x, url2 2x" or "url1 100w, url2 200w"
           srcset.split(',').forEach(entry => {
             const url = entry.trim().split(/\s+/)[0];
-            if (isExternalUrl(url)) {
-              externalResources.push({
+            if (isValidResourceUrl(url)) {
+              allResources.push({
                 url: getAbsoluteUrl(url),
                 type: 'image'
               });
@@ -369,10 +364,10 @@ async function renderAndCacheData(url) {
       // SVG images in <object> and <embed>
       document.querySelectorAll('object[data], embed[src]').forEach(el => {
         const src = el.getAttribute('data') || el.getAttribute('src');
-        if (src && isExternalUrl(src)) {
+        if (src && isValidResourceUrl(src)) {
           const url = getAbsoluteUrl(src);
           if (url && (url.endsWith('.svg') || el.type === 'image/svg+xml')) {
-            externalResources.push({
+            allResources.push({
               url: url,
               type: 'image'
             });
@@ -390,8 +385,8 @@ async function renderAndCacheData(url) {
                 if (urlMatches) {
                   urlMatches.forEach(match => {
                     const url = match.replace(/url\(['"]?|['"]?\)/g, '');
-                    if (isExternalUrl(url)) {
-                      externalResources.push({
+                    if (isValidResourceUrl(url)) {
+                      allResources.push({
                         url: getAbsoluteUrl(url),
                         type: 'font'
                       });
@@ -411,8 +406,8 @@ async function renderAndCacheData(url) {
       // 5. Videos
       document.querySelectorAll('video source[src], video[src]').forEach(el => {
         const src = el.getAttribute('src');
-        if (isExternalUrl(src)) {
-          externalResources.push({
+        if (isValidResourceUrl(src)) {
+          allResources.push({
             url: getAbsoluteUrl(src),
             type: 'video'
           });
@@ -425,8 +420,8 @@ async function renderAndCacheData(url) {
         if (srcset) {
           srcset.split(',').forEach(entry => {
             const url = entry.trim().split(/\s+/)[0];
-            if (isExternalUrl(url)) {
-              externalResources.push({
+            if (isValidResourceUrl(url)) {
+              allResources.push({
                 url: getAbsoluteUrl(url),
                 type: 'video'
               });
@@ -438,8 +433,8 @@ async function renderAndCacheData(url) {
       // 6. Iframes
       document.querySelectorAll('iframe[src]').forEach(el => {
         const src = el.getAttribute('src');
-        if (isExternalUrl(src)) {
-          externalResources.push({
+        if (isValidResourceUrl(src)) {
+          allResources.push({
             url: getAbsoluteUrl(src),
             type: 'iframe'
           });
@@ -449,8 +444,8 @@ async function renderAndCacheData(url) {
       // 7. Audio
       document.querySelectorAll('audio source[src], audio[src]').forEach(el => {
         const src = el.getAttribute('src');
-        if (isExternalUrl(src)) {
-          externalResources.push({
+        if (isValidResourceUrl(src)) {
+          allResources.push({
             url: getAbsoluteUrl(src),
             type: 'audio'
           });
@@ -464,8 +459,8 @@ async function renderAndCacheData(url) {
         if (urlMatches) {
           urlMatches.forEach(match => {
             const url = match.replace(/url\(['"]?|['"]?\)/g, '');
-            if (isExternalUrl(url)) {
-              externalResources.push({
+            if (isValidResourceUrl(url)) {
+              allResources.push({
                 url: getAbsoluteUrl(url),
                 type: 'image'
               });
@@ -477,7 +472,7 @@ async function renderAndCacheData(url) {
       // 9. Preload/Prefetch resources
       document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="dns-prefetch"], link[rel="preconnect"]').forEach(el => {
         const href = el.getAttribute('href');
-        if (href && isExternalUrl(href)) {
+        if (href && isValidResourceUrl(href)) {
           const asType = el.getAttribute('as') || 'other';
           let type = 'other';
           if (asType === 'script') type = 'javascript';
@@ -487,7 +482,7 @@ async function renderAndCacheData(url) {
           else if (asType === 'video') type = 'video';
           else if (asType === 'audio') type = 'audio';
 
-          externalResources.push({
+          allResources.push({
             url: getAbsoluteUrl(href),
             type: type
           });
@@ -525,7 +520,7 @@ async function renderAndCacheData(url) {
         formsCount: document.forms.length,
         tablesCount: document.querySelectorAll('table').length,
         pageSize: document.documentElement.outerHTML.length,
-        externalResources: externalResources,
+        allResources: allResources,
       };
     });
 
