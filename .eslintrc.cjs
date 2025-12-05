@@ -20,7 +20,7 @@ module.exports = {
     'node/file-extension-in-import': ['error', 'always'],
     'node/no-unsupported-features/es-syntax': ['error', {
       version: '>=20.0.0',
-      ignores: ['modules'],
+      ignores: ['modules', 'dynamicImport'],
     }],
     'no-process-exit': 'off', // Turning off this rule as it's causing issues
   },
