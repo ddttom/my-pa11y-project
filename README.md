@@ -15,10 +15,14 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
   - JavaScript, CSS, images, fonts, videos, and other media
   - Site-wide usage counts and frequency analysis
   - Sorted by usage to identify critical dependencies
+- **Recursive Site Crawling**: Complete site coverage by default
+  - Automatically scans all same-domain URLs discovered during analysis
+  - No pages left behind - analyzes sitemap URLs plus all discovered pages
+  - Generates perfected sitemap (v-sitemap.xml) with complete site structure
+  - Can disable with --no-recursive for sitemap-only analysis
 - **Sitemap Gap Analysis**: Discover URLs missing from your sitemap
-  - Automatically identifies same-domain URLs discovered during analysis
-  - Tracks which pages aren't listed in your original sitemap
-  - Generates perfected sitemap (v-sitemap.xml) including all discovered URLs
+  - Identifies same-domain URLs not in the original sitemap
+  - Shows which pages exist but weren't submitted to search engines
   - Helps improve search engine crawling and indexing
 - **Automatic Cache Management**: .cache directory creation and management
   - **Rendered Page Caching**: Automatically saves rendered HTML for debugging
@@ -450,9 +454,12 @@ npm start -- -s <url> -o <output-dir> [options]
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
+- `--no-recursive`: Disable recursive crawling (only scan sitemap URLs, not discovered pages)
 - `--force-delete-cache`: Force delete existing cache
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
+
+**Note**: By default, the tool uses **recursive crawling** to scan all discovered same-domain URLs in addition to sitemap URLs. This ensures complete site coverage. Use `--no-recursive` to analyze only the URLs in your sitemap.
 
 ### Troubleshooting
 

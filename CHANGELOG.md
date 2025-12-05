@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Recursive Site Crawling (Default)**: Automatic analysis of all discovered same-domain URLs
+  - Queue-based processing automatically scans sitemap URLs + all discovered pages
+  - Ensures complete site coverage with no pages left behind
+  - Set-based duplicate prevention
+  - Real-time progress logging showing queue depth and discovered URL counts
+  - **Default behavior**: Recursive crawling enabled (use `--no-recursive` to disable)
+  - Processes URLs until queue is empty (no new pages discovered)
+  - Benefits: Complete SEO/accessibility/performance analysis for entire site
+  - Command-line flag: `--no-recursive` to revert to sitemap-only analysis
 - **External Resources Tracking**: Comprehensive extraction and reporting of all external dependencies
   - Tracks JavaScript, CSS, images (all formats including SVG), fonts, videos, audio, iframes, and other external resources
   - Site-wide aggregation showing usage count for each external resource across all analyzed pages

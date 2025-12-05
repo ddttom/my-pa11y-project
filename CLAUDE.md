@@ -6,11 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a comprehensive SEO, accessibility, and performance analysis tool built with Node.js. It uses Puppeteer for browser automation, Pa11y for accessibility testing, and generates detailed CSV reports from analyzed web pages.
 
-**Latest Feature (December 2025):** External Resources Tracking
-- Extracts all external dependencies (JavaScript, CSS, images, fonts, videos, etc.)
-- Generates site-wide usage counts showing how frequently each resource is used
-- Helps identify critical third-party dependencies and potential single points of failure
-- New report: `external_resources_report.csv` with Resource URL, Type, and Total Count
+**Latest Features (December 2025):**
+
+1. **Recursive Site Crawling (Default)**
+   - Automatically analyzes all discovered same-domain URLs, not just sitemap URLs
+   - Ensures complete site coverage with no pages left behind
+   - Queue-based processing continues until no new URLs are found
+   - Use `--no-recursive` to revert to sitemap-only analysis
+
+2. **External Resources Tracking**
+   - Extracts all external dependencies (JavaScript, CSS, images, fonts, videos, etc.)
+   - Generates site-wide usage counts showing how frequently each resource is used
+   - Helps identify critical third-party dependencies and potential single points of failure
+   - New report: `external_resources_report.csv` with Resource URL, Type, and Total Count
 
 ## Commands
 
@@ -21,6 +29,7 @@ npm start -- -s <url> -o <output-dir>         # Run with custom sitemap and outp
 npm start -- --count 5                        # Limit to 5 URLs for testing
 npm start -- --cache-only                     # Use only cached data
 npm start -- --no-cache                       # Force fresh data fetch
+npm start -- --no-recursive                   # Disable recursive crawling (sitemap-only)
 npm start -- --force-delete-cache             # Delete cache before running
 npm start -- --include-all-languages          # Include all language variants (default: only /en and /us)
 npm test                                      # Run tests with Mocha
