@@ -121,9 +121,12 @@ The system follows a strict 4-phase pattern that must be preserved when adding f
 ### Core Processing
 - **`src/utils/caching.js`**: Puppeteer rendering, page data extraction, HTML caching
 - **`src/utils/pageAnalyzer.js`**: Content analysis orchestration, Pa11y integration
-- **`src/utils/urlProcessor.js`**: URL processing loop, recursive crawling, URL normalization, retry logic, error handling
+- **`src/utils/pageAnalyzerHelpers.js`**: Link extraction with URL normalization
+  - Normalizes URLs during extraction by stripping hash fragments and query parameters
+  - Ensures clean URLs are stored in internalLinks array
+- **`src/utils/urlProcessor.js`**: URL processing loop, recursive crawling, retry logic, error handling
   - Implements queue-based recursive URL discovery
-  - Normalizes URLs by stripping hash fragments and query parameters
+  - Additional URL normalization for queue processing
   - Prevents duplicate processing using Set-based tracking
 - **`src/utils/metricsUpdater.js`**: Metric aggregation functions (title, meta, images, links, security, etc.)
 
@@ -252,21 +255,34 @@ When adding new features that extract data or generate reports, follow the 4-pha
 
 ## URL Normalization (Recursive Crawling)
 
-The recursive crawling feature includes intelligent URL normalization to prevent duplicate processing:
+The recursive crawling feature includes intelligent URL normalization at two stages to prevent duplicate processing:
 
-**Normalization Rules (`src/utils/urlProcessor.js` - `extractDiscoveredUrls()`):**
-1. **Strip hash fragments**: `https://example.com/page#section` → `https://example.com/page`
-2. **Remove query parameters**: `https://example.com/page?ref=twitter` → `https://example.com/page`
-3. **Skip self-references**: If normalized URL equals current page, skip adding to queue
-4. **Set-based deduplication**: Use `processedUrls` Set for O(1) duplicate checking
+### Stage 1: Link Extraction (`src/utils/pageAnalyzerHelpers.js` - `getInternalLinksWithRetry()`)
 
-**Why This Matters:**
-- Prevents processing the same page multiple times with different hash/query variations
-- Keeps discovered URLs list clean and meaningful
-- Reduces processing time and resource usage
-- Ensures accurate sitemap generation without duplicates
+URLs are normalized as soon as they're discovered during link extraction:
 
-**Implementation:**
+```javascript
+// In getInternalLinksWithRetry()
+const urlObj = new URL(resolvedUrl);
+
+// Normalize URL: remove hash and query parameters
+urlObj.hash = '';
+urlObj.search = '';
+const normalizedUrl = urlObj.href;
+
+if (urlObj.hostname === testUrlObj.hostname && !seenUrls.has(normalizedUrl)) {
+  seenUrls.add(normalizedUrl);
+  links.push({
+    url: normalizedUrl,
+    text: $(element).text().trim(),
+  });
+}
+```
+
+### Stage 2: Queue Processing (`src/utils/urlProcessor.js` - `extractDiscoveredUrls()`)
+
+Additional normalization when adding URLs to the processing queue:
+
 ```javascript
 // In extractDiscoveredUrls()
 linkUrlObj.hash = '';           // Remove #section
@@ -278,6 +294,19 @@ if (normalizedUrl === currentUrl || processedUrls.has(normalizedUrl)) {
   continue;
 }
 ```
+
+**Normalization Rules:**
+1. **Strip hash fragments**: `https://example.com/page#section` → `https://example.com/page`
+2. **Remove query parameters**: `https://example.com/page?ref=twitter` → `https://example.com/page`
+3. **Skip self-references**: If normalized URL equals current page, skip adding to queue
+4. **Set-based deduplication**: Use Sets for O(1) duplicate checking
+
+**Why This Matters:**
+- Prevents processing the same page multiple times with different hash/query variations
+- Keeps discovered URLs list clean and meaningful (no hash-only links in reports)
+- Reduces processing time and resource usage
+- Ensures accurate sitemap generation without duplicates
+- Two-stage normalization ensures consistency throughout the pipeline
 
 ## Language Variant Filtering
 
