@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **URL Normalization**: Intelligent URL processing to prevent duplicates
+  - Strips hash fragments (e.g., `#section`) from discovered URLs
+  - Removes query parameters to avoid processing same content multiple times
+  - Prevents hash-only links from polluting discovered URLs list
+  - Compares normalized URLs against current page to skip self-references
+  - Ensures clean, deduplicated URL processing in recursive crawling
+
 - **Startup Parameter Logging**: Automatic logging of all command-line parameters
   - Clears log files (error.log, combined.log) on every startup
   - Logs complete command used to start the application
