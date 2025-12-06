@@ -452,7 +452,7 @@ npm start -- -s <url> -o <output-dir> [options]
 
 ### Options
 
-- `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")
+- `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "https://example.com/sitemap.xml")
 - `-o, --output <directory>`: Output directory for results (default: "results")
   - Preserves existing contents if directory exists
   - Creates directory if it doesn't exist

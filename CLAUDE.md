@@ -27,7 +27,7 @@ This is a comprehensive SEO, accessibility, and performance analysis tool built 
 
 ### Development
 ```bash
-npm start                                      # Run analysis with default sitemap
+npm start                                      # Run analysis with default sitemap (https://example.com/sitemap.xml)
 npm start -- -s <url> -o <output-dir>         # Run with custom sitemap and output
 npm start -- --count 5                        # Limit to 5 URLs for testing
 npm start -- --cache-only                     # Use only cached data
