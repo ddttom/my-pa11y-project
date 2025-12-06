@@ -206,6 +206,12 @@ export class UrlProcessor {
           continue;
         }
 
+        // Skip if normalized URL is the same as the current page
+        // (e.g., https://example.com/page linking to https://example.com/page#section)
+        if (normalizedUrl === currentUrl) {
+          continue;
+        }
+
         newUrls.push({
           url: normalizedUrl,
           lastmod: new Date().toISOString(),
