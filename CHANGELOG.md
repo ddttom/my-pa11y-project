@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Default Sitemap URL**: Changed default sitemap URL to `https://example.com/sitemap.xml`
+  - Previously used a project-specific URL
+  - Now uses a generic, universally recognized example domain
+  - Provides clearer documentation for new users
+
 ### Added
 
 - **URL Normalization**: Two-stage intelligent URL processing to prevent duplicates
