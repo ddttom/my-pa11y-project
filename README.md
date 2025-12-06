@@ -19,6 +19,8 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
 - **Recursive Site Crawling**: Complete site coverage by default
   - Automatically scans all same-domain URLs discovered during analysis
   - No pages left behind - analyzes sitemap URLs plus all discovered pages
+  - Intelligent URL normalization strips hash fragments and query parameters
+  - Prevents duplicate processing of the same content
   - Generates perfected sitemap (v-sitemap.xml) with complete site structure
   - Can disable with --no-recursive for sitemap-only analysis
 - **Sitemap Gap Analysis**: Discover URLs missing from your sitemap
