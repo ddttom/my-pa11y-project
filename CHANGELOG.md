@@ -6,12 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **URL Normalization**: Intelligent URL processing to prevent duplicates
-  - Strips hash fragments (e.g., `#section`) from discovered URLs
-  - Removes query parameters to avoid processing same content multiple times
-  - Prevents hash-only links from polluting discovered URLs list
-  - Compares normalized URLs against current page to skip self-references
-  - Ensures clean, deduplicated URL processing in recursive crawling
+- **URL Normalization**: Two-stage intelligent URL processing to prevent duplicates
+  - **Stage 1 (Link Extraction)**: Normalizes URLs during discovery in `pageAnalyzerHelpers.js`
+    - Strips hash fragments and query parameters immediately
+    - Ensures only clean URLs are stored in `internalLinks` array
+    - Prevents hash-only links from appearing in reports
+  - **Stage 2 (Queue Processing)**: Additional normalization in `urlProcessor.js`
+    - Validates URLs before adding to processing queue
+    - Compares normalized URLs against current page to skip self-references
+    - Set-based deduplication for O(1) duplicate checking
+  - Benefits: Clean discovered URLs list, no duplicate processing, accurate sitemaps
 
 - **Startup Parameter Logging**: Automatic logging of all command-line parameters
   - Clears log files (error.log, combined.log) on every startup
