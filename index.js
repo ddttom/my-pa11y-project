@@ -23,9 +23,8 @@ const logFiles = ['error.log', 'combined.log'];
 let defurl;
 let defcount;
 
-// Default URL for analysis when none is provided
-defurl = 'https://allabout.network/blogs/ddt/';
-defurl='https://allabout.network/sitemap.xml';
+// Default URL for analysis when none is provided 
+defurl='https://example.com/sitemap.xml';
 // Default count for analysis when none is provided, -1 = infinite
 defcount = -1
 
