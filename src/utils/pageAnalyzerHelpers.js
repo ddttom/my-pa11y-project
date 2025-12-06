@@ -48,10 +48,16 @@ async function getInternalLinksWithRetry(html, testUrl, baseUrl) {
         }
 
         const urlObj = new URL(resolvedUrl);
-        if (urlObj.hostname === testUrlObj.hostname && !seenUrls.has(resolvedUrl)) {
-          seenUrls.add(resolvedUrl);
+
+        // Normalize URL: remove hash and query parameters
+        urlObj.hash = '';
+        urlObj.search = '';
+        const normalizedUrl = urlObj.href;
+
+        if (urlObj.hostname === testUrlObj.hostname && !seenUrls.has(normalizedUrl)) {
+          seenUrls.add(normalizedUrl);
           links.push({
-            url: resolvedUrl,
+            url: normalizedUrl,
             text: $(element).text().trim(),
           });
         }
