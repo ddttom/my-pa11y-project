@@ -16,7 +16,43 @@ All notable changes to this project will be documented in this file.
   - Helps debug client-side JavaScript issues, track errors, and analyze third-party scripts
   - Backward compatible: maintains existing `jsErrors` array tracking
 
+- **Report Layout Reference** (`docs/report-layout.md`)
+  - Comprehensive technical reference for AI assistants to programmatically parse report data
+  - Complete field specifications for all 13+ generated reports with data types and ranges
+  - Score calculation formulas and threshold interpretations documented
+  - Cross-report join strategies using URL as common key
+  - CSV parsing guidelines with encoding and escape rules
+  - Common analysis query patterns for typical use cases
+  - Schema version compatibility documentation
+  - Report dependency flow diagram
+  - 840+ lines of detailed technical specifications
+
 ### Documentation
+
+- **Console Log Capture Documentation**
+  - Updated `docs/usermanual.md` Cache Management section with console log capture details
+  - Added comprehensive "Console Log Capture" subsection with format, storage, and use cases
+  - Updated `CLAUDE.md` Caching System section with console log reference
+  - Added to `CHANGELOG.md` under Added section
+
+- **Project Structure Corrections**
+  - Fixed `README.md` project structure to reflect actual directory layout
+  - Removed references to non-existent documentation files (prd.md, projectstate.md, architecture.md)
+  - Added missing documentation references (report-layout.md, CLAUDE.md, CHANGELOG.md)
+  - Updated docs/ folder structure with actual files (5 files: usermanual.md, report-layout.md, system.md, comment.md, modification.md)
+  - Added src/utils/ subdirectory with key utility files listed
+  - Added test/ and ss/ directories
+  - Changed project name from "seo-audit-tool" to "my-pa11y-project"
+  - Updated cache comment to mention console logs in rendered/
+
+- **CLAUDE.md Accuracy Updates**
+  - Added HTTP Status Code Tracking feature (was missing from Latest Features)
+  - Updated Documentation section with accurate list of existing files
+  - Removed references to non-existent documentation (architecture.md, prd.md, projectstate.md)
+  - Added report-layout.md reference for AI assistant technical specifications
+  - Updated Data Structures section with llmReadabilityAggregation and httpStatusAggregation
+  - Included complete field structure for HTTP status tracking (url, statusCode, statusText, timestamp)
+  - Aligned documentation with schema version 1.2.0 features
 
 - **Comprehensive User Manual Update** (`docs/usermanual.md`)
   - Added detailed "Recursive Crawling" section explaining default behavior, URL normalization, and usage patterns
