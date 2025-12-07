@@ -1,437 +1,32 @@
 # SEO Analysis Tool
 
-A Node.js tool for analyzing website SEO and performance metrics with comprehensive accessibility testing.
+A comprehensive Node.js tool for analyzing website SEO, performance, accessibility, and content quality metrics.
 
-The folder /docs, in the repo, contains prompts in .md format that are useful for extending this project
+> **📖 For detailed documentation, see the [User Manual](docs/usermanual.md)**
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Run basic analysis
+npm start -- -s https://example.com/sitemap.xml
+
+# Run with custom output directory
+npm start -- -s https://example.com/sitemap.xml -o my-results
+```
 
 ## Key Features
 
-- **SEO Analysis**: Detailed SEO metrics and scoring
-- **Performance Metrics**: Comprehensive page load analysis
+- **Recursive Site Crawling** (default): Automatically discovers and analyzes all same-domain URLs
+- **SEO Analysis**: Comprehensive SEO metrics, scoring, and recommendations
+- **Performance Metrics**: Load times, Core Web Vitals, and optimization insights
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
-  - Detailed markdown reports for better readability
-- **Content Quality**: Structure and freshness analysis
-- **All Resources Tracking**: Complete inventory of all resources (internal + external)
-  - JavaScript, CSS, images, fonts, videos, and other media
-  - Includes both same-domain resources AND external dependencies
-  - Site-wide usage counts and frequency analysis
-  - Sorted by usage to identify most-used resources
-- **Recursive Site Crawling**: Complete site coverage by default
-  - Automatically scans all same-domain URLs discovered during analysis
-  - No pages left behind - analyzes sitemap URLs plus all discovered pages
-  - Two-stage URL normalization strips hash fragments and query parameters
-  - Normalization at link extraction ensures clean URLs throughout pipeline
-  - Prevents duplicate processing of the same content
-  - Generates perfected sitemap (v-sitemap.xml) with complete site structure
-  - Can disable with --no-recursive for sitemap-only analysis
-- **Sitemap Gap Analysis**: Discover URLs missing from your sitemap
-  - Identifies same-domain URLs not in the original sitemap
-  - Shows which pages exist but weren't submitted to search engines
-  - Helps improve search engine crawling and indexing
-- **Automatic Cache Management**: .cache directory creation and management
-  - **Rendered Page Caching**: Automatically saves rendered HTML for debugging
-  - **Served Page Caching**: Automatically saves original served HTML for debugging
-- **Robust Error Handling**: Network error recovery and retry mechanism
-- **URL Processing Control**: Limit number of URLs processed using count parameter
-- **Output Directory Preservation**: Existing output directory contents are preserved
-- **Configurable Sampling**: Test with small samples before full analysis
-- **Results File Detection**: Automatic detection of results.json for report generation
-- **Iterative Testing**: Test reports with small samples, then run full analysis
-- **Language Variant Filtering**: Skip non-English variants by default (only process /en and /us)
-  - Enhanced URL extraction logic with automatic language variant detection
-  - Centralized language variant checking in report generation
-
-  ## Complete Website Analysis Tool: Business Guide
-
-## What This Tool Does For You
-
-Our comprehensive website analysis tool helps you understand and improve every aspect of your website's performance. Think of it as a complete health check-up for your website that shows you exactly where to make improvements.
-
-## Key Benefits
-
-### Search Engine Visibility (SEO)
-
-Find out how well search engines can find and understand your website:
-
-- How your pages appear in search results
-- Whether your content is properly structured
-- If your images are helping or hurting your search rankings
-- How well your pages link together
-- Whether you're following SEO best practices
-- If social media platforms can properly share your content
-- Whether search engines can understand your specialized content (like product details or events)
-
-### User Experience
-
-Understand how visitors experience your website:
-
-- How quickly pages load on different devices
-- When visitors can start interacting with your pages
-- Whether content shifts around while loading (which frustrates users)
-- How smoothly your site performs
-- If your site works well on mobile devices
-- Whether your navigation helps or confuses visitors
-
-### Accessibility Compliance
-
-Ensure your website works for everyone:
-
-- Compliance with latest accessibility standards (WCAG 2.1)
-- Detailed breakdown of accessibility issues by importance
-- Clear instructions for fixing problems
-- Guidance on manual checks needed
-- Analysis of color contrast and readability
-- Keyboard navigation assessment
-- Screen reader compatibility
-
-### Content Quality
-
-Get deep insights into your content:
-
-- How fresh and unique your content is
-- Whether you're using the right amount of media (images, videos)
-- If your content is properly structured
-- How readable your content is
-- Which keywords you're ranking for
-- Content quality comparison across pages
-- Duplicate content detection
-
-### Image Optimization
-
-Detailed analysis of your website's images:
-
-- Whether images are slowing down your site
-- If images look good on all devices
-- Whether images have proper descriptions
-- How well images are optimized
-- Specific recommendations for improvement
-- Impact on page loading speed
-
-### Website Structure
-
-Understand how your website fits together:
-
-- How pages connect to each other
-- Whether your navigation makes sense
-- If you have broken links
-- How deep visitors need to click
-- Quality of your internal linking
-- External link assessment
-
-### All Resources Analysis
-
-Track all resources across your website (internal and external):
-
-- Comprehensive inventory of ALL resources (JavaScript, CSS, images, fonts, videos, etc.)
-- Includes both same-domain resources AND external dependencies
-- Site-wide usage counts for each resource
-- Identify most frequently used resources across your site
-- Detect potential single points of failure
-- Monitor third-party and internal resource usage
-- Support for CDN, external service, and internal asset auditing
-
-### Sitemap Gap Detection
-
-Discover and fix missing URLs in your sitemap:
-
-- Automatically tracks all same-domain URLs found during page analysis
-- Compares discovered URLs against your original sitemap
-- Identifies pages that exist but aren't in your sitemap
-- Shows how many pages link to each discovered URL
-- Generates a perfected sitemap including all discovered URLs
-- Helps ensure complete search engine coverage
-
-## Reports You'll Receive
-
-### 1. SEO Performance Report
-
-Shows how well search engines can understand your site:
-
-- Page titles and descriptions
-- Content structure
-- Image optimization
-- Link analysis
-- Technical SEO factors
-
-### 2. User Experience Report
-
-Measures how visitors interact with your site:
-
-- Page speed metrics
-- Interactive timing
-- Visual stability
-- Performance scores
-- User experience metrics
-
-### 3. Accessibility Compliance Report
-
-Three formats for different needs:
-
-- Executive summary of compliance
-- Detailed issue breakdown
-- Step-by-step fixing guide
-
-### 4. Content Quality Report
-
-Evaluates your content effectiveness:
-
-- Content freshness
-- Engagement potential
-- Media usage
-- Quality scores
-- Improvement recommendations
-
-### 5. Technical Health Report
-
-Combines key technical metrics:
-
-- Loading speed
-- Mobile friendliness
-- Technical errors
-- Server performance
-- Security indicators
-
-### 6. All Resources Report
-
-Comprehensive analysis of all resources (internal and external):
-
-- Complete inventory of JavaScript, CSS, images, fonts, and media files from all domains
-- Includes both same-domain resources AND external dependencies
-- Site-wide usage frequency for each resource
-- Resource type breakdown (JavaScript, CSS, images, fonts, videos, audio, iframes)
-- Sorted by usage count to identify most-used resources
-- Helps assess both internal asset usage and third-party service impact
-
-### 7. Missing Sitemap URLs Report
-
-Identifies content gaps in your sitemap:
-
-- Lists same-domain URLs discovered during analysis but not in original sitemap
-- Shows how many pages link to each discovered URL
-- Helps identify orphaned or undiscovered pages
-- Enables sitemap improvement for better SEO
-- Generates perfected sitemap (v-sitemap.xml) with all URLs included
-
-## Making the Most of Your Reports
-
-### Priority Guidelines
-
-Focus on issues in this order:
-
-1. Critical technical problems
-2. Major accessibility issues
-3. Significant SEO problems
-4. Performance improvements
-5. Content enhancements
-
-### Regular Monitoring
-
-We recommend:
-
-- Monthly full site analysis
-- Weekly checks of key pages
-- Immediate analysis after major updates
-- Quarterly trend review
-
-### Action Planning
-
-For each report:
-
-1. Review executive summaries
-2. Identify critical issues
-3. Create prioritized task lists
-4. Assign responsibilities
-5. Set improvement targets
-
-## Support and Next Steps
-
-Your technical team can:
-
-- Schedule regular analyses
-- Set up custom reports
-- Configure analysis parameters
-- Handle any technical issues
-- Implement recommended changes
-
-## Future Capabilities
-
-The tool is continuously improving to add:
-
-- Advanced content analysis
-- Deeper user behavior insights
-- More detailed performance metrics
-- Additional report types
-- Real-time monitoring capabilities
-
-## Data Structure
-
-The tool collects comprehensive data about each page and stores it in `results.json`. This file serves as the source of truth for all reports.
-
-### Key Metrics Collected
-
-#### Performance Metrics
-
-- Load time and DOM content loaded
-- First paint and first contentful paint
-- Largest contentful paint
-- Time to interactive
-- Total blocking time
-- Cumulative layout shift
-
-#### Content Analysis
-
-- Word count
-- Heading structure (h1, h2, h3 counts)
-- Image analysis (count, dimensions, alt text)
-- Internal and external link counts
-- Meta information (title, description)
-
-#### Accessibility Metrics
-
-- WCAG 2.1 compliance levels (A, AA, AAA)
-- Issue severity tracking (Critical, Serious, Moderate, Minor)
-- Required manual checks
-- Remediation suggestions
-- Human-readable markdown reports
-
-#### Technical Metrics
-
-- Page size in bytes
-- Resource counts (scripts, stylesheets)
-- Form and table counts
-- JavaScript errors
-- Accessibility issues count
-
-#### Detailed Data
-
-- Complete image inventory with dimensions
-- Accessibility issues with recommendations
-- HTML validation results
-- SEO scores with subscores
-
-### Example Data Structure
-
-```json
-{
-  "url": "https://example.com/page",
-  "lastmod": "2025-01-16T15:30:45.892Z",
-  "loadTime": 115.79,
-  "firstPaint": 700.39,
-  "wordCount": 3153,
-  "h1Count": 2,
-  "imagesCount": 2,
-  "images": [
-    {
-      "src": "./media_1.png",
-      "alt": "Description",
-      "width": "1087",
-      "height": "486"
-    }
-  ],
-  "pageSize": 43104,
-  "pa11yIssuesCount": 5,
-  "wcagCompliance": {
-    "A": 0,
-    "AA": 2,
-    "AAA": 1
-  }
-}
-```
-
-See [Product Requirements](docs/prd.md) for complete specifications.
-
-## Documentation
-
-- [User Manual](docs/usermanual.md)
-- [Product Requirements](docs/prd.md)
-- [Project State](docs/projectstate.md)
-
-## Project Structure
-
-```bash
-seo-audit-tool/
-├── docs/           # Documentation files
-│   ├── prd.md          # Product requirements
-│   ├── projectstate.md # Current project status
-│   └── usermanual.md   # User guide
-├── results/        # Generated reports and analysis
-│   ├── seo_report.csv
-│   ├── performance_analysis.csv
-│   ├── seo_scores.csv
-│   ├── virtual_sitemap.xml
-│   ├── final_sitemap.xml
-│   ├── results.json
-│   ├── wcag_report.md
-│   └── summary.json
-├── src/           # Source code
-│   ├── main.js
-│   └── utils/     # Utility functions
-│       ├── reportUtils/  # Report generation modules
-│       │   ├── formatUtils.js        # Formatting utilities
-│       │   ├── accessibilityAnalysis.js # Accessibility analysis
-│       │   ├── imageAnalysis.js      # Image analysis
-│       │   ├── linkAnalysis.js       # Link analysis
-│       │   ├── contentAnalysis.js    # Content quality analysis
-│       │   └── reportGenerators.js   # Report generation functions
-│       ├── networkUtils.js # Network error handling
-│       └── reports.js    # Main report coordination
-├── .cache/        # Cache directory (automatically created)
-├── index.js       # Entry point
-├── README.md
-├── combined.log   # Complete activity log
-└── error.log      # Error tracking
-```
-
-## Features
-
-- Smart content detection (XML sitemap or HTML)
-- Recursive link discovery from HTML pages
-- Robust URL handling (absolute, relative, protocol-relative)
-- Internal/external link analysis
-- SEO score calculation
-- Performance metrics
-- WCAG 2.1 accessibility testing (Pa11y)
-  - Detailed markdown reports for better review
-- Virtual and final sitemap generation
-- Graceful error recovery
-- Enhanced network error handling with retry mechanism
-- Automatic cache directory management
-- URL processing control with count parameter
-- Preserved output directory contents
-- Configurable sampling limits for testing
-- Results file detection for report generation
-- Iterative testing workflow:
-  - Test with small samples (e.g., 10 pages)
-  - Review and adjust reports
-  - Run full analysis when satisfied
-- Language variant filtering:
-  - Skip non-English variants by default
-  - Only process /en and /us variants
-  - Enhanced URL extraction logic with automatic detection
-  - Centralized language variant checking in report generation
-  - Override with --include-all-languages flag
-
-## Network Error Handling
-
-The tool includes robust network error handling that:
-
-1. Detects network-related errors automatically
-2. Provides clear console messages about the issue
-3. Allows the user to retry after fixing the problem
-4. Handles both regular network requests and browser operations
-5. Implements automatic retries with user confirmation
-6. Provides detailed error classification for:
-   - DNS failures
-   - Connection timeouts
-   - Host unreachable errors
-   - Browser network errors
-7. Includes Cloudflare challenge bypass capability with:
-   - Automatic detection of Cloudflare challenges
-   - Randomized browser fingerprinting
-   - Human-like behavior simulation
-   - Fallback to visible browser mode when needed
-   - Detailed logging of bypass attempts
-   - Configurable retry logic for persistent challenges
+- **Content Quality**: Structure, freshness, and readability analysis
+- **All Resources Tracking**: Complete inventory of JavaScript, CSS, images, fonts, and media (internal + external)
+- **Sitemap Gap Analysis**: Discovers URLs missing from your sitemap
+- **Dual Caching System**: Preserves rendered and served HTML for debugging
 
 ## Requirements
 
@@ -444,134 +39,153 @@ The tool includes robust network error handling that:
 npm install
 ```
 
-## Usage
+## Basic Usage
 
 ```bash
-npm start -- -s <url> -o <output-dir> [options]
+# Analyze a website (recursive crawling enabled by default)
+npm start -- -s https://example.com/sitemap.xml
+
+# Limit to 10 URLs for testing
+npm start -- -s https://example.com/sitemap.xml -l 10
+
+# Disable recursive crawling (sitemap-only)
+npm start -- -s https://example.com/sitemap.xml --no-recursive
+
+# Force fresh analysis (delete cache and results)
+npm start -- --force-delete-cache -s https://example.com/sitemap.xml
 ```
 
-### Options
+## Common Options
 
-- `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "https://example.com/sitemap.xml")
-- `-o, --output <directory>`: Output directory for results (default: "results")
-  - Preserves existing contents if directory exists
-  - Creates directory if it doesn't exist
-- `-l, --limit <number>`: Limit the number of URLs to test (-1 for all)
-- `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
-- `--cache-only`: Use only cached data
-- `--no-cache`: Disable caching
-- `--no-recursive`: Disable recursive crawling (only scan sitemap URLs, not discovered pages)
-- `--force-delete-cache`: Force delete cache and results directory for completely fresh analysis
-  - Deletes `.cache/` directory (rendered HTML)
-  - Deletes `results/` directory (all CSV reports and results.json)
-  - Ensures no stale data from previous runs
-- `--log-level <level>`: Set logging level (error, warn, info, debug)
-- `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
+| Option | Description |
+|--------|-------------|
+| `-s, --sitemap <url>` | URL of sitemap or webpage to analyze |
+| `-o, --output <dir>` | Output directory (default: "results") |
+| `-l, --limit <n>` | Limit number of URLs to process |
+| `--no-recursive` | Disable automatic URL discovery |
+| `--force-delete-cache` | Delete all results and cache before starting |
+| `--log-level <level>` | Set logging level (error, warn, info, debug) |
 
-**Notes**:
-- By default, the tool uses **recursive crawling** to scan all discovered same-domain URLs in addition to sitemap URLs. This ensures complete site coverage. Use `--no-recursive` to analyze only the URLs in your sitemap.
-- Log files (`error.log`, `combined.log`) are automatically cleared on every startup
-- All command-line parameters are logged at startup for debugging and reproducibility
+**For complete options and detailed usage, see the [User Manual](docs/usermanual.md).**
 
-### Troubleshooting
+## Generated Reports
 
-#### Missing Rendered or Served Files
+The tool generates 11+ comprehensive reports:
 
-If you don't see new files in `.cache/rendered` or `.cache/served`, the script might be using existing results. Delete `results/results.json` to force a fresh run:
+### Core Reports
+- **seo_report.csv** - Page-level SEO metrics
+- **performance_analysis.csv** - Load times and Core Web Vitals
+- **accessibility_report.csv** - WCAG 2.1 compliance
+- **wcag_report.md** - Human-readable accessibility report
+- **content_quality.csv** - Content analysis and scoring
+- **seo_scores.csv** - Detailed SEO scoring
+
+### Advanced Reports
+- **all_resources_report.csv** - Complete resource inventory (internal + external)
+- **missing_sitemap_urls.csv** - Discovered URLs not in sitemap
+- **v-sitemap.xml** - Perfected sitemap with all discovered URLs
+- **image_optimization.csv** - Image analysis and recommendations
+- **link_analysis.csv** - Internal/external link structure
+
+**For detailed report descriptions, see the [User Manual](docs/usermanual.md#generated-reports).**
+
+## Recursive Crawling
+
+By default, the tool performs **recursive site crawling**:
+- Starts with your sitemap URLs
+- Discovers all same-domain links from each page
+- Continues until no new URLs are found
+- Normalizes URLs to prevent duplicates
+
+This ensures complete site coverage. Use `--no-recursive` to analyze only sitemap URLs.
+
+**For detailed information on recursive crawling, see the [User Manual](docs/usermanual.md#recursive-crawling).**
+
+## Documentation
+
+- **[User Manual](docs/usermanual.md)** - Complete usage guide and feature documentation
+- **[Product Requirements](docs/prd.md)** - Product specifications
+- **[Project State](docs/projectstate.md)** - Current project status
+- **[System Instructions](docs/system.md)** - Collaboration rules
+
+## Project Structure
+
+```
+seo-audit-tool/
+├── docs/              # Documentation
+│   ├── usermanual.md  # Complete user guide
+│   ├── prd.md         # Product requirements
+│   └── ...
+├── src/               # Source code
+│   ├── main.js        # Entry point
+│   └── utils/         # Utility functions
+├── results/           # Generated reports
+├── .cache/            # Cache directory
+│   ├── rendered/      # Puppeteer-rendered HTML
+│   └── served/        # Original served HTML
+└── index.js           # CLI entry point
+```
+
+## Features Overview
+
+### SEO & Performance
+- Page titles, meta descriptions, and heading structure
+- Core Web Vitals (LCP, FID, CLS)
+- Load time analysis
+- SEO scoring and recommendations
+- Structured data detection
+
+### Accessibility
+- WCAG 2.1 Level A, AA, AAA compliance
+- Issue severity tracking (Critical, Serious, Moderate, Minor)
+- Remediation suggestions
+- Manual check requirements
+- Human-readable markdown reports
+
+### Content & Resources
+- Word count and content structure
+- Content freshness and uniqueness scores
+- Complete resource inventory (JS, CSS, images, fonts, videos)
+- External dependency tracking
+- Usage frequency analysis
+
+### Site Analysis
+- Automatic URL discovery and mapping
+- Sitemap gap detection
+- Internal/external link analysis
+- Broken link detection
+- Navigation quality assessment
+
+## Troubleshooting
+
+**For comprehensive troubleshooting, see the [User Manual](docs/usermanual.md#troubleshooting).**
+
+Common issues:
+- **Too many URLs processed?** Recursive mode is enabled by default. Use `--no-recursive`.
+- **Need fresh analysis?** Use `--force-delete-cache` to delete all cached data.
+- **Memory issues?** Reduce URLs with `-l` or `-c` options.
+
+## Support
+
+For issues and questions:
+1. Check the [User Manual](docs/usermanual.md)
+2. Review error logs (`error.log`, `combined.log`)
+3. Verify input parameters
+4. Submit issue with full error details
+
+## Development
 
 ```bash
-rm results/results.json
-npm start
+# Run tests
+npm test
+
+# Run linter
+npm run lint
+
+# Check security vulnerabilities
+npm audit
 ```
 
-### Output Files
+## License
 
-- `seo_report.csv`: Page-level SEO analysis
-  - URL
-  - Title presence and content
-  - Meta description presence and content
-  - H1 tag count
-  - Image count and alt text usage
-  - Internal/external link counts
-
-- `performance_analysis.csv`: Page performance metrics
-  - Load time
-  - First paint timing
-  - First contentful paint timing
-  - Largest contentful paint
-  - Time to interactive
-  - Total blocking time
-  - Cumulative layout shift
-
-- `accessibility_report.csv`: WCAG 2.1 compliance analysis
-  - Total issues by severity
-  - WCAG compliance levels
-  - Required manual checks
-  - Remediation suggestions
-
-- `wcag_report.md`: Human-readable WCAG issues report
-  - Path-by-path organization
-  - Unique issues with occurrence counts
-  - Detailed issue descriptions
-  - Remediation suggestions
-  - Required manual checks
-
-- `seo_scores.csv`: Detailed SEO scoring
-  - Overall score
-  - Title optimization score
-  - Meta description score
-  - Content quality score
-  - Link structure score
-
-- `all_resources_report.csv`: All resources inventory (internal + external)
-  - Resource URL
-  - Resource Type (javascript, css, image, font, video, audio, iframe, other)
-  - Total Count (site-wide usage frequency)
-  - Sorted by count (most used resources first)
-
-- `missing_sitemap_urls.csv`: Discovered URLs not in original sitemap
-  - Discovered URL (same-domain URLs found during analysis)
-  - Found On Pages Count (number of pages linking to this URL)
-  - Helps identify sitemap gaps and orphaned pages
-
-- `v-sitemap.xml`: Perfected sitemap
-  - Includes all original sitemap URLs
-  - Plus all discovered same-domain URLs
-  - Marks discovered URLs with XML comments
-  - Ready to submit to search engines
-
-- `virtual_sitemap.xml`: Initial crawl results
-  - URLs discovered during first pass
-  - Last modification dates
-  - Change frequency
-  - Priority values
-
-- `final_sitemap.xml`: Complete site structure
-  - All unique internal URLs
-  - Updated modification dates
-  - Consolidated priorities
-
-- `summary.json`: Site-wide metrics
-  - Total URLs processed
-  - Internal/external URL counts
-  - Average SEO score
-  - Timestamp
-
-- `results.json`: Complete analysis data
-  - Performance metrics
-  - SEO scores
-  - Accessibility results
-  - URL metrics
-  - Response codes
-
-### Log Files
-
-- `combined.log`: Complete activity log
-  - All processing steps
-  - Debug information
-  - Warnings and notices
-
-- `error.log`: Error tracking
-  - Processing failures
-  - Invalid URLs
-  - Connection issues
+See LICENSE file for details.

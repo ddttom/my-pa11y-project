@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git commit:*)",
       "Bash(npm run lint)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

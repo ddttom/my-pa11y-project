@@ -42,6 +42,8 @@ npm audit fix                                 # Fix non-breaking vulnerabilities
 npm audit fix --force                         # Fix all vulnerabilities (may include breaking changes)
 ```
 
+The authors rules for collaboration are held in docs/system.md 
+
 ### Common Development Workflows
 ```bash
 # Test with small sample before full analysis

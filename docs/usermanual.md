@@ -4,6 +4,12 @@
 
 This tool performs comprehensive website analysis, generating detailed reports on SEO, performance, accessibility, and content quality metrics.
 
+**Key Features:**
+- **Recursive Site Crawling** (default): Automatically discovers and analyzes all same-domain URLs beyond the initial sitemap
+- **Comprehensive Resource Tracking**: Inventories all resources (JavaScript, CSS, images, fonts, videos) across internal and external domains
+- **Sitemap Gap Analysis**: Identifies URLs discovered during analysis that are missing from your sitemap
+- **Dual Caching System**: Preserves both rendered and served HTML for comparison and debugging
+
 ## Getting Started
 
 ### Prerequisites
@@ -40,6 +46,12 @@ npm start -- -s https://example.com/sitemap.xml -l 10
 # Limit number of files to include in both passes
 npm start -- -s https://example.com/sitemap.xml -c 50
 
+# Disable recursive crawling (sitemap-only analysis)
+npm start -- -s https://example.com/sitemap.xml --no-recursive
+
+# Force complete fresh start (deletes all results and cache)
+npm start -- --force-delete-cache -s https://example.com/sitemap.xml
+
 # Test with small sample before full analysis
 npm start -- -s https://example.com/sitemap.xml -l 10 -o test-results
 # Review reports in test-results directory
@@ -63,7 +75,7 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 
 - `-s, --sitemap <url>`: URL of sitemap or webpage to analyze
   - Accepts sitemap XML or webpage URL
-  - Default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>"
+  - Default: "https://example.com/sitemap.xml"
 
 ### Optional Settings
 
@@ -73,6 +85,9 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 - `-l, --limit <number>`: Maximum URLs to process (-1 for all)
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--log-level <level>`: Set logging detail (error, warn, info, debug)
+- `--no-recursive`: Disable automatic URL discovery (default: recursive mode enabled)
+  - When disabled, only analyzes URLs from the initial sitemap
+  - Use this for faster analysis when complete site coverage is not needed
 - `--include-all-languages`: Include all language variants in analysis
   - Overrides default behavior of only processing /en and /us variants
   - Uses enhanced URL extraction logic with automatic detection
@@ -82,7 +97,9 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear cache before starting
+- `--force-delete-cache`: Delete entire results directory (including cache and all reports) before starting
+  - Ensures complete fresh start with no stale data
+  - Removes all CSV reports, results.json, and cached HTML files
 
 ## Generated Reports
 
@@ -224,6 +241,60 @@ Fields:
 - Top Keywords
 - Overall Content Score
 
+### All Resources Report (all_resources_report.csv)
+
+- Comprehensive inventory of ALL resources across the entire site
+- Tracks both internal (same-domain) and external resources
+- Shows usage count across all analyzed pages
+- Sorted by usage frequency (most-used resources first)
+- Helps identify critical dependencies and potential single points of failure
+
+Resource Types Tracked:
+
+- JavaScript files
+- CSS stylesheets
+- Images (PNG, JPG, SVG, etc.)
+- Fonts (WOFF, WOFF2, TTF, etc.)
+- Videos (MP4, WebM, etc.)
+- Audio files
+- Iframes
+- Other resource types
+
+Fields:
+
+- Resource URL
+- Resource Type (javascript, css, image, font, video, audio, iframe, other)
+- Total Count (number of pages referencing this resource)
+
+### Missing Sitemap URLs Report (missing_sitemap_urls.csv)
+
+- Identifies URLs discovered during page analysis that are not in the original sitemap
+- Shows reference count (how many pages link to each discovered URL)
+- Helps identify sitemap gaps and potentially orphaned pages
+- Sorted by reference count (most-referenced URLs first)
+- Essential for improving sitemap completeness and SEO coverage
+
+Fields:
+
+- Discovered URL
+- Reference Count (number of pages linking to this URL)
+- First Discovered On (source page that first linked to this URL)
+
+### Perfected Sitemap (v-sitemap.xml)
+
+- XML sitemap file combining original sitemap URLs with all discovered URLs
+- Includes all URLs from initial sitemap
+- Adds discovered URLs not in original sitemap
+- Discovered URLs marked with XML comment: `<!-- Discovered during analysis -->`
+- Valid XML format ready for submission to search engines
+- Ensures complete site coverage in search engine indexing
+
+Usage:
+
+1. Review the file to verify discovered URLs are legitimate
+2. Submit to Google Search Console and other search engines
+3. Use as your new canonical sitemap for complete site coverage
+
 ## Log Files
 
 - `combined.log`: Complete activity log
@@ -238,19 +309,124 @@ Fields:
 
 ## Cache Management
 
-The tool maintains a cache to improve performance:
+The tool maintains a dual-layer cache system to improve performance and enable debugging:
 
-- Cache location: `.cache` directory (automatically created if missing)
-- Cache format: JSON files
-- Rendered pages: HTML files in `.cache/rendered`
-- Served pages: HTML files in `.cache/served`
-- Cache naming: MD5 hash of URLs
+### Cache Structure
+
+- **Cache location**: `.cache` directory (automatically created if missing)
+- **Rendered Cache** (`.cache/rendered/`):
+  - Contains HTML after JavaScript execution
+  - Generated by Puppeteer browser rendering
+  - Represents the DOM as users see it
+- **Served Cache** (`.cache/served/`):
+  - Contains original HTML as received from server
+  - Before JavaScript execution
+  - Useful for comparing server-side vs. client-side rendering
+- **Cache naming**: MD5 hash of URLs for consistent file identification
+- **Cache format**: HTML files for page content
+
+### Purpose of Dual Cache
+
+The dual cache structure allows you to:
+- Compare rendered vs. served HTML for debugging
+- Identify JavaScript-driven content changes
+- Analyze server-side vs. client-side rendering differences
+- Debug SEO issues related to JavaScript rendering
 
 ### Cache Control Options
 
-- `--cache-only`: Use only cached data
-- `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear existing cache
+- `--cache-only`: Use only cached data (no network requests)
+- `--no-cache`: Disable caching (fetch everything fresh)
+- `--force-delete-cache`: Delete entire results directory including cache and all reports before starting
+
+## Recursive Crawling
+
+By default, the tool performs **recursive site crawling** to ensure complete coverage of your website. This goes beyond just analyzing URLs in your sitemap.
+
+### How It Works
+
+1. **Initial URLs**: Starts with URLs from your sitemap or initial webpage
+2. **Link Discovery**: Extracts all same-domain links from each analyzed page
+3. **Queue Processing**: Adds discovered URLs to a processing queue
+4. **Continuation**: Continues analyzing new pages until no new URLs are found
+5. **URL Normalization**: Automatically normalizes URLs to prevent duplicate processing
+
+### URL Normalization
+
+The tool implements two-stage URL normalization to ensure each unique page is analyzed only once:
+
+**Normalization Rules:**
+- Strips hash fragments: `https://example.com/page#section` → `https://example.com/page`
+- Removes query parameters: `https://example.com/page?ref=twitter` → `https://example.com/page`
+- Skips self-references: URLs pointing to the current page are not added to queue
+- Deduplicates: Tracks processed URLs to prevent re-analysis
+
+**Why This Matters:**
+- Prevents wasted resources analyzing the same content multiple times
+- Keeps discovered URL lists clean and meaningful
+- Ensures accurate sitemap generation without duplicates
+- Reduces overall processing time
+
+### When to Use Recursive Mode
+
+**Use recursive mode (default):**
+- Complete site audits requiring full coverage
+- Finding pages missing from your sitemap
+- Building comprehensive resource inventory
+- Discovering orphaned or hard-to-find pages
+- SEO audits requiring complete site analysis
+
+**Disable with `--no-recursive`:**
+- Analyzing only specific URLs from your sitemap
+- Testing with a known, controlled list of URLs
+- Faster analysis when complete coverage is not needed
+- Reducing processing time for large sites
+
+### Console Progress Tracking
+
+During recursive crawling, you'll see progress messages like:
+
+```
+Processing URL 15 (23 URLs in queue)...
+Processing URL 16 (22 URLs in queue)...
+Recursive crawling complete. Processed 50 total URLs.
+```
+
+This shows:
+- Current URL being processed
+- Number of discovered URLs waiting in queue
+- Final count when crawling completes
+
+### Performance Considerations
+
+- **Processing Time**: Recursive mode takes longer as it analyzes more pages
+- **Resource Usage**: More pages means more memory and network bandwidth
+- **Queue Growth**: Queue can grow significantly for large, well-connected sites
+- **Limit Options**: Use `-l` or `-c` flags to limit scope during testing
+
+### Example Usage
+
+```bash
+# Full recursive site crawl (default)
+npm start -- -s https://example.com/sitemap.xml
+
+# Sitemap-only analysis (no recursion)
+npm start -- -s https://example.com/sitemap.xml --no-recursive
+
+# Limited recursive crawl for testing
+npm start -- -s https://example.com/sitemap.xml -l 50
+
+# Complete fresh recursive analysis
+npm start -- --force-delete-cache -s https://example.com/sitemap.xml
+```
+
+### Generated Outputs
+
+Recursive crawling produces additional insights:
+
+1. **missing_sitemap_urls.csv**: URLs discovered but not in your sitemap
+2. **v-sitemap.xml**: Perfected sitemap with all discovered URLs
+3. **all_resources_report.csv**: Complete resource inventory across all pages
 
 ## Network Error Handling
 
@@ -316,6 +492,22 @@ JavaScript heap out of memory
 
 Solution: Reduce number of URLs using -l or -c options
 
+Unexpected Number of URLs Processed
+
+```
+Processed 500 URLs when only 50 were expected
+```
+
+Solution: Recursive mode is enabled by default. Use `--no-recursive` to analyze only sitemap URLs
+
+Duplicate URL Warnings
+
+```
+URL already processed, skipping...
+```
+
+Explanation: This is normal behavior. The tool normalizes URLs by stripping hash fragments and query parameters to prevent duplicate processing
+
 ### Error Messages
 
 - `Invalid sitemap format`: Check if URL points to valid sitemap
@@ -335,21 +527,53 @@ npm start
 ## Best Practices
 
 1. Start Small
-   - Test with few URLs first
-   - Use -l or -c options to limit processing
+   - Test with few URLs first using `-l 10` or `-c 10`
+   - Use `--no-recursive` for initial testing to limit scope
+   - Review test results before running full analysis
+   - Consider memory and time constraints for large sites
 
-2. Monitor Logs
-   - Check error.log for issues
-   - Use --log-level debug for details
+2. Choose the Right Crawling Mode
+   - **Use recursive mode (default)** for:
+     - Complete site audits
+     - SEO comprehensive analysis
+     - Finding orphaned pages
+     - Building complete sitemaps
+   - **Use `--no-recursive`** for:
+     - Quick sitemap validation
+     - Testing specific pages
+     - Faster analysis cycles
+     - Limited scope audits
 
-3. Regular Cache Cleanup
-   - Use --force-delete-cache periodically
-   - Clear cache if behavior seems incorrect
+3. Monitor Logs
+   - Check `error.log` for issues
+   - Use `--log-level debug` for detailed troubleshooting
+   - Review `combined.log` for complete activity history
+   - Watch console output for queue progress during recursive crawling
 
-4. Handle Network Issues
+4. Regular Cache Cleanup
+   - Use `--force-delete-cache` for complete fresh starts
+   - Clear cache if behavior seems incorrect or outdated
+   - Delete `results/results.json` to force re-analysis
+   - Clean up old results directories periodically
+
+5. Handle Network Issues
    - Check internet connection before starting
    - Use retry mechanism when network errors occur
    - Monitor network stability during long runs
+   - Consider rate limiting for large site crawls
+
+6. Leverage Generated Reports
+   - **missing_sitemap_urls.csv**: Review for SEO improvements, add missing URLs to sitemap
+   - **all_resources_report.csv**: Identify critical dependencies and potential single points of failure
+   - **v-sitemap.xml**: Submit to search engines for complete site indexing
+   - **accessibility_report.csv**: Prioritize fixes by severity level
+   - **performance_analysis.csv**: Focus on pages with high load times
+
+7. Optimize Resource Usage
+   - Use `-l` flag to limit URLs during development/testing
+   - Monitor memory usage on large sites (1000+ pages)
+   - Consider running analysis during off-peak hours
+   - Process sites in batches if needed for very large sites
 
 ## Support
 
