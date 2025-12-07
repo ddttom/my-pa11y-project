@@ -31,6 +31,13 @@ This is a comprehensive SEO, accessibility, and performance analysis tool built 
    - New report: `llm_readability_report.csv` with comprehensive readability metrics
    - Benefits AI-powered tools, search engines, and assistive technologies
 
+4. **HTTP Status Code Tracking**
+   - Captures and reports all non-200 HTTP responses (redirects, client errors, server errors)
+   - Tracks 301/302/307/308 redirects, 404 not found, 500 server errors, etc.
+   - Human-readable status text for each code
+   - Timestamps for when issues were detected
+   - New report: `http_status_report.csv` for identifying broken links and redirect chains
+
 ## Commands
 
 ### Development
@@ -205,7 +212,16 @@ global.auditcore = {
   imageMetrics: {},
   linkMetrics: {},
   securityMetrics: {},
-  allResourcesAggregation: {    // NEW: Site-wide all resources (internal + external)
+  llmReadabilityAggregation: {},    // LLM readability scores per URL
+  httpStatusAggregation: {          // Non-200 HTTP status codes
+    "https://example.com/page": {
+      url: string,
+      statusCode: number,           // 301, 302, 404, 500, etc.
+      statusText: string,           // "Moved Permanently", "Not Found", etc.
+      timestamp: string             // ISO 8601 timestamp
+    }
+  },
+  allResourcesAggregation: {        // Site-wide all resources (internal + external)
     "https://cdn.example.com/script.js": {
       url: string,
       type: "javascript"|"css"|"image"|"font"|"video"|"audio"|"iframe"|"other",
@@ -441,8 +457,14 @@ This project actively manages npm security vulnerabilities:
 ## Documentation
 
 See `/docs` folder for:
-- `architecture.md`: System architecture details
-- `usermanual.md`: User guide
-- `prd.md`: Product requirements
-- `projectstate.md`: Current project status
-- Extension prompts in other `.md` files for AI-assisted development
+- `usermanual.md`: Complete user guide and feature documentation
+- `report-layout.md`: Technical specification for AI assistants (comprehensive report structure reference)
+- `system.md`: Collaboration rules and development guidelines
+- `comment.md`: Additional notes and context
+- `modification.md`: Modification guidelines and patterns
+
+Additional documentation:
+- `README.md`: Quick start guide and project overview
+- `CLAUDE.md` (this file): Developer guide for Claude Code instances
+- `CHANGELOG.md`: Version history and feature tracking
+- `CONTRIBUTING.md`: Contribution guidelines
