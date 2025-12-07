@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Browser Console Log Capture**: Comprehensive Puppeteer console output preservation
+  - Automatically captures ALL browser console messages during page rendering
+  - Types captured: `log`, `warn`, `error`, `info`, `debug`, and all console API methods
+  - Saved to `.cache/rendered/{cache-key}.log` alongside HTML files
+  - Format: `[timestamp] [TYPE] message` for easy parsing and analysis
+  - Same MD5 cache key used for HTML and log files for consistent pairing
+  - Empty console output: saves "// No console output captured"
+  - Helps debug client-side JavaScript issues, track errors, and analyze third-party scripts
+  - Backward compatible: maintains existing `jsErrors` array tracking
+
 ### Documentation
 
 - **Comprehensive User Manual Update** (`docs/usermanual.md`)
