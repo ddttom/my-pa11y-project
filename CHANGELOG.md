@@ -20,6 +20,16 @@ All notable changes to this project will be documented in this file.
   - Actual sitemap generation handled by `savePerfectedSitemap()` in `sitemapUtils.js`
   - Reduces codebase size by 45 lines
 
+- **Major dead code cleanup**: Removed 346 lines of completely unused sitemap code
+  - Deleted entire `src/utils/sitemapGenerator.js` file (288 lines) - never imported anywhere
+    - `generateSitemap()` function for creating sitemap.xml.gz
+    - `generateSplitSitemaps()` function for large sitemaps
+    - Multiple helper functions for sitemap generation with image/video data
+  - Removed `saveFinalSitemap()` from `sitemapUtils.js` (58 lines) - never imported
+  - Uninstalled unused `sitemap` npm package and 3 dependencies
+  - Only active sitemap generation: `savePerfectedSitemap()` → `v-sitemap.xml`
+  - Total dead code removed in cleanup: 473 lines (~15.9 KB)
+
 ### Added
 
 - **Browser Console Log Capture**: Comprehensive Puppeteer console output preservation
