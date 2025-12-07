@@ -55,7 +55,7 @@ program
   )
   .option(
     '-c, --count <number>',
-    'Number of files to include in both passes (virtual XML creation and analysis). Use -1 for infinite.',
+    'Number of files to include in analysis. Use -1 for infinite.',
     (value) => parseInt(value, 10),
     defcount
   )
