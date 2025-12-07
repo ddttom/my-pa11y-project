@@ -29,7 +29,6 @@
     "puppeteer": "^22.14.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "sitemap": "^8.0.0",
     "winston": "^3.14.1",
     "xml2js": "^0.6.2",
     "xmlbuilder2": "^3.1.1"
