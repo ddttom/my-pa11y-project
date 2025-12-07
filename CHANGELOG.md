@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- **virtual_sitemap.xml generation**: Removed redundant virtual sitemap file generation
+  - Removed `generateVirtualSitemap()` and `saveVirtualSitemap()` functions from `src/utils/sitemap.js`
+  - Removed virtual sitemap generation calls in URL processing pipeline
+  - Updated `saveFinalSitemap()` to source URLs from `results.internalLinks` only
+  - No functional impact: `final_sitemap.xml` and `v-sitemap.xml` (perfected sitemap) still generated
+  - Simplifies codebase by removing duplicate sitemap functionality
+
 ### Added
 
 - **Browser Console Log Capture**: Comprehensive Puppeteer console output preservation
