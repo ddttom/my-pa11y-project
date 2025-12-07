@@ -258,11 +258,21 @@ When adding new features that extract data or generate reports, follow the 4-pha
 
 ## Caching System
 
-- `.cache/rendered/`: Puppeteer-rendered HTML (after JavaScript execution)
+- `.cache/rendered/`: Puppeteer-rendered HTML (after JavaScript execution) and console logs (`.log` files)
 - `.cache/served/`: Original served HTML (as received from server)
-- Cache keys: URL-based with sanitized filenames
+- Cache keys: URL-based with sanitized filenames (MD5 hash of URL)
+- Console logs: Captured browser console output stored as `{cacheKey}.log` alongside HTML files
 - Cache control: `--cache-only`, `--no-cache`, `--force-delete-cache` flags
 - Screenshots saved in `ss/` directory for debugging
+
+### Console Log Capture
+
+For each page rendered with Puppeteer, the tool captures ALL browser console output:
+- Format: `[timestamp] [TYPE] message`
+- Types captured: log, warn, error, info, debug, etc.
+- Saved to: `.cache/rendered/{cacheKey}.log` (same cache key as HTML file)
+- Empty output: Saves "// No console output captured"
+- Useful for debugging client-side JavaScript issues
 
 ### Schema Version Management
 

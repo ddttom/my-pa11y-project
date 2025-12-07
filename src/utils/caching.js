@@ -256,9 +256,18 @@ async function renderAndCacheData(url) {
     });
 
     const jsErrors = [];
+    const consoleMessages = [];
     page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        jsErrors.push(msg.text());
+      const timestamp = new Date().toISOString();
+      const type = msg.type();
+      const text = msg.text();
+
+      // Capture all console messages with timestamp and type
+      consoleMessages.push(`[${timestamp}] [${type.toUpperCase()}] ${text}`);
+
+      // Also track errors separately for backward compatibility
+      if (type === 'error') {
+        jsErrors.push(text);
       }
     });
 
@@ -662,6 +671,19 @@ async function renderAndCacheData(url) {
       global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
     } catch (error) {
       global.auditcore.logger.error(`Error saving served HTML for ${url}:`, error);
+    }
+
+    // Save console log output to .cache/rendered (same name as HTML with .log suffix)
+    try {
+      const cacheKey = generateCacheKey(url);
+      const consoleLogPath = path.join(CACHE_DIR, 'rendered', `${cacheKey}.log`);
+      const logContent = consoleMessages.length > 0
+        ? consoleMessages.join('\n')
+        : '// No console output captured';
+      await fs.writeFile(consoleLogPath, logContent, 'utf8');
+      global.auditcore.logger.debug(`Console log saved to: ${consoleLogPath} (${consoleMessages.length} messages)`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving console log for ${url}:`, error);
     }
 
     global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
