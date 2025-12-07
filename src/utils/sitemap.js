@@ -5,7 +5,6 @@
  * - XML sitemap parsing and extraction
  * - HTML link extraction with fallback to Puppeteer
  * - URL validation and processing
- * - Final sitemap generation with unique URLs
  */
 
 /* eslint-disable no-await-in-loop */
@@ -20,7 +19,6 @@ import path from 'path';
 // Third-party modules
 import { parseStringPromise } from 'xml2js';
 import jsdom from 'jsdom';
-import { create } from 'xmlbuilder2';
 
 // Local modules
 import { UrlProcessor } from './urlProcessor.js';
@@ -491,47 +489,4 @@ function extractUrlsFromUrlset(urlset) {
 export async function processSitemapUrls(urls, recursive = false) {
   const processor = new UrlProcessor(global.auditcore.options);
   return processor.processUrls(urls, recursive);
-}
-
-/**
- * Generate and save final sitemap with all unique URLs
- *
- * Combines URLs from internal links analysis
- * 
- * @param {Object} results - Analysis results containing URLs
- * @param {string} outputDir - Directory to save sitemap
- * @returns {Promise<string>} Path to saved sitemap
- */
-export async function saveFinalSitemap(results, outputDir) {
-  try {
-    const uniqueUrls = new Set();
-
-    if (results.internalLinks) {
-      results.internalLinks.forEach((link) => uniqueUrls.add(link.url));
-    }
-
-    const finalSitemap = {
-      urlset: {
-        '@xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
-        url: Array.from(uniqueUrls).map((url) => ({
-          loc: url,
-          lastmod: new Date().toISOString(),
-          changefreq: 'monthly',
-          priority: 0.5,
-        })),
-      },
-    };
-
-    await fs.mkdir(outputDir, { recursive: true });
-
-    const finalPath = path.join(outputDir, 'final_sitemap.xml');
-    const xml = create(finalSitemap).end({ prettyPrint: true });
-    await fs.writeFile(finalPath, xml);
-    
-    global.auditcore.logger.info(`Final sitemap with ${uniqueUrls.size} URLs saved to: ${finalPath}`);
-    return finalPath;
-  } catch (error) {
-    global.auditcore.logger.error('Error saving final sitemap:', error);
-    throw error;
-  }
 }
