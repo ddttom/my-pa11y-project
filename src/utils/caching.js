@@ -488,6 +488,76 @@ async function renderAndCacheData(url) {
         }
       });
 
+      // LLM Readability Metrics
+      const llmReadability = {
+        // Structural elements
+        semanticElements: {
+          article: document.querySelectorAll('article').length,
+          section: document.querySelectorAll('section').length,
+          nav: document.querySelectorAll('nav').length,
+          header: document.querySelectorAll('header').length,
+          footer: document.querySelectorAll('footer').length,
+          aside: document.querySelectorAll('aside').length,
+          main: document.querySelectorAll('main').length
+        },
+
+        // Heading structure
+        headings: {
+          h1: document.querySelectorAll('h1').length,
+          h2: document.querySelectorAll('h2').length,
+          h3: document.querySelectorAll('h3').length,
+          h4: document.querySelectorAll('h4').length,
+          h5: document.querySelectorAll('h5').length,
+          h6: document.querySelectorAll('h6').length
+        },
+
+        // Content structure
+        paragraphs: document.querySelectorAll('p').length,
+        lists: {
+          ul: document.querySelectorAll('ul').length,
+          ol: document.querySelectorAll('ol').length,
+          total: document.querySelectorAll('ul, ol').length
+        },
+        tables: document.querySelectorAll('table').length,
+
+        // Code and pre-formatted content
+        codeBlocks: document.querySelectorAll('pre, code').length,
+
+        // Metadata
+        hasJsonLd: document.querySelectorAll('script[type="application/ld+json"]').length > 0,
+        jsonLdCount: document.querySelectorAll('script[type="application/ld+json"]').length,
+
+        // Schema.org microdata
+        hasMicrodata: document.querySelectorAll('[itemscope]').length > 0,
+        microdataCount: document.querySelectorAll('[itemscope]').length,
+
+        // OpenGraph
+        ogTags: {
+          title: document.querySelector('meta[property="og:title"]')?.content || '',
+          description: document.querySelector('meta[property="og:description"]')?.content || '',
+          image: document.querySelector('meta[property="og:image"]')?.content || '',
+          url: document.querySelector('meta[property="og:url"]')?.content || '',
+          type: document.querySelector('meta[property="og:type"]')?.content || ''
+        },
+
+        // Text content analysis
+        bodyText: document.body?.innerText || '',
+        bodyTextLength: (document.body?.innerText || '').length,
+
+        // Hidden content detection
+        hiddenElements: document.querySelectorAll('[style*="display: none"], [style*="visibility: hidden"], [hidden]').length,
+
+        // Main content detection
+        hasMainElement: document.querySelector('main') !== null,
+        hasArticleElement: document.querySelector('article') !== null,
+
+        // Content extractability indicators
+        totalElements: document.querySelectorAll('*').length,
+        textNodes: Array.from(document.body?.childNodes || []).filter(node =>
+          node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0
+        ).length
+      };
+
       return {
         title: document.title,
         metaDescription: document.querySelector('meta[name="description"]')?.content || '',
@@ -520,6 +590,7 @@ async function renderAndCacheData(url) {
         tablesCount: document.querySelectorAll('table').length,
         pageSize: document.documentElement.outerHTML.length,
         allResources: allResources,
+        llmReadability: llmReadability,
       };
     });
 

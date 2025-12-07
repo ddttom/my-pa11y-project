@@ -23,6 +23,7 @@ import {
   updateContentMetrics,
   updateSpecificUrlMetrics,
   updateExternalResourcesMetrics,
+  updateLlmReadabilityMetrics,
 } from './metricsUpdater.js';
 
 async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config) {
@@ -244,6 +245,7 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, pageData, result
     await updateContentMetrics($, results, testUrl);
     await updateSpecificUrlMetrics($, results, testUrl);
     await updateExternalResourcesMetrics(pageData, results, testUrl);
+    await updateLlmReadabilityMetrics(pageData, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
     metricsToCheck.forEach(metric => {

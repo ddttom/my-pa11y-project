@@ -11,7 +11,8 @@ import {
   generateSecurityReport,
   generateSpecificUrlReport,
   generateExternalResourcesReport,
-  generateMissingSitemapUrlsReport
+  generateMissingSitemapUrlsReport,
+  generateLlmReadabilityReport
 } from './reportUtils/reportGenerators.js';
 import { savePerfectedSitemap } from './sitemapUtils.js';
 
@@ -37,6 +38,7 @@ export async function generateReports(results, urls, outputDir) {
     await generateSpecificUrlReport(results, outputDir);
     await generateExternalResourcesReport(results, outputDir);
     await generateMissingSitemapUrlsReport(results, outputDir);
+    await generateLlmReadabilityReport(results, outputDir);
 
     // Generate perfected sitemap with discovered URLs
     await savePerfectedSitemap(results, outputDir);

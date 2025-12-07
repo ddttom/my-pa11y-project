@@ -287,3 +287,180 @@ export function updateResponseCodeMetrics(statusCode, results) {
   results.responseCodeMetrics = results.responseCodeMetrics || {};
   results.responseCodeMetrics[statusCode] = (results.responseCodeMetrics[statusCode] || 0) + 1;
 }
+
+/**
+ * Update LLM readability metrics aggregation
+ * @param {Object} pageData - Page data from rendering phase
+ * @param {Object} results - Results object to update
+ * @param {string} testUrl - URL being processed
+ */
+export function updateLlmReadabilityMetrics(pageData, results, testUrl) {
+  if (!results.llmReadabilityAggregation) {
+    results.llmReadabilityAggregation = {};
+  }
+
+  const llm = pageData.llmReadability || {};
+
+  // Calculate structural clarity score (0-100)
+  const structuralScore = calculateStructuralScore(llm);
+
+  // Calculate content organization score (0-100)
+  const organizationScore = calculateOrganizationScore(llm);
+
+  // Calculate metadata quality score (0-100)
+  const metadataScore = calculateMetadataScore(llm, pageData);
+
+  // Calculate text extractability score (0-100)
+  const extractabilityScore = calculateExtractabilityScore(llm, pageData);
+
+  // Calculate overall LLM readability score (weighted average)
+  const overallScore = Math.round(
+    (structuralScore * 0.25) +
+    (organizationScore * 0.25) +
+    (metadataScore * 0.25) +
+    (extractabilityScore * 0.25)
+  );
+
+  results.llmReadabilityAggregation[testUrl] = {
+    url: testUrl,
+    overallScore,
+    structuralScore,
+    organizationScore,
+    metadataScore,
+    extractabilityScore,
+
+    // Detailed metrics
+    semanticHtmlUsage: calculateSemanticHtmlUsage(llm),
+    headingHierarchyQuality: calculateHeadingHierarchyQuality(llm),
+    hasMainContent: llm.hasMainElement || llm.hasArticleElement,
+    hasStructuredData: llm.hasJsonLd || llm.hasMicrodata,
+    textToMarkupRatio: calculateTextToMarkupRatio(pageData, llm),
+    hiddenContentRatio: calculateHiddenContentRatio(llm),
+
+    // Counts
+    paragraphCount: llm.paragraphs || 0,
+    listCount: llm.lists?.total || 0,
+    tableCount: llm.tables || 0,
+    codeBlockCount: llm.codeBlocks || 0,
+    totalElements: llm.totalElements || 0
+  };
+}
+
+// Helper functions for LLM readability scoring
+
+function calculateStructuralScore(llm) {
+  let score = 0;
+  const semantic = llm.semanticElements || {};
+  const headings = llm.headings || {};
+
+  // Semantic HTML elements (40 points)
+  if (semantic.main > 0) score += 10;
+  if (semantic.article > 0) score += 10;
+  if (semantic.section > 0) score += 5;
+  if (semantic.header > 0) score += 5;
+  if (semantic.footer > 0) score += 5;
+  if (semantic.nav > 0) score += 5;
+
+  // Proper heading hierarchy (40 points)
+  if (headings.h1 === 1) score += 20; // Single h1
+  if (headings.h2 > 0) score += 10; // Has h2s
+  if (headings.h3 > 0) score += 5; // Has h3s
+  if (headings.h4 > 0 || headings.h5 > 0 || headings.h6 > 0) score += 5;
+
+  // Lists and tables (20 points)
+  if ((llm.lists?.total || 0) > 0) score += 10;
+  if (llm.tables > 0) score += 10;
+
+  return Math.min(score, 100);
+}
+
+function calculateOrganizationScore(llm) {
+  let score = 50; // Base score
+
+  // Paragraph usage (25 points)
+  const paragraphs = llm.paragraphs || 0;
+  if (paragraphs > 0 && paragraphs < 100) score += 25;
+  else if (paragraphs >= 100) score += 15; // Too many might be disorganized
+  else score += 5; // Very few paragraphs
+
+  // Content length (25 points)
+  const textLength = llm.bodyTextLength || 0;
+  if (textLength > 100 && textLength < 50000) score += 25;
+  else if (textLength >= 50000) score += 15;
+  else score += 5;
+
+  return Math.min(score, 100);
+}
+
+function calculateMetadataScore(llm, pageData) {
+  let score = 0;
+
+  // Structured data (40 points)
+  if (llm.hasJsonLd) score += 20;
+  if (llm.hasMicrodata) score += 20;
+
+  // OpenGraph tags (40 points)
+  const og = llm.ogTags || {};
+  if (og.title) score += 10;
+  if (og.description) score += 10;
+  if (og.image) score += 10;
+  if (og.type) score += 10;
+
+  // Meta description (20 points)
+  if (pageData.metaDescription && pageData.metaDescription.length > 50) {
+    score += 20;
+  } else if (pageData.metaDescription) {
+    score += 10;
+  }
+
+  return Math.min(score, 100);
+}
+
+function calculateExtractabilityScore(llm, pageData) {
+  let score = 50; // Base score
+
+  // Text to markup ratio (30 points)
+  const ratio = parseFloat(calculateTextToMarkupRatio(pageData, llm));
+  if (ratio > 10) score += 30;
+  else if (ratio > 5) score += 20;
+  else if (ratio > 2) score += 10;
+
+  // Hidden content (20 points - penalize if too much)
+  const hiddenRatio = parseFloat(calculateHiddenContentRatio(llm));
+  if (hiddenRatio < 5) score += 20;
+  else if (hiddenRatio < 10) score += 10;
+  else if (hiddenRatio < 20) score += 5;
+
+  return Math.min(score, 100);
+}
+
+function calculateSemanticHtmlUsage(llm) {
+  const semantic = llm.semanticElements || {};
+  const total = semantic.article + semantic.section + semantic.nav +
+                semantic.header + semantic.footer + semantic.main + semantic.aside;
+  if (total >= 5) return 'Excellent';
+  if (total >= 3) return 'Good';
+  if (total >= 1) return 'Fair';
+  return 'Poor';
+}
+
+function calculateHeadingHierarchyQuality(llm) {
+  const headings = llm.headings || {};
+  if (headings.h1 === 1 && headings.h2 > 0) return 'Excellent';
+  if (headings.h1 === 1) return 'Good';
+  if (headings.h1 > 1) return 'Multiple H1s';
+  if (headings.h1 === 0) return 'No H1';
+  return 'Poor';
+}
+
+function calculateTextToMarkupRatio(pageData, llm) {
+  const textLength = llm.bodyTextLength || 0;
+  const pageSize = pageData.pageSize || 1;
+  return ((textLength / pageSize) * 100).toFixed(2);
+}
+
+function calculateHiddenContentRatio(llm) {
+  const hidden = llm.hiddenElements || 0;
+  const total = llm.totalElements || 1;
+  return ((hidden / total) * 100).toFixed(2);
+}

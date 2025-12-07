@@ -546,3 +546,78 @@ export async function generateMissingSitemapUrlsReport(results, outputDir) {
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`Missing sitemap URLs report generated with ${discoveredUrls.length} discovered URLs`);
 }
+
+/**
+ * Generate LLM Readability Report
+ * Analyzes how well pages can be processed by Large Language Models
+ * @param {Object} results - Analysis results
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<void>}
+ * @example
+ * await generateLlmReadabilityReport(results, './reports');
+ * // Creates llm_readability_report.csv with LLM processing metrics
+ */
+export async function generateLlmReadabilityReport(results, outputDir) {
+  if (!results.llmReadabilityAggregation ||
+      Object.keys(results.llmReadabilityAggregation).length === 0) {
+    global.auditcore.logger.warn('No LLM readability data available for report generation');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'llm_readability_report.csv'),
+    header: [
+      { id: 'url', title: 'URL' },
+      { id: 'overallScore', title: 'Overall LLM Readability Score' },
+      { id: 'structuralScore', title: 'Structural Clarity Score' },
+      { id: 'organizationScore', title: 'Content Organization Score' },
+      { id: 'metadataScore', title: 'Metadata Quality Score' },
+      { id: 'extractabilityScore', title: 'Text Extractability Score' },
+      { id: 'semanticHtmlUsage', title: 'Semantic HTML Usage' },
+      { id: 'headingHierarchyQuality', title: 'Heading Hierarchy Quality' },
+      { id: 'hasMainContent', title: 'Has Main Content Element' },
+      { id: 'hasStructuredData', title: 'Has Structured Data' },
+      { id: 'textToMarkupRatio', title: 'Text to Markup Ratio (%)' },
+      { id: 'hiddenContentRatio', title: 'Hidden Content Ratio (%)' },
+      { id: 'paragraphCount', title: 'Paragraph Count' },
+      { id: 'listCount', title: 'List Count' },
+      { id: 'tableCount', title: 'Table Count' },
+      { id: 'codeBlockCount', title: 'Code Block Count' },
+      { id: 'totalElements', title: 'Total DOM Elements' }
+    ]
+  });
+
+  const reportData = Object.values(results.llmReadabilityAggregation)
+    .map(item => ({
+      url: item.url,
+      overallScore: item.overallScore,
+      structuralScore: item.structuralScore,
+      organizationScore: item.organizationScore,
+      metadataScore: item.metadataScore,
+      extractabilityScore: item.extractabilityScore,
+      semanticHtmlUsage: item.semanticHtmlUsage,
+      headingHierarchyQuality: item.headingHierarchyQuality,
+      hasMainContent: item.hasMainContent ? 'Yes' : 'No',
+      hasStructuredData: item.hasStructuredData ? 'Yes' : 'No',
+      textToMarkupRatio: item.textToMarkupRatio,
+      hiddenContentRatio: item.hiddenContentRatio,
+      paragraphCount: item.paragraphCount,
+      listCount: item.listCount,
+      tableCount: item.tableCount,
+      codeBlockCount: item.codeBlockCount,
+      totalElements: item.totalElements
+    }))
+    .sort((a, b) => b.overallScore - a.overallScore); // Sort by overall score descending
+
+  await csvWriter.writeRecords(reportData);
+
+  global.auditcore.logger.info(`LLM Readability report generated: ${reportData.length} pages analyzed`);
+
+  // Console summary
+  const avgScore = reportData.reduce((sum, item) => sum + item.overallScore, 0) / reportData.length;
+  console.log(`\n📊 LLM Readability Analysis:`);
+  console.log(`   Average Score: ${avgScore.toFixed(1)}/100`);
+  console.log(`   Pages with Good Readability (>70): ${reportData.filter(p => p.overallScore > 70).length}`);
+  console.log(`   Pages Needing Improvement (<50): ${reportData.filter(p => p.overallScore < 50).length}`);
+  console.log(`   Report: llm_readability_report.csv`);
+}

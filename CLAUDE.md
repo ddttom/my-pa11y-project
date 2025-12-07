@@ -23,6 +23,14 @@ This is a comprehensive SEO, accessibility, and performance analysis tool built 
    - Helps identify most-used resources and potential single points of failure
    - New report: `all_resources_report.csv` with Resource URL, Type, and Total Count
 
+3. **LLM Readability Analysis**
+   - Analyzes how well each page's HTML structure supports LLM content extraction
+   - Evaluates semantic HTML usage, content organization, metadata quality, and text extractability
+   - Four component scores: Structural Clarity, Content Organization, Metadata Quality, Text Extractability
+   - Overall score (0-100) helps prioritize pages for HTML optimization
+   - New report: `llm_readability_report.csv` with comprehensive readability metrics
+   - Benefits AI-powered tools, search engines, and assistive technologies
+
 ## Commands
 
 ### Development

@@ -70,7 +70,7 @@ npm start -- --force-delete-cache -s https://example.com/sitemap.xml
 
 ## Generated Reports
 
-The tool generates 11+ comprehensive reports:
+The tool generates 12+ comprehensive reports:
 
 ### Core Reports
 - **seo_report.csv** - Page-level SEO metrics
@@ -79,6 +79,7 @@ The tool generates 11+ comprehensive reports:
 - **wcag_report.md** - Human-readable accessibility report
 - **content_quality.csv** - Content analysis and scoring
 - **seo_scores.csv** - Detailed SEO scoring
+- **llm_readability_report.csv** - LLM content extraction quality analysis
 
 ### Advanced Reports
 - **all_resources_report.csv** - Complete resource inventory (internal + external)

@@ -280,6 +280,64 @@ Fields:
 - Reference Count (number of pages linking to this URL)
 - First Discovered On (source page that first linked to this URL)
 
+### LLM Readability Report (llm_readability_report.csv)
+
+- Analyzes how well each page's HTML structure supports LLM content extraction
+- Evaluates semantic HTML usage, content organization, metadata quality, and text extractability
+- Provides overall score (0-100) and four component scores
+- Helps optimize pages for AI-powered tools, search engines, and assistive technologies
+- Sorted by overall score (highest quality pages first)
+
+**Scoring Components:**
+
+1. **Structural Clarity Score** (0-100)
+   - Semantic HTML element usage (article, section, main, header, footer)
+   - Proper heading hierarchy (h1-h6)
+   - Presence of main content container elements
+
+2. **Content Organization Score** (0-100)
+   - Paragraph count and quality
+   - List usage (ul, ol)
+   - Table and code block structure
+   - Appropriate content length (not too sparse or bloated)
+
+3. **Metadata Quality Score** (0-100)
+   - Structured data presence (JSON-LD, Microdata)
+   - OpenGraph tags completeness
+   - Meta description quality
+
+4. **Text Extractability Score** (0-100)
+   - Text-to-markup ratio
+   - Hidden content ratio
+   - Overall DOM complexity
+
+Fields:
+
+- URL
+- Overall LLM Readability Score (0-100)
+- Structural Clarity Score (0-100)
+- Content Organization Score (0-100)
+- Metadata Quality Score (0-100)
+- Text Extractability Score (0-100)
+- Semantic HTML Usage (percentage)
+- Heading Hierarchy Quality (score)
+- Has Main Content (boolean)
+- Has Structured Data (boolean)
+- Text to Markup Ratio
+- Hidden Content Ratio (percentage)
+- Paragraph Count
+- List Count
+- Table Count
+- Code Block Count
+- Total Elements
+
+**Interpreting Scores:**
+
+- **90-100**: Excellent LLM readability, optimal structure
+- **70-89**: Good readability, minor improvements possible
+- **50-69**: Moderate readability, significant improvements recommended
+- **Below 50**: Poor readability, major structural improvements needed
+
 ### Perfected Sitemap (v-sitemap.xml)
 
 - XML sitemap file combining original sitemap URLs with all discovered URLs
