@@ -3,6 +3,7 @@ import { generateReports } from './utils/reports.js';
 import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHandler.js';
 import { executeNetworkOperation } from './utils/networkUtils.js';
 import { getDiscoveredUrls } from './utils/sitemapUtils.js';
+import { RESULTS_SCHEMA_VERSION, areVersionsCompatible } from './utils/schemaVersion.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -70,8 +71,21 @@ export async function runTestsOnSitemap() {
     if (!noCache && !forceDeleteCache) {
       // Try to load existing results to support resume functionality
       const existingResults = await fs.readFile(resultsPath, 'utf-8');
-      results = JSON.parse(existingResults);
-      global.auditcore.logger.info('Found existing results, using cached data');
+      const parsedResults = JSON.parse(existingResults);
+
+      // Check schema version compatibility
+      const cachedVersion = parsedResults.schemaVersion || '1.0.0';
+
+      if (!areVersionsCompatible(cachedVersion, RESULTS_SCHEMA_VERSION)) {
+        global.auditcore.logger.warn(`Schema version mismatch: cached=${cachedVersion}, current=${RESULTS_SCHEMA_VERSION}`);
+        global.auditcore.logger.warn('Cached results are incompatible with current schema. Reprocessing all URLs...');
+        global.auditcore.logger.info(`Reason: New data fields have been added that require fresh analysis`);
+        // Don't use cached results - will trigger fresh processing
+        results = null;
+      } else {
+        results = parsedResults;
+        global.auditcore.logger.info(`Found existing results (schema v${cachedVersion}), using cached data`);
+      }
     }
   } catch (error) {
     global.auditcore.logger.debug('No existing results found, starting fresh processing');
@@ -108,6 +122,9 @@ export async function runTestsOnSitemap() {
 
       // Store original sitemap URLs for comparison with discovered URLs
       results.originalSitemapUrls = urls.map(u => u.url);
+
+      // Add schema version to results
+      results.schemaVersion = RESULTS_SCHEMA_VERSION;
 
       // Save results for future use and resume capability
       await fs.writeFile(resultsPath, JSON.stringify(results));

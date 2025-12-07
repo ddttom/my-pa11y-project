@@ -177,6 +177,7 @@ global.auditcore = {
 ### Results Object (in `results.json`)
 ```javascript
 {
+  schemaVersion: string,             // Schema version (e.g., "1.1.0")
   urls: string[],                    // All processed URLs
   contentAnalysis: Array<{           // Per-page content metrics
     url, title, metaDescription,
@@ -262,6 +263,51 @@ When adding new features that extract data or generate reports, follow the 4-pha
 - Cache keys: URL-based with sanitized filenames
 - Cache control: `--cache-only`, `--no-cache`, `--force-delete-cache` flags
 - Screenshots saved in `ss/` directory for debugging
+
+### Schema Version Management
+
+The tool uses semantic versioning to track the structure of `results.json`. When incompatible changes are made (new aggregation fields), the schema version is incremented, and cached results are automatically invalidated.
+
+**Key Files:**
+- `src/utils/schemaVersion.js`: Defines `RESULTS_SCHEMA_VERSION` constant
+- `src/main.js`: Checks version compatibility on startup
+
+**Version Format:** `MAJOR.MINOR.PATCH`
+- **MAJOR**: Breaking changes to existing data structure
+- **MINOR**: New aggregation fields or reports added (cache invalidated)
+- **PATCH**: Bug fixes that don't change data structure (cache preserved)
+
+**Current Version:** `1.1.0`
+
+**Version History:**
+- `1.0.0`: Initial version (all original reports)
+- `1.1.0`: Added `llmReadabilityAggregation` for LLM readability report
+
+**How It Works:**
+1. When results are saved, `schemaVersion` field is added to `results.json`
+2. On next run, cached version is compared with current version
+3. If MAJOR.MINOR differs, cache is invalidated and URLs are reprocessed
+4. User sees clear warning message explaining why reprocessing is needed
+5. No manual intervention required
+
+**When Adding New Features:**
+1. Add new data extraction in Phase 1 (caching.js)
+2. Add new aggregation in Phase 3 (metricsUpdater.js)
+3. Add new report in Phase 4 (reportGenerators.js)
+4. **Increment MINOR version** in `src/utils/schemaVersion.js`
+5. Update version history comment
+6. Old caches will be automatically invalidated on next run
+
+**Example:**
+```javascript
+// In src/utils/schemaVersion.js
+export const RESULTS_SCHEMA_VERSION = '1.2.0';  // Incremented from 1.1.0
+
+// Version History comment updated:
+// - 1.2.0: Added newFeatureAggregation for new feature report
+```
+
+This ensures users don't get confused by missing reports when new features are added.
 
 ## URL Normalization (Recursive Crawling)
 
