@@ -277,11 +277,12 @@ The tool uses semantic versioning to track the structure of `results.json`. When
 - **MINOR**: New aggregation fields or reports added (cache invalidated)
 - **PATCH**: Bug fixes that don't change data structure (cache preserved)
 
-**Current Version:** `1.1.0`
+**Current Version:** `1.2.0`
 
 **Version History:**
 - `1.0.0`: Initial version (all original reports)
 - `1.1.0`: Added `llmReadabilityAggregation` for LLM readability report
+- `1.2.0`: Added `httpStatusAggregation` for HTTP status code report; moved log files to results folder
 
 **How It Works:**
 1. When results are saved, `schemaVersion` field is added to `results.json`

@@ -17,28 +17,13 @@ import fs from 'fs';
 import path from 'path';
 import { runTestsOnSitemap } from './src/main.js';
 
-// Log files to manage application logging
-const logFiles = ['error.log', 'combined.log'];
-
 let defurl;
 let defcount;
 
-// Default URL for analysis when none is provided 
+// Default URL for analysis when none is provided
 defurl='https://example.com/sitemap.xml';
 // Default count for analysis when none is provided, -1 = infinite
 defcount = -1
-
-// Clear existing log files before starting new session
-logFiles.forEach((file) => {
-  if (fs.existsSync(file)) {
-    try {
-      // Truncate log files to ensure fresh start
-      fs.writeFileSync(file, '', { flag: 'w' });
-    } catch (err) {
-      console.error(`Failed to clear log file ${file}:`, err);
-    }
-  }
-});
 
 /**
  * Configure command line options using Commander
@@ -116,21 +101,8 @@ try {
 }
 
 /**
- * Clear log files on startup
- */
-try {
-  if (fs.existsSync('error.log')) {
-    fs.unlinkSync('error.log');
-  }
-  if (fs.existsSync('combined.log')) {
-    fs.unlinkSync('combined.log');
-  }
-} catch (err) {
-  console.error('Failed to clear log files:', err);
-}
-
-/**
  * Configure Winston logger with console and file transports
+ * Log files are now stored in the output directory for better organization
  *
  * Logging levels:
  * - error: Critical errors
@@ -138,6 +110,21 @@ try {
  * - info: Informational messages
  * - debug: Debugging information
  */
+const errorLogPath = path.join(outputDir, 'error.log');
+const combinedLogPath = path.join(outputDir, 'combined.log');
+
+// Clear existing log files in output directory before starting
+try {
+  if (fs.existsSync(errorLogPath)) {
+    fs.unlinkSync(errorLogPath);
+  }
+  if (fs.existsSync(combinedLogPath)) {
+    fs.unlinkSync(combinedLogPath);
+  }
+} catch (err) {
+  console.error('Failed to clear log files:', err);
+}
+
 global.auditcore.logger = winston.createLogger({
   level: global.auditcore.options.logLevel,
   format: winston.format.combine(
@@ -148,8 +135,8 @@ global.auditcore.logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.File({ filename: errorLogPath, level: 'error' }),
+    new winston.transports.File({ filename: combinedLogPath }),
   ],
 });
 

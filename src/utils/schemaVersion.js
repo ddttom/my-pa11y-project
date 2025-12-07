@@ -8,13 +8,14 @@
  * Version History:
  * - 1.0.0: Initial version (all original reports)
  * - 1.1.0: Added llmReadabilityAggregation for LLM readability report
+ * - 1.2.0: Added httpStatusAggregation for HTTP status code report; moved logs to results folder
  *
  * When to increment:
  * - MAJOR: Breaking changes to existing data structure
  * - MINOR: New aggregation fields or reports added
  * - PATCH: Bug fixes that don't change data structure
  */
-export const RESULTS_SCHEMA_VERSION = '1.1.0';
+export const RESULTS_SCHEMA_VERSION = '1.2.0';
 
 /**
  * Compare two semantic version strings

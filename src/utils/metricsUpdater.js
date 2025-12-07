@@ -464,3 +464,64 @@ function calculateHiddenContentRatio(llm) {
   const total = llm.totalElements || 1;
   return ((hidden / total) * 100).toFixed(2);
 }
+
+/**
+ * Update HTTP status code metrics for non-200 responses
+ * Tracks all pages that don't return 200 OK status
+ * @param {Object} pageData - Page data from rendering phase
+ * @param {Object} results - Results object to update
+ * @param {string} testUrl - URL being tested
+ */
+export function updateHttpStatusMetrics(pageData, results, testUrl) {
+  if (!results.httpStatusAggregation) {
+    results.httpStatusAggregation = {};
+  }
+
+  const statusCode = pageData.statusCode || 200;
+
+  // Only track non-200 status codes
+  if (statusCode !== 200) {
+    results.httpStatusAggregation[testUrl] = {
+      url: testUrl,
+      statusCode: statusCode,
+      statusText: getStatusText(statusCode),
+      timestamp: new Date().toISOString()
+    };
+
+    global.auditcore.logger.debug(`Non-200 status code detected: ${testUrl} returned ${statusCode}`);
+  }
+}
+
+/**
+ * Get human-readable status text for HTTP status codes
+ * @param {number} code - HTTP status code
+ * @returns {string} Status text description
+ */
+function getStatusText(code) {
+  const statusTexts = {
+    // 3xx Redirects
+    301: 'Moved Permanently',
+    302: 'Found (Temporary Redirect)',
+    303: 'See Other',
+    304: 'Not Modified',
+    307: 'Temporary Redirect',
+    308: 'Permanent Redirect',
+    // 4xx Client Errors
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    405: 'Method Not Allowed',
+    408: 'Request Timeout',
+    410: 'Gone',
+    429: 'Too Many Requests',
+    // 5xx Server Errors
+    500: 'Internal Server Error',
+    501: 'Not Implemented',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout'
+  };
+
+  return statusTexts[code] || `HTTP ${code}`;
+}

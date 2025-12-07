@@ -621,3 +621,52 @@ export async function generateLlmReadabilityReport(results, outputDir) {
   console.log(`   Pages Needing Improvement (<50): ${reportData.filter(p => p.overallScore < 50).length}`);
   console.log(`   Report: llm_readability_report.csv`);
 }
+
+/**
+ * Generate HTTP status codes report for non-200 responses
+ * Tracks all pages that returned status codes other than 200 OK
+ * @param {Object} results - Results object containing httpStatusAggregation
+ * @param {string} outputDir - Output directory path
+ */
+export async function generateHttpStatusReport(results, outputDir) {
+  if (!results.httpStatusAggregation ||
+      Object.keys(results.httpStatusAggregation).length === 0) {
+    global.auditcore.logger.info('All pages returned 200 OK status. No non-200 status report needed.');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'http_status_report.csv'),
+    header: [
+      { id: 'url', title: 'URL' },
+      { id: 'statusCode', title: 'Status Code' },
+      { id: 'statusText', title: 'Status Text' },
+      { id: 'timestamp', title: 'Timestamp' }
+    ]
+  });
+
+  const reportData = Object.values(results.httpStatusAggregation)
+    .map(item => ({
+      url: item.url,
+      statusCode: item.statusCode,
+      statusText: item.statusText,
+      timestamp: item.timestamp
+    }))
+    .sort((a, b) => b.statusCode - a.statusCode); // Sort by status code descending
+
+  await csvWriter.writeRecords(reportData);
+
+  // Group by status code for summary
+  const statusCodeCounts = reportData.reduce((acc, item) => {
+    acc[item.statusCode] = (acc[item.statusCode] || 0) + 1;
+    return acc;
+  }, {});
+
+  console.log(`\n📊 HTTP Status Code Analysis:`);
+  console.log(`   Total Non-200 Responses: ${reportData.length}`);
+  Object.entries(statusCodeCounts).forEach(([code, count]) => {
+    const text = reportData.find(r => r.statusCode === parseInt(code))?.statusText;
+    console.log(`   ${code} (${text}): ${count} page(s)`);
+  });
+  console.log(`   Report: http_status_report.csv`);
+}
