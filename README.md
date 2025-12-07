@@ -110,26 +110,44 @@ This ensures complete site coverage. Use `--no-recursive` to analyze only sitema
 ## Documentation
 
 - **[User Manual](docs/usermanual.md)** - Complete usage guide and feature documentation
-- **[Product Requirements](docs/prd.md)** - Product specifications
-- **[Project State](docs/projectstate.md)** - Current project status
+- **[Report Layout Reference](docs/report-layout.md)** - Technical specification for AI assistants
 - **[System Instructions](docs/system.md)** - Collaboration rules
+- **[CLAUDE.md](CLAUDE.md)** - Developer guide for Claude Code instances
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and feature tracking
 
 ## Project Structure
 
 ```
-seo-audit-tool/
-├── docs/              # Documentation
-│   ├── usermanual.md  # Complete user guide
-│   ├── prd.md         # Product requirements
-│   └── ...
-├── src/               # Source code
-│   ├── main.js        # Entry point
-│   └── utils/         # Utility functions
-├── results/           # Generated reports
-├── .cache/            # Cache directory
-│   ├── rendered/      # Puppeteer-rendered HTML
-│   └── served/        # Original served HTML
-└── index.js           # CLI entry point
+my-pa11y-project/
+├── docs/                    # Documentation
+│   ├── usermanual.md        # Complete user guide
+│   ├── report-layout.md     # Report structure reference for AI
+│   ├── system.md            # Collaboration rules
+│   ├── comment.md           # Additional notes
+│   └── modification.md      # Modification guidelines
+├── src/                     # Source code
+│   ├── main.js              # Main orchestration logic
+│   ├── config/              # Configuration files
+│   └── utils/               # Utility modules
+│       ├── caching.js       # Puppeteer rendering & caching
+│       ├── pageAnalyzer.js  # Content analysis
+│       ├── reports.js       # Report generation
+│       ├── sitemap.js       # Sitemap processing
+│       ├── metricsUpdater.js # Metrics aggregation
+│       └── ...              # Additional utilities
+├── test/                    # Test files
+│   └── formatUtils.test.js  # Unit tests
+├── results/                 # Generated reports (created at runtime)
+├── .cache/                  # Cache directory (created at runtime)
+│   ├── rendered/            # Puppeteer-rendered HTML + console logs
+│   └── served/              # Original served HTML
+├── ss/                      # Screenshots for debugging
+├── index.js                 # CLI entry point
+├── package.json             # Dependencies and scripts
+├── CLAUDE.md                # Developer documentation
+├── CHANGELOG.md             # Version history
+├── CONTRIBUTING.md          # Contribution guidelines
+└── LICENSE                  # License information
 ```
 
 ## Features Overview
