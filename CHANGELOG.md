@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Documentation
+
+- **Comprehensive User Manual Update** (`docs/usermanual.md`)
+  - Added detailed "Recursive Crawling" section explaining default behavior, URL normalization, and usage patterns
+  - Documented all 11 generated reports (previously only 7 were documented)
+  - Added three new report sections:
+    - `all_resources_report.csv` - Complete resource inventory (internal + external)
+    - `missing_sitemap_urls.csv` - Sitemap gap analysis
+    - `v-sitemap.xml` - Perfected sitemap with discovered URLs
+  - Enhanced "Cache Management" section with dual cache structure explanation (rendered vs served HTML)
+  - Updated command-line options to include `--no-recursive` flag
+  - Added troubleshooting entries for recursive mode and URL normalization
+  - Expanded "Best Practices" from 4 to 7 categories with detailed guidance
+  - Updated default URL references from `allabout.network` to `example.com`
+
+- **README.md Streamlining**
+  - Reduced file size from 578 to 192 lines (67% reduction)
+  - Added prominent banner linking to User Manual as single source of truth
+  - Restructured as quick-start guide with strategic links to detailed documentation
+  - Converted command-line options to scannable table format
+  - Removed verbose business-focused content (consolidated in User Manual)
+  - Added 6 strategic links throughout pointing to relevant User Manual sections
+  - Maintained essential installation, usage examples, and troubleshooting tips
+
+- **Documentation Structure Improvements**
+  - Established User Manual as authoritative source for detailed documentation
+  - README now serves as concise quick-start guide
+  - Removed obsolete documentation files: `architecture.md`, `prd.md`, `projectstate.md`, `task.md`, `modification.note`
+  - Added `docs/system.md` for collaboration rules
+  - Created clear separation between quick reference (README) and comprehensive docs (User Manual)
+
 ### Changed
 
 - **Default Sitemap URL**: Changed default sitemap URL to `https://example.com/sitemap.xml`
