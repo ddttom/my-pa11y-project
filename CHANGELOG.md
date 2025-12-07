@@ -13,6 +13,13 @@ All notable changes to this project will be documented in this file.
   - No functional impact: `final_sitemap.xml` and `v-sitemap.xml` (perfected sitemap) still generated
   - Simplifies codebase by removing duplicate sitemap functionality
 
+- **Dead code cleanup in sitemap.js**: Removed unused `saveFinalSitemap()` function
+  - Function was exported but never imported or called anywhere in codebase
+  - Removed associated xmlbuilder2 import
+  - Updated module header comment
+  - Actual sitemap generation handled by `savePerfectedSitemap()` in `sitemapUtils.js`
+  - Reduces codebase size by 45 lines
+
 ### Added
 
 - **Browser Console Log Capture**: Comprehensive Puppeteer console output preservation
