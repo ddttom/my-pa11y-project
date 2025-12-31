@@ -23,12 +23,12 @@ Execute the systematic "step commit" workflow:
    - Commit documentation changes
 
 5. Learning Documentation
-   - CRITICAL: LEARNINGS.md is ONLY for mistakes when something BROKE
+   - CRITICAL: LEARNINGS.md is ONLY for mistakes or misunderstandings
    - Read LEARNINGS.md first to see the required format
-   - Ask: "Did something break? Did I learn a rule the hard way?"
+   - Ask: "Did something break? Did I misunderstand? Did I learn the hard way?"
    - Required format: "**Rule** (YYYY-MM-DD): Tried X, but this breaks Y. Always do Z."
    - NEVER add: project knowledge, documentation refs, "We added X", architecture
-   - If nothing broke, SKIP this step entirely
+   - If nothing broke or was misunderstood, SKIP this step entirely
 
 6. Project State
    - Update or create PROJECTSTATE.md

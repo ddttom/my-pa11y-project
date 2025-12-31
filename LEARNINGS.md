@@ -1,8 +1,8 @@
 # Learnings
 
-**Critical mistakes discovered during AI assistant sessions.**
+**Critical mistakes and misunderstandings discovered during AI assistant sessions.**
 
-This is NOT documentation - these are rules learned the hard way when something broke or went wrong.
+This is NOT documentation - these are rules learned the hard way when something broke, failed, or was misunderstood.
 
 ## Critical Rules
 
