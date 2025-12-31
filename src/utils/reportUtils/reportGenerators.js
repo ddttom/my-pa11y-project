@@ -393,6 +393,42 @@ export async function generateContentQualityReport(results, outputDir) {
 }
 
 /**
+ * Generates security analysis report in CSV format
+ * @param {Object} results - Analysis results object containing security metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ */
+export async function generateSecurityReport(results, outputDir) {
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'security_report.csv'),
+    header: [
+      { id: 'url', title: 'URL' },
+      { id: 'https', title: 'HTTPS' },
+      { id: 'hsts', title: 'HSTS' },
+      { id: 'csp', title: 'CSP' },
+      { id: 'xFrameOptions', title: 'X-Frame-Options' },
+      { id: 'xContentTypeOptions', title: 'X-Content-Type-Options' }
+    ]
+  });
+
+  const reportData = results.securityMetrics
+    ? Object.entries(results.securityMetrics)
+        .filter(([url]) => shouldIncludeUrl(url))
+        .map(([url, metrics]) => ({
+          url,
+          https: metrics.https ? 'Yes' : 'No',
+          hsts: metrics.hasHsts ? 'Yes' : 'No',
+          csp: metrics.hasCsp ? 'Yes' : 'No',
+          xFrameOptions: metrics.hasXFrameOptions ? 'Yes' : 'No',
+          xContentTypeOptions: metrics.hasXContentTypeOptions ? 'Yes' : 'No'
+        }))
+    : [];
+
+  await csvWriter.writeRecords(reportData);
+  global.auditcore.logger.info(`Security report generated with ${reportData.length} records`);
+}
+
+/**
  * Helper function to format numerical scores
  * @param {number|string} score - The score to format
  * @returns {string} Formatted score as string with two decimal places
@@ -400,4 +436,237 @@ export async function generateContentQualityReport(results, outputDir) {
  */
 function formatScore(score) {
   return typeof score === 'number' ? score.toFixed(2) : '0.00';
+}
+
+/**
+ * Generates specific URL report in CSV format
+ * @param {Object} results - Analysis results object containing specific URL metrics
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ */
+export async function generateSpecificUrlReport(results, outputDir) {
+  if (!results.specificUrlMetrics || results.specificUrlMetrics.length === 0) {
+    global.auditcore.logger.info('No specific URL matches found, skipping report generation');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'specific_url_report.csv'),
+    header: [
+      { id: 'pageUrl', title: 'Page URL' },
+      { id: 'foundUrl', title: 'Found URL' },
+      { id: 'elementType', title: 'Element Type' },
+      { id: 'attribute', title: 'Attribute' }
+    ]
+  });
+
+  await csvWriter.writeRecords(results.specificUrlMetrics);
+  global.auditcore.logger.info(`Specific URL report generated with ${results.specificUrlMetrics.length} records`);
+}
+
+/**
+ * Generates external resources report in CSV format
+ * @param {Object} results - Analysis results object containing external resources aggregation
+ * @param {string} outputDir - Directory path to save the report
+ * @returns {Promise<void>}
+ * @example
+ * await generateExternalResourcesReport(results, './reports');
+ * // Creates external_resources_report.csv with site-wide resource counts
+ */
+export async function generateExternalResourcesReport(results, outputDir) {
+  if (!results.externalResourcesAggregation || Object.keys(results.externalResourcesAggregation).length === 0) {
+    global.auditcore.logger.info('No resources found, skipping resources report generation');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'all_resources_report.csv'),
+    header: [
+      { id: 'url', title: 'Resource URL' },
+      { id: 'type', title: 'Resource Type' },
+      { id: 'count', title: 'Total Count' }
+    ]
+  });
+
+  // Convert aggregation object to array and sort by count (descending)
+  const reportData = Object.values(results.externalResourcesAggregation)
+    .map(resource => ({
+      url: resource.url || '',
+      type: resource.type || 'unknown',
+      count: resource.count || 0
+    }))
+    .sort((a, b) => b.count - a.count);  // Sort by count, highest first
+
+  await csvWriter.writeRecords(reportData);
+  global.auditcore.logger.info(`All resources report generated with ${reportData.length} unique resources (JS, CSS, images, fonts, etc.)`);
+}
+
+/**
+ * Generates report of same-domain URLs discovered but not in original sitemap
+ * @param {Object} results - Analysis results
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<void>}
+ * @example
+ * await generateMissingSitemapUrlsReport(results, './reports');
+ * // Creates missing_sitemap_urls.csv with discovered URLs
+ */
+export async function generateMissingSitemapUrlsReport(results, outputDir) {
+  // Dynamically import to avoid circular dependencies
+  const { getDiscoveredUrls } = await import('../sitemapUtils.js');
+  const discoveredUrls = getDiscoveredUrls(results);
+
+  if (discoveredUrls.length === 0) {
+    global.auditcore.logger.info('No URLs discovered outside original sitemap, skipping missing sitemap URLs report');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'missing_sitemap_urls.csv'),
+    header: [
+      { id: 'url', title: 'Discovered URL' },
+      { id: 'foundOnPages', title: 'Found On Pages Count' }
+    ]
+  });
+
+  // Count how many pages link to each discovered URL
+  const urlCounts = {};
+  results.internalLinks?.forEach(page => {
+    page.links?.forEach(link => {
+      if (discoveredUrls.includes(link.url)) {
+        urlCounts[link.url] = (urlCounts[link.url] || 0) + 1;
+      }
+    });
+  });
+
+  const reportData = discoveredUrls.map(url => ({
+    url: url,
+    foundOnPages: urlCounts[url] || 0
+  }));
+
+  await csvWriter.writeRecords(reportData);
+  global.auditcore.logger.info(`Missing sitemap URLs report generated with ${discoveredUrls.length} discovered URLs`);
+}
+
+/**
+ * Generate LLM Readability Report
+ * Analyzes how well pages can be processed by Large Language Models
+ * @param {Object} results - Analysis results
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<void>}
+ * @example
+ * await generateLlmReadabilityReport(results, './reports');
+ * // Creates llm_readability_report.csv with LLM processing metrics
+ */
+export async function generateLlmReadabilityReport(results, outputDir) {
+  if (!results.llmReadabilityAggregation ||
+      Object.keys(results.llmReadabilityAggregation).length === 0) {
+    global.auditcore.logger.warn('No LLM readability data available for report generation');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'llm_readability_report.csv'),
+    header: [
+      { id: 'url', title: 'URL' },
+      { id: 'overallScore', title: 'Overall LLM Readability Score' },
+      { id: 'structuralScore', title: 'Structural Clarity Score' },
+      { id: 'organizationScore', title: 'Content Organization Score' },
+      { id: 'metadataScore', title: 'Metadata Quality Score' },
+      { id: 'extractabilityScore', title: 'Text Extractability Score' },
+      { id: 'semanticHtmlUsage', title: 'Semantic HTML Usage' },
+      { id: 'headingHierarchyQuality', title: 'Heading Hierarchy Quality' },
+      { id: 'hasMainContent', title: 'Has Main Content Element' },
+      { id: 'hasStructuredData', title: 'Has Structured Data' },
+      { id: 'textToMarkupRatio', title: 'Text to Markup Ratio (%)' },
+      { id: 'hiddenContentRatio', title: 'Hidden Content Ratio (%)' },
+      { id: 'paragraphCount', title: 'Paragraph Count' },
+      { id: 'listCount', title: 'List Count' },
+      { id: 'tableCount', title: 'Table Count' },
+      { id: 'codeBlockCount', title: 'Code Block Count' },
+      { id: 'totalElements', title: 'Total DOM Elements' }
+    ]
+  });
+
+  const reportData = Object.values(results.llmReadabilityAggregation)
+    .map(item => ({
+      url: item.url,
+      overallScore: item.overallScore,
+      structuralScore: item.structuralScore,
+      organizationScore: item.organizationScore,
+      metadataScore: item.metadataScore,
+      extractabilityScore: item.extractabilityScore,
+      semanticHtmlUsage: item.semanticHtmlUsage,
+      headingHierarchyQuality: item.headingHierarchyQuality,
+      hasMainContent: item.hasMainContent ? 'Yes' : 'No',
+      hasStructuredData: item.hasStructuredData ? 'Yes' : 'No',
+      textToMarkupRatio: item.textToMarkupRatio,
+      hiddenContentRatio: item.hiddenContentRatio,
+      paragraphCount: item.paragraphCount,
+      listCount: item.listCount,
+      tableCount: item.tableCount,
+      codeBlockCount: item.codeBlockCount,
+      totalElements: item.totalElements
+    }))
+    .sort((a, b) => b.overallScore - a.overallScore); // Sort by overall score descending
+
+  await csvWriter.writeRecords(reportData);
+
+  global.auditcore.logger.info(`LLM Readability report generated: ${reportData.length} pages analyzed`);
+
+  // Console summary
+  const avgScore = reportData.reduce((sum, item) => sum + item.overallScore, 0) / reportData.length;
+  console.log(`\n📊 LLM Readability Analysis:`);
+  console.log(`   Average Score: ${avgScore.toFixed(1)}/100`);
+  console.log(`   Pages with Good Readability (>70): ${reportData.filter(p => p.overallScore > 70).length}`);
+  console.log(`   Pages Needing Improvement (<50): ${reportData.filter(p => p.overallScore < 50).length}`);
+  console.log(`   Report: llm_readability_report.csv`);
+}
+
+/**
+ * Generate HTTP status codes report for non-200 responses
+ * Tracks all pages that returned status codes other than 200 OK
+ * @param {Object} results - Results object containing httpStatusAggregation
+ * @param {string} outputDir - Output directory path
+ */
+export async function generateHttpStatusReport(results, outputDir) {
+  if (!results.httpStatusAggregation ||
+      Object.keys(results.httpStatusAggregation).length === 0) {
+    global.auditcore.logger.info('All pages returned 200 OK status. No non-200 status report needed.');
+    return;
+  }
+
+  const csvWriter = createObjectCsvWriter({
+    path: path.join(outputDir, 'http_status_report.csv'),
+    header: [
+      { id: 'url', title: 'URL' },
+      { id: 'statusCode', title: 'Status Code' },
+      { id: 'statusText', title: 'Status Text' },
+      { id: 'timestamp', title: 'Timestamp' }
+    ]
+  });
+
+  const reportData = Object.values(results.httpStatusAggregation)
+    .map(item => ({
+      url: item.url,
+      statusCode: item.statusCode,
+      statusText: item.statusText,
+      timestamp: item.timestamp
+    }))
+    .sort((a, b) => b.statusCode - a.statusCode); // Sort by status code descending
+
+  await csvWriter.writeRecords(reportData);
+
+  // Group by status code for summary
+  const statusCodeCounts = reportData.reduce((acc, item) => {
+    acc[item.statusCode] = (acc[item.statusCode] || 0) + 1;
+    return acc;
+  }, {});
+
+  console.log(`\n📊 HTTP Status Code Analysis:`);
+  console.log(`   Total Non-200 Responses: ${reportData.length}`);
+  Object.entries(statusCodeCounts).forEach(([code, count]) => {
+    const text = reportData.find(r => r.statusCode === parseInt(code))?.statusText;
+    console.log(`   ${code} (${text}): ${count} page(s)`);
+  });
+  console.log(`   Report: http_status_report.csv`);
 }

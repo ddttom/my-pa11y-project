@@ -14,12 +14,13 @@ module.exports = {
   },
   plugins: [
     'node',
+    'import',
   ],
   rules: {
     'node/file-extension-in-import': ['error', 'always'],
     'node/no-unsupported-features/es-syntax': ['error', {
       version: '>=20.0.0',
-      ignores: ['modules'],
+      ignores: ['modules', 'dynamicImport'],
     }],
     'no-process-exit': 'off', // Turning off this rule as it's causing issues
   },
@@ -28,4 +29,15 @@ module.exports = {
       version: '>=20.0.0',
     },
   },
+  overrides: [
+    {
+      files: ['test/**/*.js'],
+      env: {
+        mocha: true,
+      },
+      rules: {
+        'node/no-unpublished-import': 'off',
+      },
+    },
+  ],
 };

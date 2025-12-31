@@ -17,36 +17,13 @@ import fs from 'fs';
 import path from 'path';
 import { runTestsOnSitemap } from './src/main.js';
 
-// Log files to manage application logging
-const logFiles = ['error.log', 'combined.log'];
-
-// Test configuration variables
-const testnum = 1;
 let defurl;
 let defcount;
 
-// Set default URL and count based on test configuration
-if (testnum == 1) {
-  // Default URL for analysis when none is provided
-  defurl = 'https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub';
-  // Default count of files to include in both passes (-1 means infinite)
-  defcount = -1;
-} else {
-  defurl = 'https://www.icann.org';
-  defcount = 20;
-}
-
-// Clear existing log files before starting new session
-logFiles.forEach((file) => {
-  if (fs.existsSync(file)) {
-    try {
-      // Truncate log files to ensure fresh start
-      fs.writeFileSync(file, '', { flag: 'w' });
-    } catch (err) {
-      console.error(`Failed to clear log file ${file}:`, err);
-    }
-  }
-});
+// Default URL for analysis when none is provided
+defurl='https://example.com/sitemap.xml';
+// Default count for analysis when none is provided, -1 = infinite
+defcount = -1
 
 /**
  * Configure command line options using Commander
@@ -78,7 +55,7 @@ program
   )
   .option(
     '-c, --count <number>',
-    'Number of files to include in both passes (virtual XML creation and analysis). Use -1 for infinite.',
+    'Number of files to include in analysis. Use -1 for infinite.',
     (value) => parseInt(value, 10),
     defcount
   )
@@ -94,6 +71,10 @@ program
   .option(
     '--include-all-languages',
     'Include all language variants in sitemap (default: only /en and /us)'
+  )
+  .option(
+    '--no-recursive',
+    'Disable recursive crawling (only scan sitemap URLs, not discovered pages)'
   )
   .parse(process.argv);
 
@@ -121,13 +102,29 @@ try {
 
 /**
  * Configure Winston logger with console and file transports
- * 
+ * Log files are now stored in the output directory for better organization
+ *
  * Logging levels:
  * - error: Critical errors
  * - warn: Warnings
  * - info: Informational messages
  * - debug: Debugging information
  */
+const errorLogPath = path.join(outputDir, 'error.log');
+const combinedLogPath = path.join(outputDir, 'combined.log');
+
+// Clear existing log files in output directory before starting
+try {
+  if (fs.existsSync(errorLogPath)) {
+    fs.unlinkSync(errorLogPath);
+  }
+  if (fs.existsSync(combinedLogPath)) {
+    fs.unlinkSync(combinedLogPath);
+  }
+} catch (err) {
+  console.error('Failed to clear log files:', err);
+}
+
 global.auditcore.logger = winston.createLogger({
   level: global.auditcore.options.logLevel,
   format: winston.format.combine(
@@ -138,10 +135,21 @@ global.auditcore.logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.File({ filename: errorLogPath, level: 'error' }),
+    new winston.transports.File({ filename: combinedLogPath }),
   ],
 });
+
+/**
+ * Log startup parameters
+ */
+global.auditcore.logger.info('=== Application Started ===');
+global.auditcore.logger.info(`Command: ${process.argv.join(' ')}`);
+global.auditcore.logger.info('Input Parameters:');
+Object.entries(global.auditcore.options).forEach(([key, value]) => {
+  global.auditcore.logger.info(`  ${key}: ${JSON.stringify(value)}`);
+});
+global.auditcore.logger.info('===========================');
 
 /**
  * Ensures cache directory exists for storing temporary data
@@ -149,10 +157,20 @@ global.auditcore.logger = winston.createLogger({
  */
 function ensureCacheDirectory() {
   const cacheDir = path.join(process.cwd(), '.cache');
+  const renderedDir = path.join(cacheDir, 'rendered');
   try {
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true });
       global.auditcore.logger.info(`Created cache directory at ${cacheDir}`);
+    }
+    if (!fs.existsSync(renderedDir)) {
+      fs.mkdirSync(renderedDir, { recursive: true });
+      global.auditcore.logger.info(`Created rendered cache directory at ${renderedDir}`);
+    }
+    const servedDir = path.join(cacheDir, 'served');
+    if (!fs.existsSync(servedDir)) {
+      fs.mkdirSync(servedDir, { recursive: true });
+      global.auditcore.logger.info(`Created served cache directory at ${servedDir}`);
     }
   } catch (error) {
     global.auditcore.logger.error(`Failed to create cache directory: ${error.message}`);

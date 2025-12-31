@@ -180,6 +180,16 @@ async function fetchDataWithoutPuppeteer(url) {
       lastCrawled: new Date().toISOString(),
     };
 
+    // Save served HTML to .cache/served
+    try {
+      const cacheKey = generateCacheKey(url);
+      const servedPath = path.join(CACHE_DIR, 'served', `${cacheKey}.html`);
+      await fs.writeFile(servedPath, html, 'utf8');
+      global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving served HTML for ${url}:`, error);
+    }
+
     global.auditcore.logger.debug(`Successfully fetched, scored, and analyzed ${url} without Puppeteer`);
     return data;
   } catch (error) {
@@ -189,8 +199,11 @@ async function fetchDataWithoutPuppeteer(url) {
 }
 
 async function getOrRenderData(url, options = {}) {
-  const { noPuppeteer = false, cacheOnly = false, noCache = false } = options;
-  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
+  const { noPuppeteer = false, cacheOnly = false, cache = true } = options;
+  // If cache is false (from --no-cache), then noCache should be true
+  const noCache = options.noCache || !cache;
+  
+  global.auditcore.logger.debug(`getOrRenderData called for ${url} with options: ${JSON.stringify(options)}`);
 
   if (!noCache) {
     const cachedData = await getCachedData(url);
@@ -243,9 +256,18 @@ async function renderAndCacheData(url) {
     });
 
     const jsErrors = [];
+    const consoleMessages = [];
     page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        jsErrors.push(msg.text());
+      const timestamp = new Date().toISOString();
+      const type = msg.type();
+      const text = msg.text();
+
+      // Capture all console messages with timestamp and type
+      consoleMessages.push(`[${timestamp}] [${type.toUpperCase()}] ${text}`);
+
+      // Also track errors separately for backward compatibility
+      if (type === 'error') {
+        jsErrors.push(text);
       }
     });
 
@@ -257,6 +279,7 @@ async function renderAndCacheData(url) {
     });
 
     const response = await page.goto(url, { waitUntil: 'networkidle0' });
+    const servedHtml = await response.text();
     const html = await page.content();
     const statusCode = response.status();
 
@@ -273,6 +296,276 @@ async function renderAndCacheData(url) {
           href.startsWith(window.location.hostname) // Same domain without protocol
         );
       }).length;
+
+      // All resources extraction (internal + external)
+
+      // Helper function to determine if URL is valid resource
+      const isValidResourceUrl = (url) => {
+        if (!url || url.startsWith('#') || url.startsWith('javascript:') || url.startsWith('data:')) {
+          return false;
+        }
+        return true;
+      };
+
+      // Helper to get absolute URL
+      const getAbsoluteUrl = (url) => {
+        try {
+          return new URL(url, window.location.href).href;
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const allResources = [];
+
+      // 1. JavaScript files (<script src="">)
+      document.querySelectorAll('script[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isValidResourceUrl(src)) {
+          allResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'javascript'
+          });
+        }
+      });
+
+      // 2. CSS files (<link rel="stylesheet">)
+      document.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
+        const href = el.getAttribute('href');
+        if (isValidResourceUrl(href)) {
+          allResources.push({
+            url: getAbsoluteUrl(href),
+            type: 'css'
+          });
+        }
+      });
+
+      // 3. Images - all formats
+      // <img> tags
+      document.querySelectorAll('img[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isValidResourceUrl(src)) {
+          allResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'image'
+          });
+        }
+      });
+
+      // <picture><source> tags
+      document.querySelectorAll('picture source[srcset]').forEach(el => {
+        const srcset = el.getAttribute('srcset');
+        if (srcset) {
+          // Parse srcset which can be: "url1 1x, url2 2x" or "url1 100w, url2 200w"
+          srcset.split(',').forEach(entry => {
+            const url = entry.trim().split(/\s+/)[0];
+            if (isValidResourceUrl(url)) {
+              allResources.push({
+                url: getAbsoluteUrl(url),
+                type: 'image'
+              });
+            }
+          });
+        }
+      });
+
+      // SVG images in <object> and <embed>
+      document.querySelectorAll('object[data], embed[src]').forEach(el => {
+        const src = el.getAttribute('data') || el.getAttribute('src');
+        if (src && isValidResourceUrl(src)) {
+          const url = getAbsoluteUrl(src);
+          if (url && (url.endsWith('.svg') || el.type === 'image/svg+xml')) {
+            allResources.push({
+              url: url,
+              type: 'image'
+            });
+          }
+        }
+      });
+
+      // 4. Fonts (from CSS)
+      try {
+        Array.from(document.styleSheets).forEach(sheet => {
+          try {
+            Array.from(sheet.cssRules || []).forEach(rule => {
+              if (rule.cssText && rule.cssText.includes('@font-face')) {
+                const urlMatches = rule.cssText.match(/url\(['"]?([^'"()]+)['"]?\)/g);
+                if (urlMatches) {
+                  urlMatches.forEach(match => {
+                    const url = match.replace(/url\(['"]?|['"]?\)/g, '');
+                    if (isValidResourceUrl(url)) {
+                      allResources.push({
+                        url: getAbsoluteUrl(url),
+                        type: 'font'
+                      });
+                    }
+                  });
+                }
+              }
+            });
+          } catch (e) {
+            // CORS-blocked stylesheets will throw - skip them
+          }
+        });
+      } catch (e) {
+        // Stylesheet access error
+      }
+
+      // 5. Videos
+      document.querySelectorAll('video source[src], video[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isValidResourceUrl(src)) {
+          allResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'video'
+          });
+        }
+      });
+
+      // <video><source srcset>
+      document.querySelectorAll('video source[srcset]').forEach(el => {
+        const srcset = el.getAttribute('srcset');
+        if (srcset) {
+          srcset.split(',').forEach(entry => {
+            const url = entry.trim().split(/\s+/)[0];
+            if (isValidResourceUrl(url)) {
+              allResources.push({
+                url: getAbsoluteUrl(url),
+                type: 'video'
+              });
+            }
+          });
+        }
+      });
+
+      // 6. Iframes
+      document.querySelectorAll('iframe[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isValidResourceUrl(src)) {
+          allResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'iframe'
+          });
+        }
+      });
+
+      // 7. Audio
+      document.querySelectorAll('audio source[src], audio[src]').forEach(el => {
+        const src = el.getAttribute('src');
+        if (isValidResourceUrl(src)) {
+          allResources.push({
+            url: getAbsoluteUrl(src),
+            type: 'audio'
+          });
+        }
+      });
+
+      // 8. Background images from inline styles
+      document.querySelectorAll('[style*="background"]').forEach(el => {
+        const style = el.getAttribute('style');
+        const urlMatches = style.match(/url\(['"]?([^'"()]+)['"]?\)/g);
+        if (urlMatches) {
+          urlMatches.forEach(match => {
+            const url = match.replace(/url\(['"]?|['"]?\)/g, '');
+            if (isValidResourceUrl(url)) {
+              allResources.push({
+                url: getAbsoluteUrl(url),
+                type: 'image'
+              });
+            }
+          });
+        }
+      });
+
+      // 9. Preload/Prefetch resources
+      document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="dns-prefetch"], link[rel="preconnect"]').forEach(el => {
+        const href = el.getAttribute('href');
+        if (href && isValidResourceUrl(href)) {
+          const asType = el.getAttribute('as') || 'other';
+          let type = 'other';
+          if (asType === 'script') type = 'javascript';
+          else if (asType === 'style') type = 'css';
+          else if (asType === 'image') type = 'image';
+          else if (asType === 'font') type = 'font';
+          else if (asType === 'video') type = 'video';
+          else if (asType === 'audio') type = 'audio';
+
+          allResources.push({
+            url: getAbsoluteUrl(href),
+            type: type
+          });
+        }
+      });
+
+      // LLM Readability Metrics
+      const llmReadability = {
+        // Structural elements
+        semanticElements: {
+          article: document.querySelectorAll('article').length,
+          section: document.querySelectorAll('section').length,
+          nav: document.querySelectorAll('nav').length,
+          header: document.querySelectorAll('header').length,
+          footer: document.querySelectorAll('footer').length,
+          aside: document.querySelectorAll('aside').length,
+          main: document.querySelectorAll('main').length
+        },
+
+        // Heading structure
+        headings: {
+          h1: document.querySelectorAll('h1').length,
+          h2: document.querySelectorAll('h2').length,
+          h3: document.querySelectorAll('h3').length,
+          h4: document.querySelectorAll('h4').length,
+          h5: document.querySelectorAll('h5').length,
+          h6: document.querySelectorAll('h6').length
+        },
+
+        // Content structure
+        paragraphs: document.querySelectorAll('p').length,
+        lists: {
+          ul: document.querySelectorAll('ul').length,
+          ol: document.querySelectorAll('ol').length,
+          total: document.querySelectorAll('ul, ol').length
+        },
+        tables: document.querySelectorAll('table').length,
+
+        // Code and pre-formatted content
+        codeBlocks: document.querySelectorAll('pre, code').length,
+
+        // Metadata
+        hasJsonLd: document.querySelectorAll('script[type="application/ld+json"]').length > 0,
+        jsonLdCount: document.querySelectorAll('script[type="application/ld+json"]').length,
+
+        // Schema.org microdata
+        hasMicrodata: document.querySelectorAll('[itemscope]').length > 0,
+        microdataCount: document.querySelectorAll('[itemscope]').length,
+
+        // OpenGraph
+        ogTags: {
+          title: document.querySelector('meta[property="og:title"]')?.content || '',
+          description: document.querySelector('meta[property="og:description"]')?.content || '',
+          image: document.querySelector('meta[property="og:image"]')?.content || '',
+          url: document.querySelector('meta[property="og:url"]')?.content || '',
+          type: document.querySelector('meta[property="og:type"]')?.content || ''
+        },
+
+        // Text content analysis
+        bodyText: document.body?.innerText || '',
+        bodyTextLength: (document.body?.innerText || '').length,
+
+        // Hidden content detection
+        hiddenElements: document.querySelectorAll('[style*="display: none"], [style*="visibility: hidden"], [hidden]').length,
+
+        // Main content detection
+        hasMainElement: document.querySelector('main') !== null,
+        hasArticleElement: document.querySelector('article') !== null,
+
+        // Content extractability indicators
+        totalElements: document.querySelectorAll('*').length,
+        textNodes: Array.from(document.body?.childNodes || []).filter(node =>
+          node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0
+        ).length
+      };
 
       return {
         title: document.title,
@@ -305,6 +598,8 @@ async function renderAndCacheData(url) {
         formsCount: document.forms.length,
         tablesCount: document.querySelectorAll('table').length,
         pageSize: document.documentElement.outerHTML.length,
+        allResources: allResources,
+        llmReadability: llmReadability,
       };
     });
 
@@ -357,6 +652,39 @@ async function renderAndCacheData(url) {
       lastCrawled: new Date().toISOString(),
       screenshot: screenshotFilename,
     };
+
+    // Save rendered HTML to .cache/rendered
+    try {
+      const cacheKey = generateCacheKey(url);
+      const renderedPath = path.join(CACHE_DIR, 'rendered', `${cacheKey}.html`);
+      await fs.writeFile(renderedPath, html, 'utf8');
+      global.auditcore.logger.debug(`Rendered HTML saved to: ${renderedPath}`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving rendered HTML for ${url}:`, error);
+    }
+
+    // Save served HTML to .cache/served
+    try {
+      const cacheKey = generateCacheKey(url);
+      const servedPath = path.join(CACHE_DIR, 'served', `${cacheKey}.html`);
+      await fs.writeFile(servedPath, servedHtml, 'utf8');
+      global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving served HTML for ${url}:`, error);
+    }
+
+    // Save console log output to .cache/rendered (same name as HTML with .log suffix)
+    try {
+      const cacheKey = generateCacheKey(url);
+      const consoleLogPath = path.join(CACHE_DIR, 'rendered', `${cacheKey}.log`);
+      const logContent = consoleMessages.length > 0
+        ? consoleMessages.join('\n')
+        : '// No console output captured';
+      await fs.writeFile(consoleLogPath, logContent, 'utf8');
+      global.auditcore.logger.debug(`Console log saved to: ${consoleLogPath} (${consoleMessages.length} messages)`);
+    } catch (error) {
+      global.auditcore.logger.error(`Error saving console log for ${url}:`, error);
+    }
 
     global.auditcore.logger.debug(`Successfully rendered, scored, and analyzed ${url}`);
     return data;

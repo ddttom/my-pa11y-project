@@ -1,8 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run lint:*)",
-      "Bash(npm install:*)"
-    ]
+      "Bash(git commit:*)",
+      "Bash(npm run lint)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(npm start:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
   }
 }

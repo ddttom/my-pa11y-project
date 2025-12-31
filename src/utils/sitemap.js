@@ -1,12 +1,10 @@
 /**
  * Sitemap processing utilities for extracting and managing URLs
- * 
+ *
  * This module provides comprehensive sitemap processing capabilities including:
  * - XML sitemap parsing and extraction
  * - HTML link extraction with fallback to Puppeteer
- * - Virtual sitemap generation
  * - URL validation and processing
- * - Final sitemap generation with unique URLs
  */
 
 /* eslint-disable no-await-in-loop */
@@ -21,7 +19,6 @@ import path from 'path';
 // Third-party modules
 import { parseStringPromise } from 'xml2js';
 import jsdom from 'jsdom';
-import { create } from 'xmlbuilder2';
 
 // Local modules
 import { UrlProcessor } from './urlProcessor.js';
@@ -112,22 +109,16 @@ export async function getUrlsFromSitemap(url, limit = -1) {
     } else {
       global.auditcore.logger.info('Processing as HTML page');
       urls = await processHtmlContent(content, url, limit);
+      
+      if (urls.length === 0) {
+        global.auditcore.logger.info('No URLs found with JSDOM, falling back to Puppeteer');
+        urls = await processWithPuppeteer(url, limit);
+      }
     }
 
     // Filter and validate URLs
     const validUrls = urls.filter((urlObj) => isValidUrl(urlObj.url, url));
     global.auditcore.logger.info(`Found ${validUrls.length} valid URLs out of ${urls.length} total URLs`);
-    
-    // Generate and save virtual sitemap
-    if (validUrls.length > 0) {
-      const sitemap = await generateVirtualSitemap(validUrls);
-      if (sitemap) {
-        await saveVirtualSitemap(sitemap, global.auditcore.options.output);
-        // Store the sitemap in the results object
-        global.auditcore.results = global.auditcore.results || {};
-        global.auditcore.results.virtualSitemap = sitemap;
-      }
-    }
 
     return validUrls;
   } catch (error) {
@@ -408,11 +399,16 @@ async function processHtmlContent(content, baseUrl, limit) {
       }
 
       const href = link.getAttribute('href');
+      global.auditcore.logger.debug(`Checking link href: ${href}`);
+
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
+        global.auditcore.logger.debug(`Skipping invalid href: ${href}`);
         continue;
       }
 
       const url = new URL(href, baseUrl);
+      global.auditcore.logger.debug(`Resolved URL: ${url.href}`);
+      global.auditcore.logger.debug(`Comparing hostname: ${url.hostname} vs ${baseUrlObj.hostname}`);
       
       if (url.hostname === baseUrlObj.hostname) {
         global.auditcore.logger.debug(`Found internal URL: ${url.href}`);
@@ -422,6 +418,8 @@ async function processHtmlContent(content, baseUrl, limit) {
           changefreq: 'daily',
           priority: 0.7,
         });
+      } else {
+        global.auditcore.logger.debug(`Skipping external URL: ${url.href}`);
       }
     } catch (error) {
       global.auditcore.logger.debug(`Error processing link: ${error.message}`);
@@ -483,120 +481,12 @@ function extractUrlsFromUrlset(urlset) {
 
 /**
  * Process sitemap URLs with the URL processor
- * 
+ *
  * @param {Array} urls - URLs to process
+ * @param {boolean} recursive - Whether to recursively process discovered URLs
  * @returns {Promise<Array>} Processed URLs
  */
-export async function processSitemapUrls(urls) {
-  const processor = new UrlProcessor();
-  return processor.processUrls(urls);
-}
-
-/**
- * Generate a virtual sitemap from processed URLs
- * 
- * @param {Array} urls - URLs to include in sitemap
- * @returns {Object} Virtual sitemap object
- */
-export async function generateVirtualSitemap(urls) {
-  if (!Array.isArray(urls) || urls.length === 0) {
-    global.auditcore.logger.warn('No URLs provided for virtual sitemap');
-    return null;
-  }
-
-  // Apply count limit if specified
-  const count = global.auditcore.options.count;
-  const limitedUrls = count > 0 ? urls.slice(0, count) : urls;
-  
-  global.auditcore.logger.info(`Generating virtual sitemap for ${limitedUrls.length} URLs`);
-
-  const sitemap = {
-    urlset: {
-      '@xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
-      url: limitedUrls.map((url) => ({
-        loc: url.url,
-        lastmod: url.lastmod || new Date().toISOString(),
-        changefreq: url.changefreq || 'monthly',
-        priority: url.priority || 0.5,
-      })),
-    },
-  };
-
-  return sitemap;
-}
-
-/**
- * Save virtual sitemap to file
- * 
- * @param {Object} sitemap - Sitemap object to save
- * @param {string} outputDir - Directory to save sitemap
- * @returns {Promise<string>} Path to saved sitemap
- */
-export async function saveVirtualSitemap(sitemap, outputDir) {
-  if (!sitemap) {
-    global.auditcore.logger.error('No sitemap data provided');
-    return null;
-  }
-
-  try {
-    await fs.mkdir(outputDir, { recursive: true });
-
-    const virtualPath = path.join(outputDir, 'virtual_sitemap.xml');
-    const xml = create(sitemap).end({ prettyPrint: true });
-    await fs.writeFile(virtualPath, xml);
-    global.auditcore.logger.info(`Virtual sitemap saved to: ${virtualPath}`);
-
-    return virtualPath;
-  } catch (error) {
-    global.auditcore.logger.error('Error saving virtual sitemap:', error);
-    throw error;
-  }
-}
-
-/**
- * Generate and save final sitemap with all unique URLs
- * 
- * Combines URLs from virtual sitemap and internal links
- * 
- * @param {Object} results - Analysis results containing URLs
- * @param {string} outputDir - Directory to save sitemap
- * @returns {Promise<string>} Path to saved sitemap
- */
-export async function saveFinalSitemap(results, outputDir) {
-  try {
-    const uniqueUrls = new Set();
-    
-    const virtualSitemap = global.auditcore.results?.virtualSitemap;
-    if (virtualSitemap?.urlset?.url) {
-      virtualSitemap.urlset.url.forEach((item) => uniqueUrls.add(item.loc));
-    }
-
-    if (results.internalLinks) {
-      results.internalLinks.forEach((link) => uniqueUrls.add(link.url));
-    }
-
-    const finalSitemap = {
-      urlset: {
-        '@xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9',
-        url: Array.from(uniqueUrls).map((url) => ({
-          loc: url,
-          lastmod: new Date().toISOString(),
-          changefreq: 'monthly',
-          priority: 0.5,
-        })),
-      },
-    };
-
-    await fs.mkdir(outputDir, { recursive: true });
-
-    const finalPath = path.join(outputDir, 'final_sitemap.xml');
-    const xml = create(finalSitemap).end({ prettyPrint: true });
-    await fs.writeFile(finalPath, xml);
-    
-    global.auditcore.logger.info(`Final sitemap with ${uniqueUrls.size} URLs saved to: ${finalPath}`);
-    return finalPath;
-  } catch (error) {
-    global.auditcore.logger.error('Error saving final sitemap:', error);
-    throw error;
-  }
+export async function processSitemapUrls(urls, recursive = false) {
+  const processor = new UrlProcessor(global.auditcore.options);
+  return processor.processUrls(urls, recursive);
 }

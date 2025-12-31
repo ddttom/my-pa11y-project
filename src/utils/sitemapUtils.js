@@ -1,62 +1,85 @@
 import path from 'path';
 import fs from 'fs/promises';
 
-export async function saveFinalSitemap(results, outputDir) {
+/**
+ * Identifies same-domain URLs discovered during analysis that were not in original sitemap
+ * @param {Object} results - Results object containing internalLinks and originalSitemapUrls
+ * @returns {Array<string>} Array of discovered URLs not in original sitemap
+ */
+export function getDiscoveredUrls(results) {
+  const originalUrls = new Set(results.originalSitemapUrls || []);
+  const discoveredUrls = new Set();
+
+  // Collect all discovered internal links
+  if (results.internalLinks) {
+    results.internalLinks.forEach(page => {
+      if (page.links && Array.isArray(page.links)) {
+        page.links.forEach(link => {
+          if (link.url && !originalUrls.has(link.url)) {
+            discoveredUrls.add(link.url);
+          }
+        });
+      }
+    });
+  }
+
+  return [...discoveredUrls].sort();
+}
+
+/**
+ * Saves perfected sitemap including both original and discovered URLs
+ * @param {Object} results - Results object
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<string>} Path to perfected sitemap
+ */
+export async function savePerfectedSitemap(results, outputDir) {
   try {
-    // Create final directory if it doesn't exist
     await fs.mkdir(outputDir, { recursive: true });
-    
+
     const xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
     xml.push('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-    
-    // Create a Set of all unique valid URLs
-    const uniqueUrls = new Set();
-    
-    // Add URLs from initial scan
-    if (results.urlMetrics && results.urlMetrics.internal > 0) {
-      results.internalLinks.forEach(link => {
-        if (link.url) uniqueUrls.add(link.url);
-        if (link.links) {
-          link.links.forEach(subLink => {
-            if (subLink.url) uniqueUrls.add(subLink.url);
-          });
-        }
-      });
-    }
 
-    // Add URLs from internal_links.csv data
+    // Combine original + discovered URLs
+    const originalUrls = new Set(results.originalSitemapUrls || []);
+    const allUrls = new Set([...originalUrls]);
+
+    // Add discovered internal links
     if (results.internalLinks) {
       results.internalLinks.forEach(page => {
-        if (page.url) uniqueUrls.add(page.url);
+        if (page.url) allUrls.add(page.url);
         if (page.links && Array.isArray(page.links)) {
           page.links.forEach(link => {
-            if (link.url) uniqueUrls.add(link.url);
+            if (link.url) allUrls.add(link.url);
           });
         }
       });
     }
 
-    // Sort and format URLs
-    const sortedUrls = [...uniqueUrls].sort();
-    
-    // Log stats
-    global.auditcore.logger.info(`Saving ${sortedUrls.length} URLs to final sitemap...`);
+    const sortedUrls = [...allUrls].sort();
+    const discoveredCount = sortedUrls.filter(url => !originalUrls.has(url)).length;
+
+    global.auditcore.logger.info(`Saving perfected sitemap: ${sortedUrls.length} total URLs (${originalUrls.size} original + ${discoveredCount} discovered)`);
 
     sortedUrls.forEach(url => {
       xml.push('  <url>');
       xml.push(`    <loc>${url}</loc>`);
+      // Mark discovered URLs with comment
+      if (!originalUrls.has(url)) {
+        xml.push('    <!-- Discovered during analysis -->');
+      }
       xml.push('  </url>');
     });
-    
+
     xml.push('</urlset>');
-    
-    const finalSitemapPath = path.join(outputDir, 'final_sitemap.xml');
-    await fs.writeFile(finalSitemapPath, xml.join('\n'));
-    global.auditcore.logger.info(`Final sitemap saved to: ${finalSitemapPath}`);
-    global.auditcore.logger.info(`Total unique URLs in final sitemap: ${sortedUrls.length}`);
-    return finalSitemapPath;
+
+    const perfectedSitemapPath = path.join(outputDir, 'v-sitemap.xml');
+    await fs.writeFile(perfectedSitemapPath, xml.join('\n'));
+    global.auditcore.logger.info(`Perfected sitemap saved to: ${perfectedSitemapPath}`);
+    global.auditcore.logger.info(`Original: ${originalUrls.size}, Discovered: ${discoveredCount}, Total: ${sortedUrls.length}`);
+
+    return perfectedSitemapPath;
   } catch (error) {
-    global.auditcore.logger.error('Error saving final sitemap:', error);
+    global.auditcore.logger.error('Error saving perfected sitemap:', error);
     throw error;
   }
-} 
+}
