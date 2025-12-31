@@ -96,10 +96,10 @@ The feature tracks explicit agent visibility control:
 
 ### package-lock.json Policy
 
-- **Policy:** package-lock.json is not committed to this repository
-- **Reason:** Project preference for flexibility in dependency resolution
-- **Action:** Delete package-lock.json if it appears in git status
-- **Note:** Added to .gitignore
+- **Policy:** package-lock.json IS committed to this repository
+- **Reason:** Ensures consistent dependency versions across environments
+- **Action:** Keep package-lock.json and commit it with dependency changes
+- **Note:** Standard npm best practice for reproducible builds
 
 ### Approved Operations
 

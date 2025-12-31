@@ -65,9 +65,9 @@ All notable changes to this project will be documented in this file.
   - Added `Bash(npm install)` to approved tools list in `.claude/settings.local.json`
   - Allows dependency installation without user confirmation prompts
 
-- **Package Management Policy**: Removed package-lock.json from repository
-  - Deleted `package-lock.json` file (project policy for dependency flexibility)
-  - File should be added to `.gitignore` to prevent future commits
+- **Package Management Policy**: Restored package-lock.json to repository
+  - package-lock.json is now committed for reproducible builds
+  - Follows npm best practices for consistent dependency versions
 
 - **Documentation Enhancements**: Comprehensive markdown formatting improvements
   - BLOG.md: Fixed list formatting, added proper blank lines around sections
