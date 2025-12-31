@@ -29,6 +29,9 @@ module.exports = {
       version: '>=20.0.0',
     },
   },
+  ignorePatterns: [
+    '.claude/**/*.md',
+  ],
   overrides: [
     {
       files: ['test/**/*.js'],
