@@ -1,201 +1,126 @@
 # Learnings
 
-This document captures actionable guidance for AI assistants working with this codebase.
+This document captures actionable guidance for AI assistants working with this codebase. **This is NOT a changelog** - it contains critical mistakes to avoid and architectural decisions to follow.
 
-## Markdown Linting
+## Critical Rules
 
-### Configuration
+### Never Break These
 
-- Markdownlint configuration is in [.markdownlint.json](.markdownlint.json)
-- Line length limit: 200 characters (MD013)
-- Code blocks require language specification (MD040)
-- Tables must have consistent spacing (MD060)
+1. **package-lock.json Policy**: Always commit package-lock.json to ensure reproducible builds
+2. **ES Module Imports**: Always include `.js` extensions in import statements (e.g., `import { foo } from './bar.js'`)
+3. **Linting Commands**: Always use `npm run lint`, never global `eslint` command (project uses ESLint 8.57.0 with `.eslintrc.cjs`)
+4. **Commit Messages**: Never add attribution, co-author, or "Generated with" messages to commits
+5. **Documentation Sync**: When changing features, always update PITCH.md, BLOG.md, CLAUDE.md, and README.md together
 
-### Common Issues
+## Architecture Decisions
 
-**Line Length (MD013):**
+### LLM Agent Features
 
-- Long lines (>200 chars) in BLOG.md, PITCH.md, and documentation files
-- These require manual fixes - cannot be auto-fixed
-- Consider breaking into multiple lines at natural break points
+**llms.txt Detection**
+- Detects via `<link>`, `<a>`, and `<meta>` tags
+- Worth 10 points (ESSENTIAL_SERVED category)
+- Implementation: [src/utils/llmMetrics.js](src/utils/llmMetrics.js)
 
-**Table Formatting (MD060):**
-
-- Tables in [docs/report-layout.md](docs/report-layout.md) have spacing issues
-- Markdownlint expects either "compact" or "aligned" style consistently
-- Many tables need manual reformatting
-
-**Emphasis as Heading (MD036):**
-
-- Some sections use bold text instead of proper headings
-- Found in BLOG.md and [docs/usermanual.md](docs/usermanual.md)
-- Convert to proper heading levels (##, ###)
-
-**Missing Code Fence Languages (MD040):**
-
-- Code blocks in BLOG.md and [docs/report-layout.md](docs/report-layout.md) need language tags
-- Add ```bash, ```javascript, ```json as appropriate
-
-### Workflow
-
-1. Run `npm run lint:md:fix` first to auto-fix what can be fixed
-2. Review remaining errors with `npm run lint:md`
-3. Manually fix line length, table formatting, and structural issues
-4. Re-run `npm run lint:md` to verify
-
-## ESLint Configuration
-
-### Version Constraints
-
-- Project uses ESLint 8.57.0 with `.eslintrc.cjs` format
-- Global ESLint 9.x is incompatible with this format
-- Always use `npm run lint`, never global `eslint` command
-
-### Node.js Import Resolution
-
-- Added `node/no-missing-import: 'off'` to ESLint config
-- This rule was incorrectly flagging valid ES module imports
-- ES modules require `.js` extensions in imports (e.g., `import { foo } from './bar.js'`)
-- ESLint's node plugin sometimes doesn't resolve these correctly
-
-## LLM Agent Features
-
-### llms.txt Detection
-
-**Implementation:** [src/utils/llmMetrics.js](src/utils/llmMetrics.js)
-
-The feature detects llms.txt references in three ways:
-
-1. `<link>` tags with `rel="alternate"` and `type="text/plain"` pointing to llms.txt
-2. `<a>` tags with href containing "llms.txt"
-3. `<meta>` tags with `name="llms-txt"`
-
-**Scoring:**
-
-- Worth 10 points in served score (ESSENTIAL_SERVED category)
-- Critical for all agent types (CLI and browser-based)
-- See <https://llmstxt.org/> for standard
-
-### data-agent-visible Attribute
-
-**Implementation:** [src/utils/llmMetrics.js](src/utils/llmMetrics.js)
-
-The feature tracks explicit agent visibility control:
-
-- `data-agent-visible="true"` or empty - element is visible to agents
-- `data-agent-visible="false"` - element is hidden from agents
-- Provides three counts: total elements, visible to agents, hidden from agents
-
-**Scoring:**
-
+**data-agent-visible Attribute**
+- Tracks explicit agent visibility control
 - ESSENTIAL_RENDERED category (browser agents only)
-- Helps developers explicitly control agent visibility
-- Useful for hiding decorative elements from agents
+- Implementation: [src/utils/llmMetrics.js](src/utils/llmMetrics.js)
 
-## Package Management
+### Three-Phase Pipeline
 
-### package-lock.json Policy
+1. **URL Collection** (`getUrlsFromSitemap`) - Never fetch data here
+2. **Data Collection** (`processSitemapUrls`) - Store everything in results.json
+3. **Report Generation** (`generateReports`) - Read ONLY from results.json, never fetch
 
-- **Policy:** package-lock.json IS committed to this repository
-- **Reason:** Ensures consistent dependency versions across environments
-- **Action:** Keep package-lock.json and commit it with dependency changes
-- **Note:** Standard npm best practice for reproducible builds
+**Critical**: Report generation must NEVER fetch URLs or collect new data. All reports read from results.json.
+
+## Common Mistakes
+
+### Markdown Linting
+
+**Don't auto-fix complex tables** - Markdownlint can make tables worse with mixed styles. Manually format important tables.
+
+**Line length strategy**: 200 char limit hits long URLs. Break at natural punctuation or use reference-style links.
+
+**Code fence languages**: Always specify language (```bash, ```javascript, ```json) to avoid MD040 errors.
+
+### ESLint Configuration
+
+**node/no-missing-import disabled**: This rule incorrectly flags valid ES module imports. Leave it disabled.
+
+**Version constraint**: Project uses ESLint 8.57.0. Global ESLint 9.x is incompatible with `.eslintrc.cjs` format.
+
+### Documentation Updates
+
+**When features change**: Check ALL synchronized files:
+- PITCH.md (business pitch)
+- BLOG.md (marketing content)
+- CLAUDE.md (technical guidance)
+- README.md (overview)
+- docs/usermanual.md (user docs)
+
+These files contain overlapping information and drift apart if not updated together.
+
+## Tool Usage
 
 ### Approved Operations
 
-The [.claude/settings.local.json](.claude/settings.local.json) pre-approves:
-
+Pre-approved in [.claude/settings.local.json](.claude/settings.local.json):
 - `npm install` - dependency installation
 - `npm run lint` - code linting
+- `npm run lint:md` - markdown linting
+- `npm run lint:md:fix` - auto-fix markdown
 - `npm start` - running the application
 - Git operations (commit, add, push)
 - Directory inspection (ls, tree, find)
 
-## Documentation Synchronization
+### Markdown Linting Workflow
 
-### Key Documentation Files
+1. Run `npm run lint:md:fix` first (auto-fixes what it can)
+2. Review remaining errors with `npm run lint:md`
+3. Manually fix line length, table formatting, structural issues
+4. Re-run to verify
 
-When making changes that affect project features or architecture, check these synchronized files:
+### Git Workflow
 
-- [BLOG.md](BLOG.md) - Marketing content
-- [PITCH.md](PITCH.md) - Investment/business pitch
-- [CLAUDE.md](CLAUDE.md) - AI assistant guidance
-- [README.md](README.md) - Project overview
-- [docs/usermanual.md](docs/usermanual.md) - User documentation
-
-**Why:** These files often contain overlapping information and must stay synchronized.
-
-### Recent Synchronization
-
-The llms.txt and data-agent-visible features were added to:
-
-- CLAUDE.md (technical implementation details)
-- BLOG.md (feature descriptions)
-- [src/utils/llmMetrics.js](src/utils/llmMetrics.js) (implementation)
-- [src/utils/reportUtils/llmReports.js](src/utils/reportUtils/llmReports.js) (reporting)
-
-## Git Workflow
-
-### Commit Message Format
-
-This project uses conventional commits:
-
+**Conventional commits format**:
 - `feat:` - New features
 - `fix:` - Bug fixes
 - `docs:` - Documentation changes
 - `refactor:` - Code refactoring
 - `test:` - Test additions/changes
 
-### Step-Commit Workflow
-
-The `/step-commit` skill enforces:
-
+**Step-Commit Workflow** (`/step-commit` skill):
 1. Commit code changes first
-2. Run linting and fix errors separately
-3. Update documentation
-4. Create/update LEARNINGS.md
-5. Create/update PROJECTSTATE.md
-6. Update CHANGELOG.md
-7. Prompt for push to remote
+2. Run linting, fix errors separately
+3. Update documentation (check synchronized files)
+4. Update LEARNINGS.md (only if NEW actionable guidance)
+5. Update PROJECTSTATE.md (current state snapshot)
+6. Update CHANGELOG.md (chronological history)
+7. Push to remote
 
-**Important:** Don't add attribution or "Generated with" messages to commits.
+## Performance Constraints
 
-## Common Pitfalls
+### Known Issues
 
-### Markdown Tables
+**Pa11y timeouts**: Pa11y occasionally times out on slow pages. Retry logic handles most cases.
 
-- Don't try to auto-fix complex tables with markdownlint
-- The tool can make tables worse if they have mixed styles
-- Better to manually format important tables
+**Cloudflare protection**: Some sites with aggressive bot protection may fail despite stealth plugin.
 
-### Line Length
-
-- 200 character limit is generous but still hits some long URLs
-- Break lines at natural punctuation or before URLs
-- Consider using reference-style links for very long URLs
-
-### Import Statements
-
-- ES modules require explicit `.js` extensions
-- Don't rely on automatic extension resolution
-- Example: `import { foo } from './utils/bar.js'` not `'./utils/bar'`
-
-## Future Improvements
-
-### Markdown Linting
-
-Consider disabling or relaxing some rules if they become too restrictive:
-
-- MD013 (line-length) - Could increase to 250
-- MD060 (table-column-style) - Could disable for documentation files
-- MD036 (no-emphasis-as-heading) - Sometimes emphasis is appropriate
-
-### ESLint Rules
-
-Monitor if `node/no-missing-import` rule causes issues with other imports. May need to disable more node plugin rules if problems persist.
+**Markdown linting limitations**: Some rules (MD013, MD060, MD036) can be overly restrictive. Consider relaxing if they become problematic.
 
 ## Reference Documentation
 
-- Local invisible-users repository: `/Users/tomcranstoun/Documents/GitHub/invisible-users`
-- Contains authoritative guidance on LLM agent compatibility patterns
-- Use when adding new LLM metrics or updating scoring methodology
+### External Resources
+
+- **llms.txt standard**: <https://llmstxt.org/> and <https://github.com/cfahlgren1/llms-txt>
+- **Invisible Users methodology**: `/Users/tomcranstoun/Documents/GitHub/invisible-users` (local repository with LLM agent compatibility patterns)
+
+### Internal Documentation
+
+- [CLAUDE.md](CLAUDE.md) - Comprehensive project guidance
+- [PROJECTSTATE.md](PROJECTSTATE.md) - Current implementation state
+- [CHANGELOG.md](CHANGELOG.md) - Historical changes
+- [docs/usermanual.md](docs/usermanual.md) - User documentation
+- [docs/system.md](docs/system.md) - Architecture details
+- [docs/report-layout.md](docs/report-layout.md) - Report specifications

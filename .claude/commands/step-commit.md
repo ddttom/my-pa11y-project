@@ -15,18 +15,19 @@ Execute the systematic "step commit" workflow:
    - Review if these files need updates based on recent changes
    - Use CHANGELOG.md to understand past changes if needed
    - Review all project documents mentioned in CLAUDE.md
-   - If changes affect identity layer, check ALL synchronized files in LEARNINGS.md
-   - CRITICAL: Verify pitch.md and blog.md reflect current architecture
+   - Check if changes affect synchronized files: PITCH.md, BLOG.md, CLAUDE.md, README.md
 
 4. Documentation Updates
    - Update any necessary documentation files
-   - For identity layer changes, update pitch.md and blog.md with current architecture
+   - Verify PITCH.md and BLOG.md reflect current features and approach
    - Commit documentation changes
 
 5. Learning Documentation
-   - Update or create LEARNINGS.md
-   - Document everything the AI assistant struggled to understand in this session
-   - This helps improve future AI interactions
+   - CRITICAL: LEARNINGS.md is NOT a changelog
+   - ONLY update if NEW critical mistakes or architectural rules were discovered
+   - Contains actionable guidance: "Never do X", "Always do Y", "Critical pattern Z"
+   - NEVER add historical entries like "Added feature X" or "Updated files A, B, C"
+   - If no new critical guidance discovered, SKIP this step
 
 6. Project State
    - Update or create PROJECTSTATE.md
@@ -34,8 +35,9 @@ Execute the systematic "step commit" workflow:
    - Keep this as a snapshot of current implementation status
 
 7. Changelog
-   - Update CHANGELOG.md with all changes made
-   - Follow chronological order
+   - Update CHANGELOG.md with all changes made in this session
+   - This is where historical "what we did" content goes
+   - Follow chronological order (newest first)
 
 8. Final Steps
    - Commit changelog updates
