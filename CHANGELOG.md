@@ -4,6 +4,81 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Markdown Linting Configuration**: Added markdownlint-cli with comprehensive project rules
+  - Created `.markdownlint.json` with project-specific configuration
+  - Line length limit: 200 characters (MD013)
+  - Code blocks require language specification (MD040)
+  - Consistent table formatting rules (MD060)
+  - Added `npm run lint:md` for checking markdown files
+  - Added `npm run lint:md:fix` for auto-fixing markdown issues
+  - Applied extensive markdown formatting fixes across all documentation files
+
+- **llms.txt Detection Feature**: AI agent compatibility enhancement for static content
+  - Detects llms.txt file references in HTML via `<link>` tags with `rel="alternate"` and `type="text/plain"`
+  - Detects llms.txt references via `<a>` tags with href containing "llms.txt"
+  - Detects llms.txt metadata via `<meta>` tags with `name="llms-txt"`
+  - Worth 10 points in served score (ESSENTIAL_SERVED metric category)
+  - Critical for ALL agent types (CLI and browser-based)
+  - Added "Has llms.txt" column to general LLM report
+  - Added "llms.txt URL" column to backend LLM report
+  - See <https://llmstxt.org/> and <https://github.com/cfahlgren1/llms-txt>
+
+- **data-agent-visible Attribute Tracking**: Explicit agent visibility control
+  - Tracks elements with `data-agent-visible` attribute for explicit agent visibility control
+  - Counts total elements with the attribute
+  - Counts elements visible to agents (`data-agent-visible="true"` or empty value)
+  - Counts elements hidden from agents (`data-agent-visible="false"`)
+  - ESSENTIAL_RENDERED category (browser-based agents only)
+  - Added "Has data-agent-visible" column to general LLM report
+  - Added "Agent Visible Elements", "Visible to Agents", "Hidden from Agents" columns to frontend LLM report
+  - Helps developers explicitly control what AI agents can see vs decorative elements
+
+- **Project Documentation Files**: Comprehensive guidance for AI assistants and project maintenance
+  - Created `LEARNINGS.md` - Actionable guidance for AI assistants working with this codebase
+    - Markdown linting configuration and workflow
+    - ESLint version constraints and import resolution issues
+    - LLM agent feature implementation details
+    - Package management policies
+    - Documentation synchronization requirements
+    - Git workflow and commit message format
+    - Common pitfalls and future improvements
+  - Created `PROJECTSTATE.md` - Current snapshot of implementation status
+    - Production status and version information
+    - Core functionality completion status for all three phases
+    - Recent enhancements with dates
+    - Known issues (non-blocking)
+    - Configuration details for ESLint, Puppeteer, Pa11y
+    - Architecture overview and dependencies
+    - Testing status and file structure
+    - Deployment and maintenance notes
+
+### Changed
+
+- **ESLint Configuration**: Improved ES module import handling
+  - Added `node/no-missing-import: 'off'` rule to `.eslintrc.cjs`
+  - Resolves false positives with ES module imports using `.js` extensions
+  - ESLint's node plugin sometimes incorrectly flags valid ES module imports
+
+- **Claude Code Permissions**: Extended approved operations
+  - Added `Bash(npm install)` to approved tools list in `.claude/settings.local.json`
+  - Allows dependency installation without user confirmation prompts
+
+- **Package Management Policy**: Removed package-lock.json from repository
+  - Deleted `package-lock.json` file (project policy for dependency flexibility)
+  - File should be added to `.gitignore` to prevent future commits
+
+- **Documentation Enhancements**: Comprehensive markdown formatting improvements
+  - BLOG.md: Fixed list formatting, added proper blank lines around sections
+  - CLAUDE.md: Enhanced feature documentation with llms.txt and data-agent-visible details
+  - PITCH.md: Improved readability with proper list formatting and structure
+  - LICENSE.md: Better formatting for contact information
+  - TODO.md: Consistent list formatting
+  - docs/report-layout.md: Minor formatting improvements
+  - docs/system.md: Added llms.txt and data-agent-visible implementation details
+  - docs/usermanual.md: Enhanced LLM suitability report documentation
+
 ### Removed
 
 - **virtual_sitemap.xml generation**: Removed redundant virtual sitemap file generation
