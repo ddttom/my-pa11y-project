@@ -113,9 +113,9 @@ The [.claude/settings.local.json](.claude/settings.local.json) pre-approves:
 
 ## Documentation Synchronization
 
-### Identity Layer Files
+### Key Documentation Files
 
-When making changes that affect project identity or architecture, check ALL of these files:
+When making changes that affect project features or architecture, check these synchronized files:
 
 - [BLOG.md](BLOG.md) - Marketing content
 - [PITCH.md](PITCH.md) - Investment/business pitch
