@@ -23,11 +23,12 @@ Execute the systematic "step commit" workflow:
    - Commit documentation changes
 
 5. Learning Documentation
-   - CRITICAL: LEARNINGS.md is NOT a changelog
-   - ONLY update if NEW critical mistakes or architectural rules were discovered
-   - Contains actionable guidance: "Never do X", "Always do Y", "Critical pattern Z"
-   - NEVER add historical entries like "Added feature X" or "Updated files A, B, C"
-   - If no new critical guidance discovered, SKIP this step
+   - CRITICAL: LEARNINGS.md is ONLY for mistakes when something BROKE
+   - Read LEARNINGS.md first to see the required format
+   - Ask: "Did something break? Did I learn a rule the hard way?"
+   - Required format: "**Rule** (YYYY-MM-DD): Tried X, but this breaks Y. Always do Z."
+   - NEVER add: project knowledge, documentation refs, "We added X", architecture
+   - If nothing broke, SKIP this step entirely
 
 6. Project State
    - Update or create PROJECTSTATE.md
