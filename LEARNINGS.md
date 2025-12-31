@@ -19,11 +19,3 @@ This is NOT documentation - these are rules learned the hard way when something 
 ### Discovered During Sessions
 
 **Don't auto-fix complex tables with markdownlint** - Tried running `npm run lint:md:fix` on docs/report-layout.md tables and it made them worse by mixing styles. Manually format complex tables instead. (Discovered: Markdown linting session)
-
----
-
-**For project architecture and patterns**, see [CLAUDE.md](CLAUDE.md)
-
-**For current implementation state**, see [PROJECTSTATE.md](PROJECTSTATE.md)
-
-**For historical changes**, see [CHANGELOG.md](CHANGELOG.md)
