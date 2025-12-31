@@ -10,6 +10,11 @@ import {
   generateContentQualityReport,
   generateSecurityReport
 } from './reportUtils/reportGenerators.js';
+import {
+  generateGeneralLLMReport,
+  generateFrontendLLMReport,
+  generateBackendLLMReport
+} from './reportUtils/llmReports.js';
 
 /**
  * Main function to generate all reports
@@ -30,6 +35,9 @@ export async function generateReports(results, urls, outputDir) {
     await generateLinkAnalysisReport(results, outputDir);
     await generateContentQualityReport(results, outputDir);
     await generateSecurityReport(results, outputDir);
+    await generateGeneralLLMReport(results, outputDir);
+    await generateFrontendLLMReport(results, outputDir);
+    await generateBackendLLMReport(results, outputDir);
 
     // Save complete results as JSON
     await fs.writeFile(
@@ -52,5 +60,8 @@ export {
   generateImageOptimizationReport,
   generateLinkAnalysisReport,
   generateContentQualityReport,
-  generateSecurityReport
+  generateSecurityReport,
+  generateGeneralLLMReport,
+  generateFrontendLLMReport,
+  generateBackendLLMReport
 };

@@ -22,6 +22,9 @@ import {
   updateCanonicalMetrics,
   updateContentMetrics,
 } from './metricsUpdater.js';
+import {
+  updateLLMMetrics,
+} from './llmMetrics.js';
 
 async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config) {
   if (!url) {
@@ -240,6 +243,7 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     await updateHreflangMetrics($, results, testUrl);
     await updateCanonicalMetrics($, testUrl, results);
     await updateContentMetrics($, results, testUrl);
+    await updateLLMMetrics($, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
     metricsToCheck.forEach(metric => {

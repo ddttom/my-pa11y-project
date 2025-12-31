@@ -1,16 +1,20 @@
-# SEO Analysis Tool
+# Web Audit Suite
 
-A Node.js tool for analyzing website SEO and performance metrics with comprehensive accessibility testing.
+A comprehensive Node.js tool for analyzing websites across multiple dimensions: SEO, performance, accessibility, security, content quality, and AI agent compatibility.
 
-The folder /docs, in the repo, contains prompts in .md format that are useful for extending this project
+**Note:** This is a private repository. Access is granted under commercial license terms.
+
+The folder /docs contains prompts in .md format that are useful for extending this project.
 
 ## Key Features
 
 - **SEO Analysis**: Detailed SEO metrics and scoring
-- **Performance Metrics**: Comprehensive page load analysis  
+- **Performance Metrics**: Comprehensive page load analysis
 - **Accessibility Testing**: WCAG 2.1 compliance checking with Pa11y integration
   - Detailed markdown reports for better readability
+- **Security Analysis**: Security headers and HTTPS configuration
 - **Content Quality**: Structure and freshness analysis
+- **LLM Suitability**: AI agent compatibility analysis (served vs rendered HTML)
 - **Automatic Cache Management**: .cache directory creation and management
 - **Robust Error Handling**: Network error recovery and retry mechanism
 - **URL Processing Control**: Limit number of URLs processed using count parameter
@@ -22,7 +26,7 @@ The folder /docs, in the repo, contains prompts in .md format that are useful fo
   - Enhanced URL extraction logic with automatic language variant detection
   - Centralized language variant checking in report generation
 
-  ## Complete Website Analysis Tool: Business Guide
+## Complete Website Analysis Tool: Business Guide
 
 ## What This Tool Does For You
 

@@ -1,5 +1,5 @@
 {
-  "name": "my-pa11y-project",
+  "name": "web-audit-suite",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -11,10 +11,10 @@
     "test": "mocha --experimental-modules",
     "lint": "eslint ."
   },
-  "keywords": [],
+  "keywords": ["seo", "accessibility", "performance", "security", "audit", "web", "pa11y", "llm", "ai-agents"],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Comprehensive website analysis suite for SEO, accessibility, performance, security, and AI agent compatibility",
   "dependencies": {
     "axios": "^1.7.3",
     "cheerio": "^1.0.0-rc.12",
