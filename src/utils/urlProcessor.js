@@ -271,6 +271,7 @@ export class UrlProcessor {
 
     const urlQueue = [...urls]; // Copy initial URLs
     const processedUrls = new Set(); // Track processed URLs
+    const queuedUrls = new Set(urls.map(u => u.url)); // Track URLs in queue
     const baseUrl = urls[0]?.url ? new URL(urls[0].url).origin : null;
 
     if (!baseUrl) {
@@ -302,10 +303,14 @@ export class UrlProcessor {
       // Extract newly discovered URLs from this page's internal links
       const discoveredUrls = this.extractDiscoveredUrls(url, baseUrl, processedUrls);
 
-      // Add discovered URLs to queue
+      // Add discovered URLs to queue, checking for duplicates
       if (discoveredUrls.length > 0) {
-        global.auditcore.logger.info(`Found ${discoveredUrls.length} new URLs to process from ${url}`);
-        urlQueue.push(...discoveredUrls);
+        const newUrls = discoveredUrls.filter(urlObj => !queuedUrls.has(urlObj.url));
+        if (newUrls.length > 0) {
+          global.auditcore.logger.info(`Found ${newUrls.length} new URLs to process from ${url} (${discoveredUrls.length - newUrls.length} already queued)`);
+          newUrls.forEach(urlObj => queuedUrls.add(urlObj.url));
+          urlQueue.push(...newUrls);
+        }
       }
     }
 

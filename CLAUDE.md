@@ -306,6 +306,76 @@ All files generated in the output directory (default: `results/`):
 4. Write CSV/markdown file to `outputDir`
 5. Export and call from `generateReports()` in `reports.js`
 
+## Claude Code Configuration
+
+This project includes custom Claude Code configuration in the `.claude/` directory:
+
+### Custom Skills
+
+Two custom skills are available via the `/` command syntax:
+
+1. **`/step-commit`** - Systematic commit workflow
+   - Reviews all changes with git status and diff
+   - Commits code changes
+   - Runs linting and fixes errors
+   - Reviews and updates documentation (README, CLAUDE.md, CHANGELOG.md)
+   - Updates LEARNINGS.md (actionable guidance only)
+   - Updates PROJECTSTATE.md (current state snapshot)
+   - Updates CHANGELOG.md
+   - Prompts to push changes
+   - Does NOT add attribution or "Generated with" messages
+
+2. **`/md-fix`** - Markdown linting and auto-fix
+   - Runs `npm run lint:md:fix` to auto-fix issues
+   - Verifies all issues are resolved
+   - Reports remaining issues requiring manual fixes
+   - Shows modified files
+
+### Git Hooks
+
+Three git hooks provide workflow reminders:
+
+1. **`pre-commit.sh`** - Runs before commits
+   - Checks staged markdown files for linting issues
+   - Prompts to run `/md-fix` or `npm run lint:md:fix`
+   - Allows bypassing with user confirmation
+
+2. **`pre-push.sh`** - Runs before pushes
+   - Warns about uncommitted changes
+   - Checks if documentation is outdated vs code changes
+   - Suggests using `/step-commit` workflow
+
+3. **`post-tool-use.sh`** - Runs after git operations
+   - Reminds about `/step-commit` workflow after manual commits
+   - Ensures comprehensive commit practices
+
+### Permissions
+
+The `.claude/settings.local.json` file pre-approves common operations:
+
+- Git operations (commit, add, push)
+- Linting commands
+- Project commands (npm start)
+- Directory inspection (ls, tree, find)
+
+### Claude Code Directory Structure
+
+```text
+.claude/
+├── settings.local.json       # Local permissions configuration
+├── commands/                  # Command definitions (user-facing)
+│   ├── step-commit.md        # Step-commit workflow description
+│   └── md-fix.md             # Markdown fix workflow description
+├── skills/                    # Skill definitions (agent instructions)
+│   ├── step-commit.json      # Step-commit agent configuration
+│   └── md-fix.json           # Markdown fix agent configuration
+├── hooks/                     # Git hooks for workflow enforcement
+│   ├── pre-commit.sh         # Pre-commit markdown check
+│   ├── pre-push.sh           # Pre-push documentation check
+│   └── post-tool-use.sh      # Post-commit workflow reminder
+└── prompt-master/            # Reserved for future use
+```
+
 ## Extension Prompts
 
 The `/docs` folder contains markdown files with prompts useful for extending this project. These can guide development of new features or modifications.
