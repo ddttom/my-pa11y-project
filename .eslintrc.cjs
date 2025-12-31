@@ -40,6 +40,7 @@ module.exports = {
       },
       rules: {
         'node/no-unpublished-import': 'off',
+        'node/no-missing-import': 'off',
       },
     },
   ],

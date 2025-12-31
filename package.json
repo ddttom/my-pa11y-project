@@ -9,9 +9,21 @@
   "scripts": {
     "start": "node index.js",
     "test": "mocha test/**/*.test.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
+    "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix"
   },
-  "keywords": ["seo", "accessibility", "performance", "security", "audit", "web", "pa11y", "llm", "ai-agents"],
+  "keywords": [
+    "seo",
+    "accessibility",
+    "performance",
+    "security",
+    "audit",
+    "web",
+    "pa11y",
+    "llm",
+    "ai-agents"
+  ],
   "author": "",
   "license": "ISC",
   "description": "Comprehensive website analysis suite for SEO, accessibility, performance, security, and AI agent compatibility",
@@ -35,7 +47,7 @@
   },
   "devDependencies": {
     "chai": "^6.2.1",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-node": "^4.1.0",
     "eslint-config-prettier": "^9.1.0",
@@ -43,6 +55,7 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "globals": "^15.9.0",
+    "markdownlint-cli": "^0.47.0",
     "mocha": "^11.7.5",
     "prettier": "^3.3.3"
   }

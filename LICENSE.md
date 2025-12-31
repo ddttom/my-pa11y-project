@@ -13,6 +13,7 @@ This software and associated documentation files (the "Software") are proprietar
 ### Restrictions
 
 The Software may not be:
+
 - Copied, modified, merged, published, or distributed without explicit written permission
 - Sublicensed or sold without explicit written permission
 - Used for commercial purposes without a valid license agreement
@@ -38,7 +39,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ## Contact
 
 For licensing inquiries:
-- Email: tom@allabout.network
+
+- Email: <tom@allabout.network>
 - Web: allabout.network
 
 ## Related Work

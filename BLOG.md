@@ -13,6 +13,7 @@ What she couldn't see: 10,000 of those visitors were AI agents like ChatGPT, Cla
 They all failed.
 
 Not because Sarah's tents were wrong. Not because her prices were bad. But because the agents couldn't:
+
 - Read her product specifications (hidden in JavaScript)
 - Understand which fields in her checkout form were for what
 - Parse her product pricing (displayed as "From £199" when the real price was £249)
@@ -60,9 +61,9 @@ Within minutes, you get:
 
 ### AI Agent Compatibility (The Differentiator)
 
-9. **General LLM Suitability** - Overall AI-friendliness for all agent types
-10. **Frontend LLM Suitability** - Form patterns, semantic HTML, dynamic features
-11. **Backend LLM Suitability** - HTTP codes, security headers, structured data
+1. **General LLM Suitability** - Overall AI-friendliness for all agent types
+2. **Frontend LLM Suitability** - Form patterns, semantic HTML, dynamic features
+3. **Backend LLM Suitability** - HTTP codes, security headers, structured data
 
 **The critical insight:** We don't just measure if your site works for humans. We measure if it works for the AI agents that are recommending you (or not) to millions of users.
 
@@ -75,12 +76,14 @@ Here's what makes Web Audit Suite different from every other tool: **we understa
 This is what your web server sends - the raw HTML before any JavaScript runs.
 
 **Who sees this:**
+
 - ChatGPT when it fetches a URL
 - Claude when analyzing a page
 - Perplexity when extracting information
 - **70% of AI agents** that never execute JavaScript
 
 **What we measure:**
+
 - Semantic HTML structure (`<main>`, `<nav>`, `<article>`)
 - Form field naming standards (email vs "input_field_1")
 - Schema.org structured data presence
@@ -94,11 +97,13 @@ This is what your web server sends - the raw HTML before any JavaScript runs.
 This is what your page looks like after JavaScript runs - what browser-based agents see.
 
 **Who sees this:**
+
 - Browser extensions like Claude Desktop
 - Visual agents that execute JavaScript
 - **30% of AI agents** that render pages
 
 **What we measure:**
+
 - Explicit state attributes (data-state="loading")
 - Persistent error messages (not toast notifications)
 - Dynamic validation feedback
@@ -125,6 +130,7 @@ This is what your page looks like after JavaScript runs - what browser-based age
 **Web Audit Suite Score: 38/100 (Poor)**
 
 **Issues Identified:**
+
 - ❌ Form fields named "field1", "field2", "field3" - agents don't know what to fill in
 - ❌ Button appears disabled but has no `disabled` attribute - agents think it's clickable
 - ❌ No labels - screen readers and agents can't identify fields
@@ -173,6 +179,7 @@ This is what your page looks like after JavaScript runs - what browser-based age
 **Web Audit Suite Score: 92/100 (Excellent)**
 
 **Improvements:**
+
 - ✅ Standard field names (email, cardNumber, postcode)
 - ✅ Proper labels for every field
 - ✅ `disabled` attribute on button
@@ -191,18 +198,21 @@ Let's be specific about what this means for different types of businesses.
 ### E-commerce Site (£10M Annual Revenue)
 
 **Current State:**
+
 - 1.2M monthly visitors
 - 10% AI agent traffic (120,000 visits)
 - 3% human conversion rate
 - 0% agent conversion rate (forms break)
 
 **After Optimization:**
+
 - Same traffic
 - 2.5% agent conversion rate (fixed forms, added structure)
 - 3,000 additional monthly conversions
 - Average order value: £83
 
 **Revenue Impact:**
+
 - Additional revenue: £249,000/month
 - **Annual impact: £2.99M**
 - Tool cost: £299/month (when SaaS launches)
@@ -211,17 +221,20 @@ Let's be specific about what this means for different types of businesses.
 ### SaaS Platform (Complex Onboarding)
 
 **Current State:**
+
 - 50,000 trial signups/year
 - 15% are AI agents helping users (7,500)
 - 10% human conversion to paid (5,000 customers)
 - 0% agent conversion (multi-step form breaks)
 
 **After Optimization:**
+
 - 8% agent conversion rate (fixed form naming, added state)
 - 600 additional paid customers
 - £5,000 annual contract value
 
 **Revenue Impact:**
+
 - Additional revenue: £3M/year
 - Tool cost: £999/month enterprise plan
 - **ROI: 25,000%**
@@ -229,16 +242,19 @@ Let's be specific about what this means for different types of businesses.
 ### Content Publisher (5M Monthly Visitors)
 
 **Current State:**
+
 - 500,000 AI agent visits/month
 - Agents recommend content to users
 - 20% recommendation rate (poor structured data)
 
 **After Optimization:**
+
 - 60% recommendation rate (Schema.org added)
 - 200,000 additional recommendations/month
 - £0.50 value per recommendation (ad revenue)
 
 **Revenue Impact:**
+
 - Additional revenue: £100,000/month
 - **Annual impact: £1.2M**
 - Tool cost: £299/month
@@ -257,6 +273,7 @@ Our scoring is based on "The Invisible Users" by Tom Cranstoun - a 50,000-word a
 We don't just tell you what's wrong. We tell you **what to fix first**.
 
 **Essential_Served (Fix First):**
+
 - Semantic HTML structure
 - Form field naming standards
 - Schema.org structured data
@@ -268,6 +285,7 @@ We don't just tell you what's wrong. We tell you **what to fix first**.
 **Scoring weight:** Heavy
 
 **Essential_Rendered (Fix Second):**
+
 - Explicit state attributes
 - Persistent error messages
 - Dynamic validation feedback
@@ -277,6 +295,7 @@ We don't just tell you what's wrong. We tell you **what to fix first**.
 **Scoring weight:** Moderate
 
 **Nice_To_Have (Fix Last):**
+
 - Table data attributes
 - Button disabled explanations
 - Auth state visibility
@@ -307,6 +326,7 @@ You get the complete picture, not just one slice.
 ### 4. Actionable Output
 
 Every report includes:
+
 - Current score (0-100)
 - Specific issues found
 - Priority level (essential vs nice-to-have)
@@ -375,12 +395,14 @@ results/
 ### E-commerce Businesses
 
 **You need this if:**
+
 - You sell products online
 - AI agents visit your product pages
 - You have complex checkout forms
 - You want to capture agent-driven sales
 
 **Focus on:**
+
 - Product structured data (Schema.org)
 - Checkout form field naming
 - Clear pricing display
@@ -391,12 +413,14 @@ results/
 ### SaaS Platforms
 
 **You need this if:**
+
 - You have trial signup forms
 - Multi-step onboarding processes
 - Complex configuration interfaces
 - API documentation
 
 **Focus on:**
+
 - Form field naming standards
 - Explicit state for multi-step flows
 - Persistent error messages
@@ -407,12 +431,14 @@ results/
 ### Content Publishers
 
 **You need this if:**
+
 - You publish articles, guides, reviews
 - You want AI agents to recommend your content
 - You rely on organic traffic
 - You have advertising revenue
 
 **Focus on:**
+
 - Article structured data
 - Author and publisher markup
 - Clear content structure
@@ -423,12 +449,14 @@ results/
 ### Digital Agencies
 
 **You need this if:**
+
 - You build websites for clients
 - You offer SEO/optimization services
 - You want to differentiate from competitors
 - You need data-driven recommendations
 
 **Focus on:**
+
 - White-label reports for clients
 - Before/after optimization proof
 - New service offerings
@@ -449,6 +477,7 @@ The AI agent compatibility reports are an **addition** to comprehensive website 
 ### How accurate is the scoring?
 
 Very. The methodology is based on:
+
 - Published web standards (HTML5, Schema.org, WCAG 2.1)
 - Real AI agent testing (ChatGPT, Claude, Perplexity)
 - Accessibility best practices (screen reader compatible = agent compatible)
@@ -459,6 +488,7 @@ Every recommendation is grounded in evidence, not speculation.
 ### Will this help my SEO?
 
 Yes. Many AI-friendly patterns are also SEO best practices:
+
 - Semantic HTML improves search engine understanding
 - Schema.org structured data enables rich snippets
 - Proper heading structure helps content indexing
@@ -470,6 +500,7 @@ Yes. Many AI-friendly patterns are also SEO best practices:
 ### How long does it take to fix issues?
 
 Depends on your starting point, but typically:
+
 - **Quick wins (1-2 hours):** Add Schema.org, fix form field names, add semantic elements
 - **Medium effort (1-2 days):** Restructure forms, add ARIA labels, fix error handling
 - **Larger projects (1-2 weeks):** Refactor SPA to progressive enhancement, add server-side rendering
@@ -479,6 +510,7 @@ Depends on your starting point, but typically:
 ### What's the ROI?
 
 For businesses with decent traffic and AI agent visits:
+
 - **E-commerce:** 800-80,000% ROI (depending on size)
 - **SaaS:** 2,000-25,000% ROI
 - **Content:** 3,000-30,000% ROI
@@ -493,6 +525,7 @@ Even conservatively, the tool pays for itself in the first month.
 **To understand reports:** No technical expertise needed - scores and recommendations are clear
 
 **To implement fixes:** Yes, you'll need a developer. But we provide:
+
 - Specific recommendations
 - Priority framework
 - Example code patterns
@@ -505,31 +538,35 @@ Most fixes are straightforward HTML/markup changes, not complex programming.
 **Current state:** Open-source tool available on GitHub now
 
 **Planned:** SaaS platform in Q2-Q3 2026 with:
+
 - Web dashboard
 - Scheduled recurring audits
 - Historical comparison
 - Team collaboration
 - API access
 
-**Want early access?** Email tom@allabout.network
+**Want early access?** Email <tom@allabout.network>
 
 ### How does this relate to "The Invisible Users" book?
 
 Perfect complement:
 
 **Book = Methodology** (the "why" and "what")
+
 - Why AI agents fail on websites
 - What patterns break agents
 - How to design for both humans and agents
 - Business case for optimization
 
 **Tool = Measurement** (the "how" and "now")
+
 - How to measure your current state
 - What specifically is broken on your site
 - Which issues to fix first
 - How to track improvement
 
 **Together = Complete Solution**
+
 - Learn the methodology from the book
 - Measure your site with the tool
 - Implement fixes using book guidance
@@ -538,6 +575,7 @@ Perfect complement:
 ### Is my data private?
 
 Yes. Web Audit Suite runs locally on your machine or your infrastructure:
+
 - No data sent to external servers
 - All analysis happens locally
 - Reports stored on your filesystem
@@ -552,17 +590,19 @@ Yes. Web Audit Suite runs locally on your machine or your infrastructure:
 Web Audit Suite is available for businesses serious about AI agent compatibility.
 
 **Get in touch to discuss:**
+
 - Licensing options
 - Custom deployment
 - Agency partnerships
 - Enterprise agreements
 
-**Email:** tom@allabout.network
+**Email:** <tom@allabout.network>
 **Time:** Initial consultation typically within 48 hours
 
 ### Option 2: Read the Methodology First
 
 Get "The Invisible Users" book to understand the complete picture:
+
 - Why AI agents matter for your business
 - Patterns that break agents (and humans)
 - How to design for both audiences
@@ -577,13 +617,14 @@ Get "The Invisible Users" book to understand the complete picture:
 Prefer a web dashboard to command-line tools?
 
 **Join the waitlist for:**
+
 - Web-based interface
 - Scheduled recurring audits
 - Historical comparison tracking
 - Team collaboration features
 - Priority support
 
-**Email:** tom@allabout.network with subject "SaaS Waitlist"
+**Email:** <tom@allabout.network> with subject "SaaS Waitlist"
 
 ## The Bottom Line
 
@@ -592,6 +633,7 @@ AI agents are visiting your website right now. Some are succeeding. Most are fai
 You can't fix what you can't measure.
 
 Web Audit Suite gives you the measurements that matter:
+
 - ✅ Complete website analysis across 11 dimensions
 - ✅ AI agent compatibility scoring for served and rendered HTML
 - ✅ Evidence-based methodology from published research
@@ -601,24 +643,27 @@ Web Audit Suite gives you the measurements that matter:
 
 **The opportunity window is 12-18 months.** Early adopters will capture agent-driven conversions their competitors lose. By 2027-2028, AI agent compatibility will be table stakes.
 
-**Ready to measure what matters?** Contact tom@allabout.network to discuss access options.
+**Ready to measure what matters?** Contact <tom@allabout.network> to discuss access options.
 
 ---
 
 ## Resources
 
 **Web Audit Suite (Tool):**
-- Access: Contact tom@allabout.network
+
+- Access: Contact <tom@allabout.network>
 - Documentation: Available with license
 - Support: Email support included
 
 **The Invisible Users (Methodology):**
+
 - Book: [allabout.network/invisible-users](https://allabout.network/invisible-users)
 - Preview: [Interactive Jupyter Notebook](https://allabout.network/invisible-users.html)
 - Technical Guidance: [advice.md](https://github.com/tomcranstoun/invisible-users/blob/main/invisible-users/advice.md)
 
 **Contact:**
-- Email: tom@allabout.network
+
+- Email: <tom@allabout.network>
 - Web: [allabout.network](https://allabout.network)
 
 ---

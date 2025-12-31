@@ -154,11 +154,222 @@ function analyzeStructuredData($) {
 }
 
 /**
+ * Analyzes ESSENTIAL_SERVED metrics - llms.txt file detection
+ * Critical: llms.txt provides structured information for LLM agents
+ * See: https://llmstxt.org/ or https://github.com/cfahlgren1/llms-txt
+ */
+function analyzeLLMsTxt($) {
+  // Check for llms.txt link in the page
+  const llmsTxtLink = $('link[href*="llms.txt"], a[href*="llms.txt"]').first();
+  const hasLLMsTxtReference = llmsTxtLink.length > 0;
+
+  // Check for llms.txt metadata
+  const llmsTxtMeta = $('meta[name="llms-txt"], meta[property="llms:txt"]').first();
+  const hasLLMsTxtMeta = llmsTxtMeta.length > 0;
+
+  return {
+    importance: IMPORTANCE.ESSENTIAL_SERVED,
+    metrics: {
+      hasLLMsTxtReference,
+      hasLLMsTxtMeta,
+      llmsTxtUrl: hasLLMsTxtReference ? llmsTxtLink.attr('href') : null,
+      // Note: Actual llms.txt content would be fetched separately by the pageAnalyzer
+      // This is just detecting the presence of the reference
+    }
+  };
+}
+
+/**
+ * Analyzes ESSENTIAL_SERVED metrics - robots.txt and ai.txt detection
+ * Critical: These files control agent access and provide agent-specific instructions
+ */
+function analyzeRobotsTxt($) {
+  // Check for robots.txt and ai.txt references
+  const robotsTxtLink = $('link[href*="robots.txt"], a[href*="robots.txt"]').first();
+  const aiTxtLink = $('link[href*="ai.txt"], a[href*="ai.txt"]').first();
+
+  // Check for robots meta tag
+  const robotsMeta = $('meta[name="robots"]').attr('content');
+  const hasRobotsMeta = !!robotsMeta;
+  const robotsMetaContent = robotsMeta || '';
+
+  // Parse robots meta directives
+  const isNoIndex = robotsMetaContent.includes('noindex');
+  const isNoFollow = robotsMetaContent.includes('nofollow');
+  const isNoArchive = robotsMetaContent.includes('noarchive');
+  const hasAgentRestrictions = isNoIndex || isNoFollow || isNoArchive;
+
+  return {
+    importance: IMPORTANCE.ESSENTIAL_SERVED,
+    metrics: {
+      hasRobotsTxtReference: robotsTxtLink.length > 0,
+      hasAiTxtReference: aiTxtLink.length > 0,
+      hasRobotsMeta,
+      robotsMetaContent,
+      isNoIndex,
+      isNoFollow,
+      isNoArchive,
+      hasAgentRestrictions,
+      // Note: Actual robots.txt and ai.txt content would be fetched at domain level
+    }
+  };
+}
+
+/**
+ * Analyzes ESSENTIAL_SERVED metrics - Form autocomplete attributes
+ * Critical: Autocomplete helps agents understand field purpose and fill forms correctly
+ */
+function analyzeFormAutocomplete($) {
+  const inputs = $('input, select, textarea');
+  let fieldsWithAutocomplete = 0;
+  let fieldsWithoutAutocomplete = 0;
+  const autocompleteValues = [];
+
+  inputs.each((_, el) => {
+    const $input = $(el);
+    const autocomplete = $input.attr('autocomplete');
+    const type = $input.attr('type');
+
+    // Skip hidden, submit, button inputs
+    if (type === 'hidden' || type === 'submit' || type === 'button' || $input.is('button')) {
+      return;
+    }
+
+    if (autocomplete) {
+      fieldsWithAutocomplete++;
+      if (!autocompleteValues.includes(autocomplete)) {
+        autocompleteValues.push(autocomplete);
+      }
+    } else {
+      fieldsWithoutAutocomplete++;
+    }
+  });
+
+  const totalRelevantFields = fieldsWithAutocomplete + fieldsWithoutAutocomplete;
+  const autocompleteRatio = totalRelevantFields > 0 ? fieldsWithAutocomplete / totalRelevantFields : 1;
+
+  return {
+    importance: IMPORTANCE.ESSENTIAL_SERVED,
+    metrics: {
+      totalFormFields: totalRelevantFields,
+      fieldsWithAutocomplete,
+      fieldsWithoutAutocomplete,
+      autocompleteRatio,
+      autocompleteValues,
+      hasGoodAutocompleteCoverage: autocompleteRatio >= 0.7,
+    }
+  };
+}
+
+/**
+ * Analyzes NICE_TO_HAVE metrics - CAPTCHA and bot protection detection
+ * Important: Agents need to know if human verification is required
+ */
+function analyzeCaptchaAndBotProtection($) {
+  // Common CAPTCHA indicators
+  const hasRecaptcha = $('.g-recaptcha, [data-sitekey]').length > 0 ||
+                       $('script[src*="recaptcha"]').length > 0;
+  const hasHCaptcha = $('.h-captcha').length > 0 ||
+                      $('script[src*="hcaptcha"]').length > 0;
+  const hasTurnstile = $('[data-sitekey], script[src*="turnstile"]').length > 0 &&
+                       $('script[src*="cloudflare"]').length > 0;
+
+  // Generic CAPTCHA/challenge indicators
+  const hasCaptchaKeyword = $('*').filter((_, el) => {
+    const text = $(el).text().toLowerCase();
+    return text.includes('captcha') || text.includes('verify you are human') ||
+           text.includes('security check') || text.includes('bot protection');
+  }).length > 0;
+
+  // Cloudflare challenge indicator
+  const hasCloudflareChallenge = $('script[src*="cloudflare"]').length > 0 ||
+                                  $('.cf-browser-verification').length > 0;
+
+  const hasCaptcha = hasRecaptcha || hasHCaptcha || hasTurnstile || hasCaptchaKeyword;
+  const hasBotProtection = hasCaptcha || hasCloudflareChallenge;
+
+  return {
+    importance: IMPORTANCE.NICE_TO_HAVE,
+    metrics: {
+      hasCaptcha,
+      hasRecaptcha,
+      hasHCaptcha,
+      hasTurnstile,
+      hasCloudflareChallenge,
+      hasBotProtection,
+      captchaType: hasRecaptcha ? 'reCAPTCHA' :
+                   hasHCaptcha ? 'hCaptcha' :
+                   hasTurnstile ? 'Turnstile' :
+                   hasCaptcha ? 'Unknown' : 'None',
+    }
+  };
+}
+
+/**
+ * Analyzes NICE_TO_HAVE metrics - API endpoint discoverability
+ * Helps agents find and use APIs for programmatic access
+ */
+function analyzeApiEndpoints($) {
+  // Look for API documentation links
+  const apiLinks = $('a[href*="/api"], a[href*="/docs"], a[href*="/swagger"], a[href*="/openapi"]');
+  const hasApiDocs = apiLinks.length > 0;
+
+  // Check for API-related meta tags
+  const hasApiMeta = $('meta[name*="api"], meta[property*="api"]').length > 0;
+
+  // Look for REST/GraphQL indicators
+  const hasRestIndicators = $('script, link').filter((_, el) => {
+    const src = $(el).attr('src') || $(el).attr('href') || '';
+    return src.includes('/api/') || src.includes('/rest/');
+  }).length > 0;
+
+  const hasGraphQLIndicators = $('script, link').filter((_, el) => {
+    const src = $(el).attr('src') || $(el).attr('href') || '';
+    return src.includes('graphql');
+  }).length > 0;
+
+  // Check for OpenAPI/Swagger links
+  const hasOpenApiSpec = $('link[rel="alternate"][type="application/json"]').filter((_, el) => {
+    const href = $(el).attr('href') || '';
+    return href.includes('openapi') || href.includes('swagger');
+  }).length > 0;
+
+  const apiEndpointScore = (hasApiDocs ? 25 : 0) +
+                           (hasOpenApiSpec ? 25 : 0) +
+                           (hasRestIndicators ? 15 : 0) +
+                           (hasGraphQLIndicators ? 15 : 0);
+
+  return {
+    importance: IMPORTANCE.NICE_TO_HAVE,
+    metrics: {
+      hasApiDocs,
+      hasApiMeta,
+      hasRestIndicators,
+      hasGraphQLIndicators,
+      hasOpenApiSpec,
+      apiDiscoverabilityScore: apiEndpointScore,
+      apiLinksCount: apiLinks.length,
+    }
+  };
+}
+
+/**
  * Analyzes ESSENTIAL_RENDERED metrics - Dynamic state visibility
  * Important for browser-based agents that execute JavaScript
  */
 function analyzeDataAttributes($) {
   const elements = $('[data-state], [data-authenticated], [data-validation-state], [data-error-code], [data-loading]');
+
+  // Check for data-agent-visible attribute (explicit agent visibility control)
+  const agentVisibleElements = $('[data-agent-visible]');
+  const visibleToAgents = agentVisibleElements.filter((_, el) => {
+    const value = $(el).attr('data-agent-visible');
+    return value === 'true' || value === '';
+  }).length;
+  const hiddenFromAgents = agentVisibleElements.filter((_, el) => {
+    const value = $(el).attr('data-agent-visible');
+    return value === 'false';
+  }).length;
 
   return {
     importance: IMPORTANCE.ESSENTIAL_RENDERED,
@@ -170,6 +381,11 @@ function analyzeDataAttributes($) {
       hasErrorCodes: $('[data-error-code]').length > 0,
       hasLoadingIndicators: $('[data-loading], [data-state="loading"]').length > 0,
       totalDataAttributes: elements.length,
+      // data-agent-visible attributes
+      hasAgentVisibilityControl: agentVisibleElements.length > 0,
+      agentVisibleCount: agentVisibleElements.length,
+      visibleToAgents,
+      hiddenFromAgents,
     }
   };
 }
@@ -281,6 +497,9 @@ export function collectLLMMetrics($, url, htmlSource = 'rendered') {
       semanticHTML: analyzeSemanticHTML($),
       formFields: analyzeFormFields($),
       structuredData: analyzeStructuredData($),
+      llmsTxt: analyzeLLMsTxt($),
+      robotsTxt: analyzeRobotsTxt($),
+      formAutocomplete: analyzeFormAutocomplete($),
 
       // ESSENTIAL_RENDERED - Work for browser agents
       dataAttributes: analyzeDataAttributes($),
@@ -290,6 +509,8 @@ export function collectLLMMetrics($, url, htmlSource = 'rendered') {
       tableData: analyzeTableData($),
       buttonStates: analyzeButtonStates($),
       authenticationState: analyzeAuthenticationState($),
+      captchaProtection: analyzeCaptchaAndBotProtection($),
+      apiEndpoints: analyzeApiEndpoints($),
     };
 
     return metrics;
@@ -313,26 +534,44 @@ export function calculateServedScore(metrics) {
   let score = 0;
 
   // ESSENTIAL: HTTP status codes (handled in backend report)
-  // ESSENTIAL: Semantic HTML (30 points)
+  // ESSENTIAL: Semantic HTML (20 points)
   if (metrics.semanticHTML?.metrics) {
     const sem = metrics.semanticHTML.metrics;
-    if (sem.hasMain) score += 8;
-    if (sem.hasNav) score += 7;
-    if (sem.hasHeader) score += 5;
-    if (sem.hasFooter) score += 5;
-    if (sem.hasArticle || sem.hasSection) score += 5;
+    if (sem.hasMain) score += 6;
+    if (sem.hasNav) score += 5;
+    if (sem.hasHeader) score += 3;
+    if (sem.hasFooter) score += 3;
+    if (sem.hasArticle || sem.hasSection) score += 3;
   }
 
-  // ESSENTIAL: Form field naming (40 points)
+  // ESSENTIAL: Form field naming (25 points)
   if (metrics.formFields?.metrics) {
     const form = metrics.formFields.metrics;
-    score += form.standardNameRatio * 25; // 25 points for standard names
-    score += form.labelRatio * 15; // 15 points for labels
+    score += form.standardNameRatio * 15; // 15 points for standard names
+    score += form.labelRatio * 10; // 10 points for labels
   }
 
-  // ESSENTIAL: Structured data (20 points)
+  // ESSENTIAL: Form autocomplete (15 points)
+  if (metrics.formAutocomplete?.metrics) {
+    score += metrics.formAutocomplete.metrics.autocompleteRatio * 15;
+  }
+
+  // ESSENTIAL: Structured data (15 points)
   if (metrics.structuredData?.metrics) {
-    if (metrics.structuredData.metrics.hasSchemaOrg) score += 20;
+    if (metrics.structuredData.metrics.hasSchemaOrg) score += 15;
+  }
+
+  // ESSENTIAL: llms.txt presence (10 points)
+  if (metrics.llmsTxt?.metrics) {
+    if (metrics.llmsTxt.metrics.hasLLMsTxtReference || metrics.llmsTxt.metrics.hasLLMsTxtMeta) {
+      score += 10;
+    }
+  }
+
+  // ESSENTIAL: robots.txt/ai.txt (5 points bonus for ai.txt, -5 penalty for restrictive robots)
+  if (metrics.robotsTxt?.metrics) {
+    if (metrics.robotsTxt.metrics.hasAiTxtReference) score += 5;
+    if (metrics.robotsTxt.metrics.hasAgentRestrictions) score -= 5;
   }
 
   // NICE_TO_HAVE: Tables (10 points) - only if tables exist
@@ -344,7 +583,8 @@ export function calculateServedScore(metrics) {
     score += 10; // No tables means no opportunity to fail
   }
 
-  return Math.round(score);
+  // Ensure score doesn't go below 0 or above 100
+  return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 /**
@@ -430,11 +670,42 @@ export function generateFeedback(metrics) {
     recommendations.push('Add JSON-LD with Schema.org vocabulary for key content');
   }
 
+  if (!metrics.llmsTxt?.metrics.hasLLMsTxtReference && !metrics.llmsTxt?.metrics.hasLLMsTxtMeta) {
+    essentialIssues.push('No llms.txt file detected');
+    recommendations.push('Add llms.txt file at site root for LLM agent discovery (see llmstxt.org)');
+  }
+
+  // Form autocomplete issues
+  if (metrics.formAutocomplete?.metrics && metrics.formAutocomplete.metrics.totalFormFields > 0) {
+    const autocompleteRatio = metrics.formAutocomplete.metrics.autocompleteRatio;
+    if (autocompleteRatio < 0.5) {
+      essentialIssues.push(`Only ${Math.round(autocompleteRatio * 100)}% of form fields have autocomplete attributes`);
+      recommendations.push('Add autocomplete attributes to form fields (e.g., autocomplete="email", "name", "tel")');
+    }
+  }
+
+  // Robots.txt and ai.txt issues
+  if (metrics.robotsTxt?.metrics) {
+    if (metrics.robotsTxt.metrics.hasAgentRestrictions) {
+      essentialIssues.push('Page has robot restrictions (noindex/nofollow) that may block agents');
+      recommendations.push('Review robots meta tags - consider allowing agent access where appropriate');
+    }
+    if (!metrics.robotsTxt.metrics.hasAiTxtReference) {
+      niceToHaveIssues.push('No ai.txt file detected for AI-specific instructions');
+      recommendations.push('Consider adding ai.txt file for AI agent-specific guidance');
+    }
+  }
+
   // ESSENTIAL_RENDERED issues (for browser agents)
   if (metrics.htmlSource === 'rendered') {
     if (!metrics.dataAttributes?.metrics.hasDataState) {
       niceToHaveIssues.push('No data-state attributes for dynamic content');
       recommendations.push('Add data-state to loading indicators and dynamic content');
+    }
+
+    if (!metrics.dataAttributes?.metrics.hasAgentVisibilityControl) {
+      niceToHaveIssues.push('No data-agent-visible attributes found');
+      recommendations.push('Consider using data-agent-visible to explicitly control agent visibility');
     }
 
     if (!metrics.errorHandling?.metrics.hasPersistentErrors) {
@@ -444,6 +715,16 @@ export function generateFeedback(metrics) {
   }
 
   // NICE_TO_HAVE issues (low priority)
+  if (metrics.captchaProtection?.metrics?.hasBotProtection) {
+    niceToHaveIssues.push(`Bot protection detected: ${metrics.captchaProtection.metrics.captchaType}`);
+    recommendations.push('Bot protection may prevent agent access - consider alternative verification for agents');
+  }
+
+  if (metrics.apiEndpoints?.metrics && metrics.apiEndpoints.metrics.apiDiscoverabilityScore < 25) {
+    niceToHaveIssues.push('Low API endpoint discoverability');
+    recommendations.push('Add API documentation links and OpenAPI/Swagger specifications for agent access');
+  }
+
   if (metrics.tableData?.metrics && metrics.tableData.metrics.tableCount > 0) {
     if (metrics.tableData.metrics.tablesWithScope === 0) {
       niceToHaveIssues.push('Tables missing scope attributes');

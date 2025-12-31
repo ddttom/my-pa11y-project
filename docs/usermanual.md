@@ -13,7 +13,7 @@ Web Audit Suite is a comprehensive website analysis tool that generates detailed
 
 ## Getting Started
 
-**Note:** Web Audit Suite is a commercial tool. Access to the repository requires a valid license. Contact tom@allabout.network for licensing information.
+**Note:** Web Audit Suite is a commercial tool. Access to the repository requires a valid license. Contact <tom@allabout.network> for licensing information.
 
 ### Prerequisites
 
@@ -66,7 +66,7 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 
 - `-s, --sitemap <url>`: URL of sitemap or webpage to analyze
   - Accepts sitemap XML or webpage URL
-  - Default: "https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub"
+  - Default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>"
 
 ### Optional Settings
 
@@ -95,6 +95,7 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 Basic SEO metrics for each page including title, meta description, heading structure, image and link counts, and content length.
 
 **Fields:**
+
 - URL
 - Title
 - Description
@@ -116,6 +117,7 @@ Basic SEO metrics for each page including title, meta description, heading struc
 Page loading speed metrics and Core Web Vitals measurements.
 
 **Fields:**
+
 - URL
 - Load Time (ms)
 - First Paint (ms)
@@ -130,6 +132,7 @@ Page loading speed metrics and Core Web Vitals measurements.
 Detailed SEO scoring with subscores for different aspects.
 
 **Fields:**
+
 - URL
 - Overall SEO Score
 - Title Optimization Score
@@ -143,6 +146,7 @@ Detailed SEO scoring with subscores for different aspects.
 WCAG 2.1 compliance analysis with issues categorized by severity and guideline level.
 
 **Fields:**
+
 - URL
 - Total Issues
 - Critical Issues
@@ -170,6 +174,7 @@ Human-readable accessibility report with path-by-path organization, unique issue
 Image metrics, alt text quality analysis, and compression suggestions.
 
 **Fields:**
+
 - Page URL
 - Image URL
 - File Size (KB)
@@ -188,6 +193,7 @@ Image metrics, alt text quality analysis, and compression suggestions.
 Internal/external link structure, navigation analysis, and link quality metrics.
 
 **Fields:**
+
 - Source URL
 - Target URL
 - Link Text
@@ -205,6 +211,7 @@ Internal/external link structure, navigation analysis, and link quality metrics.
 Content analysis including freshness, uniqueness, and media richness.
 
 **Fields:**
+
 - URL
 - Word Count
 - Content Freshness Score
@@ -219,6 +226,7 @@ Content analysis including freshness, uniqueness, and media richness.
 Security headers analysis and HTTPS configuration.
 
 **Fields:**
+
 - URL
 - HTTPS Status
 - HSTS Header
@@ -237,6 +245,7 @@ These reports evaluate website compatibility with AI agents based on patterns fr
 Overall AI-friendliness scores showing both served HTML (works for all agents) and rendered HTML (works for browser agents).
 
 **Fields:**
+
 - URL
 - HTML Source (served/rendered)
 - Served HTML Score (All Agents)
@@ -251,6 +260,7 @@ Overall AI-friendliness scores showing both served HTML (works for all agents) a
 - Top Recommendation
 
 **Scoring:**
+
 - **Served Score (0-100)**: Works for CLI agents, server-based agents, and browser agents
   - 30 points: Semantic HTML structure
   - 40 points: Form field naming and labels
@@ -264,6 +274,7 @@ Overall AI-friendliness scores showing both served HTML (works for all agents) a
 Frontend-specific patterns separated into served (form patterns, semantic HTML) and rendered (dynamic state, persistent errors).
 
 **Fields:**
+
 - URL
 - HTML Source (served/rendered)
 - Served Score (All Agents)
@@ -279,6 +290,7 @@ Frontend-specific patterns separated into served (form patterns, semantic HTML) 
 - Key Recommendations
 
 **Key Metrics:**
+
 - **ESSENTIAL_SERVED**: Semantic HTML, form field naming, labels
 - **ESSENTIAL_RENDERED**: Dynamic state attributes, persistent error messages
 - **NICE_TO_HAVE**: Button explanations, auth state visibility
@@ -288,6 +300,7 @@ Frontend-specific patterns separated into served (form patterns, semantic HTML) 
 Backend/server-side patterns focusing on served HTML only (HTTP codes, headers, structured data).
 
 **Fields:**
+
 - URL
 - Backend Score (0-100)
 - HTTP Status Code
@@ -302,6 +315,7 @@ Backend/server-side patterns focusing on served HTML only (HTTP codes, headers, 
 - Key Recommendations
 
 **Scoring:**
+
 - 30 points: Correct HTTP status codes
 - 40 points: Security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options)
 - 30 points: Schema.org structured data
@@ -331,10 +345,12 @@ Backend/server-side patterns focusing on served HTML only (HTTP codes, headers, 
 All files are generated in the output directory (default: `results/`):
 
 ### Data Files
+
 - `results.json` - Complete raw data (single source of truth)
 - `summary.json` - High-level site-wide metrics
 
 ### CSV Reports
+
 - `seo_report.csv`
 - `performance_analysis.csv`
 - `seo_scores.csv`
@@ -348,9 +364,11 @@ All files are generated in the output directory (default: `results/`):
 - `llm_backend_suitability.csv`
 
 ### Markdown Reports
+
 - `wcag_report.md` - Human-readable accessibility report
 
 ### Sitemaps
+
 - `virtual_sitemap.xml` - Initial crawl results
 - `final_sitemap.xml` - Complete discovered URLs
 
@@ -426,6 +444,7 @@ By default, the tool skips non-English language variants to avoid duplicate cont
 - **Override**: Use `--include-all-languages` flag
 
 This filtering applies to:
+
 - URL extraction from sitemaps
 - Report generation
 - Content analysis
@@ -575,12 +594,14 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages -o all-l
 ### Interpreting Scores
 
 **Served HTML Score (0-100)**
+
 - **80-100**: Excellent - Works well for all AI agents
 - **60-79**: Good - Minor improvements needed
 - **40-59**: Fair - Several essential issues to fix
 - **0-39**: Poor - Major issues preventing AI agent compatibility
 
 **Rendered HTML Score (0-100)**
+
 - **80-100**: Excellent - Works well for browser-based agents
 - **60-79**: Good - Some dynamic features could improve
 - **40-59**: Fair - Essential rendered features missing

@@ -30,12 +30,25 @@ npm start -- -s <url> -c 10
 # Include all language variants (default: only /en and /us)
 npm start -- --include-all-languages
 
-# Run linting
+# Run linting (IMPORTANT: use npm script, not global eslint)
 npm run lint
+
+# Run markdown linting
+npm run lint:md
+
+# Auto-fix markdown linting issues
+npm run lint:md:fix
 
 # Run tests
 npm test
 ```
+
+**Note on ESLint**: This project uses ESLint 8.57.0 with `.eslintrc.cjs` configuration. Always use `npm run lint` to ensure you're using the project's local ESLint version.
+Global ESLint 9.x installations are incompatible with the `.eslintrc.cjs` format and will fail.
+
+**Note on Markdown Linting**: This project uses markdownlint-cli with configuration in `.markdownlint.json`.
+The `npm run lint:md:fix` command automatically fixes many issues like blank lines around lists and code block formatting.
+Some issues like line length and table formatting require manual fixes.
 
 ### Common Options
 
@@ -168,7 +181,13 @@ The tool can resume from existing `results.json` if found, skipping data collect
 
 ### LLM Suitability Analysis
 
-Evaluates website compatibility with AI agents based on patterns from "The Invisible Users" book (<https://github.com/tomcranstoun/invisible-users>).
+Evaluates website compatibility with AI agents based on patterns from "The Invisible Users" book.
+
+**Reference Documentation:**
+
+- GitHub repository: <https://github.com/tomcranstoun/invisible-users>
+- Local repository: `/Users/tomcranstoun/Documents/GitHub/invisible-users`
+- This local repository contains the authoritative guidance on LLM agent compatibility patterns
 
 ### CRITICAL DISTINCTION: Two HTML States
 
@@ -186,12 +205,14 @@ Reports show BOTH states because different agents need different information.
 - Semantic HTML structure (`<main>`, `<nav>`, `<header>`, `<article>`)
 - Form field naming (email, firstName, lastName vs custom names)
 - Schema.org structured data (JSON-LD)
+- llms.txt file presence (see <https://llmstxt.org/>)
 - HTTP status codes (200, 404, etc.)
 - Security headers (HSTS, CSP)
 
 **ESSENTIAL_RENDERED (works for browser agents):**
 
 - Explicit state attributes (data-state, data-validation-state)
+- Agent visibility control (data-agent-visible attribute)
 - Persistent error messages (role="alert", aria-live)
 - Dynamic validation feedback
 
@@ -203,22 +224,41 @@ Reports show BOTH states because different agents need different information.
 
 Scoring heavily weights ESSENTIAL patterns, lightly weights NICE_TO_HAVE patterns.
 
+**New LLM Agent Features:**
+
+1. **llms.txt Detection**
+   - Detects llms.txt file references in HTML via `<link>` or `<a>` tags
+   - Checks for llms.txt metadata tags (`<meta name="llms-txt">`)
+   - Provides recommendations when missing
+   - Worth 10 points in served score (ESSENTIAL_SERVED metric)
+   - Learn more: <https://llmstxt.org/> and <https://github.com/cfahlgren1/llms-txt>
+
+2. **data-agent-visible Attribute**
+   - Tracks elements with explicit agent visibility control
+   - Counts elements visible to agents (`data-agent-visible="true"` or empty)
+   - Counts elements hidden from agents (`data-agent-visible="false"`)
+   - Provides recommendations for usage (ESSENTIAL_RENDERED metric)
+   - Helps developers explicitly control what AI agents can see
+
 **Three Reports Generated:**
 
 1. **General LLM Report** (`llm_general_suitability.csv`)
    - Shows both served score (all agents) and rendered score (browser agents)
    - Lists essential vs nice-to-have issues
    - Provides actionable recommendations
+   - New columns: "Has llms.txt", "Has data-agent-visible"
 
 2. **Frontend LLM Report** (`llm_frontend_suitability.csv`)
    - Separates served metrics (forms, semantic HTML) from rendered metrics (dynamic state)
    - Shows percentages for standard field naming and label usage
    - Identifies critical frontend issues
+   - New columns: "Agent Visible Elements", "Visible to Agents", "Hidden from Agents"
 
 3. **Backend LLM Report** (`llm_backend_suitability.csv`)
    - Focuses on served state only (HTTP codes, headers, structured data)
    - No dynamic/rendered metrics needed for backend
    - Essential for all agent types
+   - New columns: "Has llms.txt", "llms.txt URL"
 
 ## Output Files
 

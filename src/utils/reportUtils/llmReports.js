@@ -42,7 +42,14 @@ export async function generateGeneralLLMReport(results, outputDir) {
         { id: 'hasMain', title: 'Has <main>' },
         { id: 'hasNav', title: 'Has <nav>' },
         { id: 'standardFormFields', title: 'Standard Form Fields %' },
+        { id: 'autocompleteFields', title: 'Autocomplete Fields %' },
         { id: 'hasSchemaOrg', title: 'Has Schema.org' },
+        { id: 'hasLLMsTxt', title: 'Has llms.txt' },
+        { id: 'hasAiTxt', title: 'Has ai.txt' },
+        { id: 'robotRestrictions', title: 'Robot Restrictions' },
+        { id: 'hasBotProtection', title: 'Bot Protection' },
+        { id: 'apiDiscoverable', title: 'API Discoverable' },
+        { id: 'hasAgentVisibility', title: 'Has data-agent-visible' },
         { id: 'essentialIssuesCount', title: 'Essential Issues' },
         { id: 'niceToHaveIssuesCount', title: 'Nice-to-Have Issues' },
         { id: 'topEssentialIssue', title: 'Top Essential Issue' },
@@ -56,6 +63,14 @@ export async function generateGeneralLLMReport(results, outputDir) {
       const feedback = generateFeedback(metrics);
 
       const standardFieldRatio = metrics.formFields?.metrics?.standardNameRatio || 0;
+      const autocompleteRatio = metrics.formAutocomplete?.metrics?.autocompleteRatio || 0;
+      const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference ||
+                         metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
+      const hasAiTxt = metrics.robotsTxt?.metrics?.hasAiTxtReference || false;
+      const hasAgentVisibility = metrics.dataAttributes?.metrics?.hasAgentVisibilityControl || false;
+      const hasRestrictions = metrics.robotsTxt?.metrics?.hasAgentRestrictions || false;
+      const hasBotProtection = metrics.captchaProtection?.metrics?.hasBotProtection || false;
+      const hasApiDocs = metrics.apiEndpoints?.metrics?.hasApiDocs || false;
 
       return {
         url: metrics.url,
@@ -65,7 +80,14 @@ export async function generateGeneralLLMReport(results, outputDir) {
         hasMain: metrics.semanticHTML?.metrics?.hasMain ? 'Yes' : 'No',
         hasNav: metrics.semanticHTML?.metrics?.hasNav ? 'Yes' : 'No',
         standardFormFields: Math.round(standardFieldRatio * 100),
+        autocompleteFields: Math.round(autocompleteRatio * 100),
         hasSchemaOrg: metrics.structuredData?.metrics?.hasSchemaOrg ? 'Yes' : 'No',
+        hasLLMsTxt: hasLLMsTxt ? 'Yes' : 'No',
+        hasAiTxt: hasAiTxt ? 'Yes' : 'No',
+        robotRestrictions: hasRestrictions ? 'Yes' : 'No',
+        hasBotProtection: hasBotProtection ? 'Yes' : 'No',
+        apiDiscoverable: hasApiDocs ? 'Yes' : 'No',
+        hasAgentVisibility: hasAgentVisibility ? 'Yes' : 'No',
         essentialIssuesCount: feedback.essentialIssues.length,
         niceToHaveIssuesCount: feedback.niceToHaveIssues.length,
         topEssentialIssue: feedback.essentialIssues[0] || 'None',
@@ -115,6 +137,7 @@ export async function generateFrontendLLMReport(results, outputDir) {
         { id: 'servedScore', title: 'Served Score (All Agents)' },
         { id: 'formCount', title: 'Form Count' },
         { id: 'standardFieldsPercent', title: 'Standard Fields %' },
+        { id: 'autocompleteFieldsPercent', title: 'Autocomplete Fields %' },
         { id: 'fieldsWithLabelsPercent', title: 'Fields With Labels %' },
         { id: 'semanticElements', title: 'Semantic Elements Count' },
         // RENDERED HTML (browser agents only)
@@ -122,6 +145,11 @@ export async function generateFrontendLLMReport(results, outputDir) {
         { id: 'explicitStateElements', title: 'Explicit State Elements' },
         { id: 'persistentErrors', title: 'Persistent Errors' },
         { id: 'validationStateElements', title: 'Validation State Elements' },
+        { id: 'agentVisibleElements', title: 'Agent Visible Elements' },
+        { id: 'visibleToAgents', title: 'Visible to Agents' },
+        { id: 'hiddenFromAgents', title: 'Hidden from Agents' },
+        { id: 'hasCaptcha', title: 'Has CAPTCHA' },
+        { id: 'captchaType', title: 'CAPTCHA Type' },
         // ISSUES
         { id: 'criticalIssues', title: 'Essential Issues' },
         { id: 'recommendations', title: 'Key Recommendations' },
@@ -134,9 +162,14 @@ export async function generateFrontendLLMReport(results, outputDir) {
       const feedback = generateFeedback(metrics);
 
       const formMetrics = metrics.formFields?.metrics || {};
+      const autocompleteMetrics = metrics.formAutocomplete?.metrics || {};
       const standardFieldsPercent = formMetrics.totalInputs > 0
         ? Math.round((formMetrics.standardNamedFields / formMetrics.totalInputs) * 100)
         : 100; // No forms = 100%
+
+      const autocompleteFieldsPercent = autocompleteMetrics.totalFormFields > 0
+        ? Math.round(autocompleteMetrics.autocompleteRatio * 100)
+        : 100;
 
       const fieldsWithLabelsPercent = formMetrics.totalInputs > 0
         ? Math.round((formMetrics.fieldsWithLabels / formMetrics.totalInputs) * 100)
@@ -151,6 +184,8 @@ export async function generateFrontendLLMReport(results, outputDir) {
         metrics.semanticHTML?.metrics?.hasSection
       ].filter(Boolean).length;
 
+      const captchaMetrics = metrics.captchaProtection?.metrics || {};
+
       return {
         url: metrics.url,
         htmlSource: metrics.htmlSource || 'rendered',
@@ -158,6 +193,7 @@ export async function generateFrontendLLMReport(results, outputDir) {
         servedScore,
         formCount: formMetrics.formCount || 0,
         standardFieldsPercent,
+        autocompleteFieldsPercent,
         fieldsWithLabelsPercent,
         semanticElements: semanticCount,
         // Rendered metrics
@@ -165,6 +201,11 @@ export async function generateFrontendLLMReport(results, outputDir) {
         explicitStateElements: metrics.dataAttributes?.metrics?.totalDataAttributes || 0,
         persistentErrors: metrics.errorHandling?.metrics?.hasPersistentErrors ? 'Yes' : 'No',
         validationStateElements: metrics.dataAttributes?.metrics?.hasValidationState ? 'Yes' : 'No',
+        agentVisibleElements: metrics.dataAttributes?.metrics?.agentVisibleCount || 0,
+        visibleToAgents: metrics.dataAttributes?.metrics?.visibleToAgents || 0,
+        hiddenFromAgents: metrics.dataAttributes?.metrics?.hiddenFromAgents || 0,
+        hasCaptcha: captchaMetrics.hasCaptcha ? 'Yes' : 'No',
+        captchaType: captchaMetrics.captchaType || 'None',
         // Issues
         criticalIssues: feedback.essentialIssues.length,
         recommendations: feedback.recommendations.slice(0, 2).join('; ') || 'None',
@@ -206,6 +247,14 @@ export async function generateBackendLLMReport(results, outputDir) {
         { id: 'hasXFrameOptions', title: 'X-Frame-Options' },
         { id: 'hasSchemaOrg', title: 'Schema.org Structured Data' },
         { id: 'jsonLdCount', title: 'JSON-LD Scripts' },
+        { id: 'hasLLMsTxt', title: 'Has llms.txt' },
+        { id: 'llmsTxtUrl', title: 'llms.txt URL' },
+        { id: 'hasAiTxt', title: 'Has ai.txt' },
+        { id: 'robotRestrictions', title: 'Robot Restrictions' },
+        { id: 'robotsMetaContent', title: 'Robots Meta Content' },
+        { id: 'hasApiDocs', title: 'Has API Docs' },
+        { id: 'apiDiscoverabilityScore', title: 'API Discoverability Score' },
+        { id: 'hasOpenApiSpec', title: 'Has OpenAPI Spec' },
         { id: 'essentialIssues', title: 'Essential Issues' },
         { id: 'recommendations', title: 'Key Recommendations' },
       ],
@@ -236,6 +285,23 @@ export async function generateBackendLLMReport(results, outputDir) {
       // Structured data (30 points) - ESSENTIAL for agents
       if (metrics.structuredData?.metrics?.hasSchemaOrg) backendScore += 30;
 
+      // llms.txt presence (10 points) - ESSENTIAL for LLM agents
+      const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference ||
+                         metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
+      if (hasLLMsTxt) backendScore += 10;
+
+      // ai.txt presence (5 points bonus)
+      const hasAiTxt = metrics.robotsTxt?.metrics?.hasAiTxtReference || false;
+      if (hasAiTxt) backendScore += 5;
+
+      // robots restrictions (penalty)
+      const hasRestrictions = metrics.robotsTxt?.metrics?.hasAgentRestrictions || false;
+      if (hasRestrictions) backendScore -= 5;
+
+      // API discoverability (bonus points)
+      const apiScore = metrics.apiEndpoints?.metrics?.apiDiscoverabilityScore || 0;
+      backendScore += Math.min(apiScore, 10); // Cap at 10 bonus points
+
       const essentialIssues = [];
       const recommendations = [];
 
@@ -247,13 +313,24 @@ export async function generateBackendLLMReport(results, outputDir) {
         essentialIssues.push('No Schema.org structured data');
         recommendations.push('Add JSON-LD with Schema.org vocabulary');
       }
+      if (!hasLLMsTxt) {
+        essentialIssues.push('No llms.txt file detected');
+        recommendations.push('Add llms.txt file for LLM agent discovery');
+      }
+      if (hasRestrictions) {
+        essentialIssues.push('Robot restrictions may block agents');
+        recommendations.push('Review robots meta tags for agent access');
+      }
       if (statusCode >= 400) {
         essentialIssues.push(`HTTP ${statusCode} error`);
       }
 
+      const robotsMetrics = metrics.robotsTxt?.metrics || {};
+      const apiMetrics = metrics.apiEndpoints?.metrics || {};
+
       return {
         url: metrics.url,
-        backendScore: Math.round(backendScore),
+        backendScore: Math.max(0, Math.min(100, Math.round(backendScore))),
         statusCode,
         statusCodeCorrect: (statusCode >= 200 && statusCode < 300) ? 'Yes' : 'No',
         hasHTTPS: securityMetrics.https ? 'Yes' : 'No',
@@ -262,6 +339,14 @@ export async function generateBackendLLMReport(results, outputDir) {
         hasXFrameOptions: securityMetrics.hasXFrameOptions ? 'Yes' : 'No',
         hasSchemaOrg: metrics.structuredData?.metrics?.hasSchemaOrg ? 'Yes' : 'No',
         jsonLdCount: metrics.structuredData?.metrics?.jsonLdCount || 0,
+        hasLLMsTxt: hasLLMsTxt ? 'Yes' : 'No',
+        llmsTxtUrl: metrics.llmsTxt?.metrics?.llmsTxtUrl || 'N/A',
+        hasAiTxt: hasAiTxt ? 'Yes' : 'No',
+        robotRestrictions: hasRestrictions ? 'Yes' : 'No',
+        robotsMetaContent: robotsMetrics.robotsMetaContent || 'N/A',
+        hasApiDocs: apiMetrics.hasApiDocs ? 'Yes' : 'No',
+        apiDiscoverabilityScore: apiMetrics.apiDiscoverabilityScore || 0,
+        hasOpenApiSpec: apiMetrics.hasOpenApiSpec ? 'Yes' : 'No',
         essentialIssues: essentialIssues.join('; ') || 'None',
         recommendations: recommendations.join('; ') || 'Good practices followed',
       };

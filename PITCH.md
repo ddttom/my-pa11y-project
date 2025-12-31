@@ -4,13 +4,15 @@ The measurement tool for AI agent-compatible web design
 
 **Prepared by:** Tom Cranstoun
 **Contact:** <tom@allabout.network>
-**Date:** January 2026
 
 ---
 
 ## Executive Summary
 
-Businesses need to know if their websites work for AI agents, but there's no comprehensive tool that measures what matters. Web Audit Suite fills this gap by providing actionable reports across SEO, accessibility, performance, security, and critically - AI agent compatibility.
+Businesses need to know if their websites work for AI agents, but there's no
+comprehensive tool that measures what matters. Web Audit Suite fills this gap
+by providing actionable reports across SEO, accessibility, performance,
+security, and critically - AI agent compatibility.
 
 **The Problem:**
 
@@ -32,16 +34,16 @@ Businesses need to know if their websites work for AI agents, but there's no com
 **Market Opportunity:**
 
 - Every business with a website needs to measure AI agent compatibility
-- £6.3 trillion e-commerce market + £200B+ SaaS market
-- Complements £375k+ "The Invisible Users" book revenue stream
+- Multi-trillion dollar e-commerce market + substantial SaaS market
+- Complements "The Invisible Users" book revenue stream
 - Multiple deployment models: SaaS, enterprise, agency licensing
-- 12-18 month window before competitors catch up
+- Limited window before market matures
 
 **Development Investment:**
 
-- **Cost to build from scratch:** £120,000-180,000
 - **Current state:** Production-ready, tested, documented
 - **Included:** Complete source code, methodology, documentation
+- **Value:** Significant development investment already completed
 
 **What We Need:**
 
@@ -64,6 +66,7 @@ Modern web analytics are designed for human visitors:
 - **Performance tools** - Measure load times, not state visibility
 
 **None of these tell you if an AI agent can successfully:**
+
 - Complete your checkout form
 - Understand your product pricing
 - Navigate your multi-step wizard
@@ -74,43 +77,43 @@ Modern web analytics are designed for human visitors:
 
 **Real-world impact:**
 
-An e-commerce site with:
-- 1M monthly visitors
-- 10% AI agent traffic (conservative 2026 projection)
-- 3% conversion rate for human traffic
-- Same potential conversion rate for agent traffic
+When AI agents can't complete transactions on your site:
 
-**Lost revenue from agent failures:**
-- 100,000 agent visits per month
-- 3,000 potential conversions
-- Average order value £75
-- **£225,000/month in invisible lost revenue**
-- **£2.7M/year that never shows in your analytics**
+- Growing percentage of traffic is AI agent-driven
+- Agents fail silently without triggering analytics
+- Potential conversions are lost invisibly
+- Revenue impact compounds over time
+
+**The problem:** Standard analytics can't distinguish between human abandonment
+and agent technical failures, masking significant revenue opportunities.
 
 ### The Manual Audit Problem
 
 Current alternatives to automated measurement:
 
 **Consultant-Led Audit:**
-- Cost: £15,000-30,000 per engagement
-- Time: 4-6 weeks
-- Coverage: 20-50 pages manually reviewed
-- Updates: Require new engagement
-- Consistency: Varies by consultant expertise
+
+- Significant per-engagement costs
+- Multi-week timelines
+- Limited page coverage
+- Updates require new engagement
+- Consistency varies by consultant expertise
 
 **In-House Review:**
-- Cost: 2-3 weeks developer time (£8,000-12,000)
-- Coverage: Limited by team knowledge
-- Consistency: No standardized methodology
-- Scalability: Doesn't scale across large sites
+
+- Substantial developer time investment
+- Coverage limited by team knowledge
+- No standardized methodology
+- Doesn't scale across large sites
 - Knowledge gap: Team needs to learn agent patterns
 
 **Web Audit Suite provides:**
-- Cost: Pennies per page at scale
-- Time: Minutes for comprehensive analysis
-- Coverage: Unlimited pages
-- Updates: Run anytime
-- Consistency: Standardized scoring methodology
+
+- Highly scalable cost model
+- Rapid comprehensive analysis
+- Unlimited page coverage
+- Run audits on demand
+- Consistent, standardized methodology
 
 ---
 
@@ -152,7 +155,7 @@ Current alternatives to automated measurement:
 
 **AI Agent Compatibility (Differentiator):**
 
-6. **LLM Suitability - Three Reports**
+1. **LLM Suitability - Three Reports**
 
    **General Report:**
    - Served HTML score (works for ALL agents)
@@ -176,12 +179,14 @@ Current alternatives to automated measurement:
 ### The Critical Distinction: Two HTML States
 
 **Served HTML (Static):**
+
 - What CLI agents like ChatGPT see
 - What server-based agents parse
 - What curl/wget retrieve
 - **Essential for ALL agent types**
 
 **Rendered HTML (Dynamic):**
+
 - What browser-based agents see after JavaScript
 - What Claude Desktop in-browser sees
 - What browser extensions parse
@@ -189,23 +194,28 @@ Current alternatives to automated measurement:
 
 **Why This Matters:**
 
-Most tools only check rendered HTML. They miss that 70% of AI agents never execute JavaScript. Web Audit Suite measures both states and weights them correctly.
+Most tools only check rendered HTML. They miss that 70% of AI agents never
+execute JavaScript. Web Audit Suite measures both states and weights them
+correctly.
 
 ### Scoring Methodology
 
 Based on "The Invisible Users" methodology by Tom Cranstoun:
 
 **Essential_Served (Heavily Weighted):**
+
 - Semantic HTML: `<main>`, `<nav>`, `<header>`, `<article>` (30 points)
 - Form field naming: email, firstName, lastName vs custom (40 points)
 - Schema.org structured data (20 points)
 - Proper table markup with scope/caption (10 points)
 
 **Essential_Rendered (Moderately Weighted):**
+
 - Explicit state attributes: data-state, data-validation-state (+15 points)
 - Persistent error messages: role="alert" + aria-live (+15 points)
 
 **Nice_To_Have (Lightly Weighted):**
+
 - Table data attributes: data-price, data-currency
 - Button disabled explanations
 - Auth state visibility
@@ -235,9 +245,9 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ## Development Investment
 
-### Cost to Build From Scratch
+### Building From Scratch
 
-**Phase 1: Foundation (8-12 weeks)** - £40,000-60,000
+#### Phase 1: Foundation
 
 - Sitemap parsing and URL extraction
 - Puppeteer integration for rendering
@@ -246,7 +256,7 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Error handling and logging
 - CLI interface
 
-**Phase 2: Analysis Modules (8-10 weeks)** - £35,000-50,000
+#### Phase 2: Analysis Modules
 
 - SEO metrics collection
 - Pa11y integration for accessibility
@@ -255,7 +265,7 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Content quality scoring
 - Security header checking
 
-**Phase 3: LLM Suitability (6-8 weeks)** - £30,000-45,000
+#### Phase 3: LLM Suitability
 
 - Research and methodology development
 - Served vs rendered HTML analysis
@@ -265,7 +275,7 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Scoring algorithm development
 - Three specialized report generators
 
-**Phase 4: Polish & Production (4-6 weeks)** - £15,000-25,000
+#### Phase 4: Polish & Production
 
 - Comprehensive testing
 - Documentation (user manual, technical docs)
@@ -273,19 +283,19 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Performance optimization
 - Large-site scalability
 
-**Total Development Cost: £120,000-180,000**
-
-**Timeline: 26-36 weeks** (6-9 months)
+**Note:** Complete development requires substantial time and resource investment
 
 ### What's Included in Current State
 
 ✅ **Complete Source Code**
+
 - 15,000+ lines of production JavaScript
 - ES Modules architecture
 - Node.js 20+ compatibility
 - Full error handling and retry logic
 
 ✅ **Comprehensive Analysis**
+
 - 11 detailed report generators
 - 3 LLM suitability reports
 - Puppeteer-based rendering
@@ -293,6 +303,7 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Cloudflare bypass capability
 
 ✅ **Production-Ready Features**
+
 - Caching system for performance
 - Resume capability from results.json
 - Language variant filtering
@@ -300,6 +311,7 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Comprehensive logging
 
 ✅ **Complete Documentation**
+
 - CLAUDE.md for AI assistant guidance
 - README.md with feature overview
 - User manual (25+ pages)
@@ -307,11 +319,12 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Architecture documentation
 
 ✅ **Testing & Validation**
+
 - ESLint configuration
 - Working on real production sites
 - Handles 1000+ page sites
 
-**Effective Savings: £120,000-180,000**
+**Value Proposition:** Production-ready tool eliminates need for ground-up development
 
 ---
 
@@ -319,7 +332,7 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ### Deployment Options
 
-**1. SaaS Platform (Primary Revenue)**
+#### 1. SaaS Platform (Primary Revenue)
 
 - Monthly subscription tiers
 - API access for integrations
@@ -327,77 +340,63 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Historical comparison tracking
 - Team collaboration features
 
-**Pricing Model:**
-- Starter: £99/month (100 pages, 10 audits)
-- Professional: £299/month (1000 pages, unlimited audits)
-- Enterprise: £999/month (unlimited pages, API access)
+**Target Market:**
 
-**Conservative Year 1 Projections:**
-- 200 Starter customers: £237,600
-- 50 Professional customers: £179,400
-- 10 Enterprise customers: £119,880
-- **Total SaaS ARR: £536,880**
+- Small to medium businesses (starter tier)
+- Growing companies (professional tier)
+- Enterprise organizations (enterprise tier with unlimited pages and API access)
 
-**2. Enterprise Licensing**
+#### 2. Enterprise Licensing
 
 - On-premise deployment
 - Custom integration
 - White-label capability
 - Volume pricing
+- Dedicated support
 
-**Pricing:**
-- £50,000-100,000 per enterprise deployment
-- Annual support: £15,000-30,000
-
-**3. Agency Partnerships**
+#### 3. Agency Partnerships
 
 - Reseller licensing
 - White-label reports
 - API access for automation
 - Bulk pricing
+- Revenue share opportunities
 
-**Pricing:**
-- £5,000-15,000 per agency per year
-- Revenue share on client audits
-
-**4. Consulting Services**
+#### 4. Consulting Services
 
 - Custom report development
 - Integration support
 - Training and onboarding
 - Audit interpretation
-
-**Pricing:**
-- £1,500-3,000 per day consulting
-- £10,000-25,000 custom development projects
+- Implementation guidance
 
 ### Revenue Synergy with "The Invisible Users"
 
 **Combined Offering Creates Ecosystem:**
 
-**Book (Methodology) + Tool (Measurement) = Complete Solution**
+Book (Methodology) + Tool (Measurement) = Complete Solution
 
 **Customer Journey:**
 
-1. **Awareness:** Read "The Invisible Users" (£25-500)
-2. **Assessment:** Run Web Audit Suite analysis (Free trial)
-3. **Subscription:** Monthly SaaS plan (£99-999/month)
+1. **Awareness:** Read "The Invisible Users"
+2. **Assessment:** Run Web Audit Suite analysis (trial period)
+3. **Subscription:** Choose appropriate SaaS plan
 4. **Implementation:** Fix issues using book guidance
 5. **Validation:** Re-run audits to track improvement
-6. **Consulting:** Hire for complex implementations (£1,500-3,000/day)
+6. **Consulting:** Engage for complex implementations
 
 **Cross-Selling Opportunities:**
 
-- Book readers get 20% off SaaS subscription
-- SaaS subscribers get free digital book
-- Enterprise customers get team licenses for book
-- Consulting engagements include book + tool training
+- Book readers receive SaaS subscription discount
+- SaaS subscribers get complementary digital book
+- Enterprise customers receive team book licenses
+- Consulting engagements include comprehensive book + tool training
 
 **Market Positioning:**
 
-- **Book alone:** Theory and methodology (£375k Year 1)
-- **Tool alone:** Measurement without context (£537k Year 1)
-- **Book + Tool:** Complete solution (£912k+ Year 1)
+- **Book alone:** Theory and methodology
+- **Tool alone:** Measurement without context
+- **Book + Tool:** Complete, validated solution
 
 **Competitive Moat:**
 
@@ -412,29 +411,33 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ### Total Addressable Market
 
-**Primary Market: E-commerce**
-- Global e-commerce: £6.3 trillion annually
-- 5-15% projected AI agent traffic by 2026-2027
-- £315B-945B in agent-influenced transactions
-- Every site needs to measure and optimize
+#### Primary Market: E-commerce
 
-**Secondary Market: SaaS Platforms**
-- £200+ billion market
+- Multi-trillion dollar global market
+- Growing AI agent traffic percentage
+- Substantial agent-influenced transactions
+- Universal need to measure and optimize
+
+#### Secondary Market: SaaS Platforms
+
+- Large established market
 - Complex forms and workflows
 - High value of agent compatibility
-- Recurring revenue models fit SaaS-to-SaaS sales
+- Natural fit for SaaS-to-SaaS sales
 
-**Tertiary Market: Content Publishers**
-- £50+ billion digital advertising
+#### Tertiary Market: Content Publishers
+
+- Substantial digital advertising market
 - Content discovery via agents
 - Schema.org structured data critical
 - Need to optimize for agent recommendations
 
-**Professional Services Market: Digital Agencies**
-- £30+ billion market
+#### Professional Services Market: Digital Agencies
+
+- Large professional services market
 - Need tools to deliver AI optimization services
 - White-label opportunities
-- Recurring audit revenue for agencies
+- Recurring audit revenue potential
 
 ### Competitive Landscape
 
@@ -476,20 +479,19 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ### Market Timing
 
-**Critical Window: 12-18 Months**
+#### Limited Opportunity Window
 
-- **Now (Q1 2026):** Early adopters measuring and optimizing
-- **Q2-Q4 2026:** Agent traffic grows 5-15%, competition emerges
-- **2027:** Established market, competitors launch tools
-- **2028+:** Standard features, competitive advantage diminishes
+- **Current:** Early adopters measuring and optimizing
+- **Near-term:** Agent traffic growing, competition emerging
+- **Mid-term:** Market establishment, competitors launching tools
+- **Long-term:** Standard features, competitive advantage diminishes
 
 **Historical Parallel:** Google Analytics (2005-2008)
 
-- Early adopters got free analytics data competitors paid for
-- By 2008, web analytics became table stakes
-- First movers established analytics expertise
-- Opportunity window: ~3 years
-- **We're at the 2005 equivalent now**
+- Early adopters gained significant competitive advantages
+- Web analytics transitioned from novelty to table stakes
+- First movers established lasting expertise and market position
+- Similar opportunity window exists now for AI agent optimization
 
 ---
 
@@ -497,13 +499,15 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ### Three-Phase Processing Pipeline
 
-**Phase 1: URL Collection**
+#### Phase 1: URL Collection
+
 - Sitemap XML parsing
 - HTML link extraction
 - URL validation and normalization
 - Language variant filtering
 
-**Phase 2: Data Collection (Single Source of Truth)**
+#### Phase 2: Data Collection (Single Source of Truth)
+
 - Puppeteer-based page rendering
 - Pa11y accessibility testing
 - Performance metrics gathering
@@ -511,13 +515,15 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - LLM metrics collection
 - All data stored in `results.json`
 
-**Phase 3: Report Generation**
+#### Phase 3: Report Generation
+
 - Reads ONLY from results.json
 - Never fetches new data
 - Generates 11 CSV/Markdown reports
 - Consistent, repeatable output
 
-**Design Principle: Separation of Concerns**
+#### Design Principle: Separation of Concerns
+
 - Data collection and report generation are independent
 - Can regenerate reports without re-crawling
 - Can add new reports without changing collection
@@ -526,24 +532,28 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 ### Key Technical Features
 
 **Network Resilience:**
+
 - Automatic retry with exponential backoff
 - Cloudflare challenge bypass (puppeteer-extra-plugin-stealth)
 - DNS failure handling
 - Graceful degradation
 
 **Performance Optimization:**
+
 - MD5-based caching system
 - Puppeteer browser reuse
 - Incremental processing
 - Resume from interruption
 
 **Scalability:**
+
 - Handles sites with 1000+ pages
 - Configurable concurrency
 - Memory-efficient processing
 - Batch mode support
 
 **Extensibility:**
+
 - Plugin architecture for new metrics
 - CSV-Writer for report generation
 - Cheerio for HTML parsing
@@ -563,36 +573,41 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ## Implementation Roadmap
 
-### Phase 1: SaaS MVP (3 months) - £75,000
+### Phase 1: SaaS MVP
 
 **Infrastructure:**
-- AWS/GCP deployment architecture
-- PostgreSQL database for results storage
-- Redis for job queue and caching
-- S3 for report file storage
+
+- Cloud deployment architecture (AWS/GCP/Azure)
+- Database for results storage
+- Job queue and caching layer
+- Report file storage
 
 **Web Application:**
-- User authentication (Auth0/Cognito)
+
+- User authentication
 - Dashboard for audit history
 - Visual score presentation
 - Report download interface
 - Scheduling system
 
 **API Layer:**
+
 - REST API for audit submission
 - Webhook notifications
 - Rate limiting and quotas
 - API key management
 
 **Features:**
-- 3 subscription tiers
-- Stripe payment integration
+
+- Multiple subscription tiers
+- Payment integration
 - Email notifications
 - Basic analytics
 
-### Phase 2: Enterprise Features (2 months) - £40,000
+### Phase 2: Enterprise Features
 
 **Advanced Capabilities:**
+
 - Historical comparison tracking
 - Custom reporting templates
 - Team collaboration
@@ -600,44 +615,50 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 - Audit sharing
 
 **Enterprise Admin:**
+
 - User role management
 - Usage analytics
 - Audit logs
 - Export functionality
 
-### Phase 3: Agency Platform (2 months) - £35,000
+### Phase 3: Agency Platform
 
 **White-Label:**
+
 - Custom branding
 - Branded reports
 - Domain mapping
 
 **Reseller Features:**
+
 - Client management
 - Sub-account provisioning
 - Bulk pricing
 - Revenue reporting
 
 **API Extensions:**
+
 - Webhook integrations
 - Third-party tool connectors
 - CI/CD pipeline integration
 
-### Phase 4: Advanced Analytics (2 months) - £30,000
+### Phase 4: Advanced Analytics
 
 **Competitive Intelligence:**
+
 - Industry benchmarking
 - Competitor comparison
 - Trend analysis
 - Best practice recommendations
 
 **Predictive Features:**
+
 - Score improvement forecasting
 - Issue prioritization AI
 - Automated fix suggestions
 - ROI calculation
 
-**Total Implementation: £180,000 over 11 months**
+**Implementation:** Phased rollout approach maximizes early value delivery
 
 ---
 
@@ -645,99 +666,76 @@ Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
 ### For E-commerce Businesses
 
-**Quantifiable Benefits:**
+**Key Value Drivers:**
 
-Example: £10M annual revenue e-commerce site
-- 1.2M monthly visitors
-- 120,000 AI agent visitors (10%)
-- 3% human conversion rate
-- Current agent conversion: 0% (broken)
-- Potential agent conversion: 2.5% (after fixes)
+- Growing AI agent traffic represents untapped revenue
+- Agents fail silently on incompatible sites
+- Small improvements in agent conversion yield significant returns
+- Implementation typically requires modest development effort
 
-**Revenue Impact:**
-- 3,000 additional agent conversions/month
-- Average order value: £83
-- Additional monthly revenue: £249,000
-- **Annual impact: £2.99M**
+**Direct Benefits:**
 
-**Tool Cost:**
-- Professional plan: £299/month
-- Implementation time: 2-4 weeks
-- **ROI: 83,400%** in year one
-
-**Additional Benefits:**
+- Additional conversions from AI agent traffic
 - Improved SEO from better structured data
-- Better accessibility compliance (legal risk reduction)
-- Faster performance (improved human conversion too)
+- Enhanced accessibility compliance (legal risk reduction)
+- Better performance metrics (improved human conversion)
 - Security improvements
 - Content quality optimization
 
 ### For SaaS Platforms
 
-**Quantifiable Benefits:**
+**Key Value Drivers:**
 
-Example: B2B SaaS with complex onboarding
-- 50,000 trial signups/year
-- 10% conversion to paid (5,000 customers)
-- Average customer value: £5,000/year
-- 15% of trials are agents (7,500)
-- Current agent conversion: 0% (forms break)
-- Potential agent conversion: 8% (after fixes)
+- Complex onboarding forms frequently block AI agents
+- Agent-driven signups represent significant conversion opportunity
+- Early optimization provides competitive advantage
 
-**Revenue Impact:**
-- 600 additional paid customers from agents
-- Annual contract value: £5,000
-- **Additional annual revenue: £3M**
+**Direct Benefits:**
 
-**Tool Cost:**
-- Enterprise plan: £999/month (£11,988/year)
-- **ROI: 25,000%** in year one
-
-**Strategic Benefits:**
+- Additional paid customers from agent-driven trials
 - Capture competitor's agent-driven traffic
 - First-mover advantage in AI agent channel
 - Improved lead quality from agent referrals
 - Reduced support costs (clearer error messages)
+
+**Strategic Impact:**
+
+Establishing AI agent compatibility early positions platforms as leaders in
+emerging channel
 
 ### For Digital Agencies
 
 **New Revenue Streams:**
 
 **AI Optimization Service:**
-- New service offering: £5,000-15,000 per client
+
+- New service offering per client engagement
 - Audit + implementation + validation
-- Recurring monitoring: £500-1,500/month
-- 20 clients: £200k-400k annual revenue
+- Recurring monitoring subscriptions
+- Substantial annual revenue potential
 
 **Competitive Advantage:**
+
 - Offer services competitors can't
 - Data-driven recommendations
 - Before/after proof of improvement
 - Differentiate from template shops
-
-**Tool Cost:**
-- Agency license: £10,000/year
-- **ROI: 2,000-4,000%** from new service revenue
+- Establish thought leadership
 
 ### For Content Publishers
 
-**Quantifiable Benefits:**
+**Key Value Drivers:**
 
-Example: Online publisher with 5M monthly visitors
-- 500,000 AI agent visits/month (10%)
-- Agents recommend content to users
-- Current agent recommendation rate: 20% (poor structured data)
-- Potential agent recommendation rate: 60% (after fixes)
-- Value per recommendation: £0.50 (ad revenue)
+- AI agents increasingly drive content discovery
+- Proper structured data improves agent recommendations
+- Schema.org implementation critical for visibility
 
-**Revenue Impact:**
-- Additional 200,000 recommendations/month
-- Value: £100,000/month
-- **Annual impact: £1.2M**
+**Direct Benefits:**
 
-**Tool Cost:**
-- Professional plan: £299/month
-- **ROI: 33,444%** in year one
+- Increased content recommendations by AI agents
+- Better structured data improves discoverability
+- Enhanced ad revenue from agent-referred traffic
+- Improved SEO rankings
 
 ---
 
@@ -746,35 +744,58 @@ Example: Online publisher with 5M monthly visitors
 ### Technical Risks
 
 **Risk:** Tool doesn't scale to enterprise sites (10,000+ pages)
-**Mitigation:** Already tested on 1,000+ page sites. Phase 1 includes scaling architecture.
+
+**Mitigation:** Already tested on 1,000+ page sites. Phase 1 includes scaling
+architecture.
 
 **Risk:** Scoring methodology becomes outdated as agent behavior changes
-**Mitigation:** Methodology based on fundamental web standards (HTTP, HTML, Schema.org) that won't change. Easy to update scoring weights.
+
+**Mitigation:** Methodology based on fundamental web standards (HTTP, HTML,
+Schema.org) that won't change. Easy to update scoring weights.
 
 **Risk:** Competitors copy scoring methodology
-**Mitigation:** Methodology is published in book (competitive advantage). First-mover advantage in implementation. Continuous improvement based on market feedback.
+
+**Mitigation:** Methodology is published in book (competitive advantage).
+First-mover advantage in implementation. Continuous improvement based on market
+feedback.
 
 ### Market Risks
 
 **Risk:** AI agents don't become significant traffic source
-**Mitigation:** Even 2% agent traffic justifies optimization for high-value sites. Tool provides value through traditional SEO/accessibility/performance analysis regardless.
+
+**Mitigation:** Even 2% agent traffic justifies optimization for high-value
+sites. Tool provides value through traditional SEO/accessibility/performance
+analysis regardless.
 
 **Risk:** Large platforms (Google, Microsoft) release free tools
-**Mitigation:** We can pivot to enterprise/agency market with white-label. Our tool is more comprehensive (11 reports). We have implementation methodology from book.
+
+**Mitigation:** We can pivot to enterprise/agency market with white-label. Our
+tool is more comprehensive (11 reports). We have implementation methodology
+from book.
 
 **Risk:** Market adopts competing standard for AI agent compatibility
-**Mitigation:** Our methodology based on established standards (Schema.org, HTML5, ARIA). Easy to adapt to emerging standards. Early mover shapes standards.
+
+**Mitigation:** Our methodology based on established standards (Schema.org,
+HTML5, ARIA). Easy to adapt to emerging standards. Early mover shapes
+standards.
 
 ### Business Risks
 
 **Risk:** Can't convert free trials to paid subscriptions
-**Mitigation:** Proven methodology from book establishes authority. Clear ROI calculations. Progressive pricing captures range of customers.
+
+**Mitigation:** Proven methodology from book establishes authority. Clear ROI
+calculations. Progressive pricing captures range of customers.
 
 **Risk:** Customer support costs exceed revenue
-**Mitigation:** Self-service documentation (25-page manual). Community forum. Tiered support by plan level. Tool is automated (minimal support needed).
+
+**Mitigation:** Self-service documentation (25-page manual). Community forum.
+Tiered support by plan level. Tool is automated (minimal support needed).
 
 **Risk:** High churn after initial audit
-**Mitigation:** Recurring audits needed to track improvement. Historical comparison creates lock-in. Integration with CI/CD for agencies. Continuous site monitoring.
+
+**Mitigation:** Recurring audits needed to track improvement. Historical
+comparison creates lock-in. Integration with CI/CD for agencies. Continuous
+site monitoring.
 
 ---
 
@@ -783,45 +804,52 @@ Example: Online publisher with 5M monthly visitors
 ### What We Bring
 
 **Technology Assets:**
-- Production-ready tool (£120k-180k development value)
+
+- Production-ready tool with substantial development investment
 - Private repository with complete source code
 - Comprehensive documentation
 - Proven methodology from published book
 - 11 specialized report generators
 
 **Market Position:**
+
 - First comprehensive AI agent compatibility tool
 - Author of "The Invisible Users" (thought leadership)
-- 12-18 month first-mover advantage
+- Significant first-mover advantage
 - Clear differentiation from competitors
 
 **Revenue Potential:**
-- £537k SaaS ARR (conservative Year 1)
-- £375k book revenue (proven)
-- Combined £912k+ in Year 1
+
+- Strong SaaS revenue potential
+- Established book revenue stream
+- Combined offering creates complete solution
 - Multiple expansion opportunities
 
 ### What We Need
 
 **Infrastructure & Scaling:**
-- SaaS platform development (£75k)
+
+- SaaS platform development
 - Cloud architecture expertise
 - Database and queue infrastructure
 - API development and management
 
 **Sales & Marketing:**
+
 - Enterprise sales team
 - Digital marketing for SaaS
 - Agency partnership development
 - Content marketing for thought leadership
 
 **Product Development:**
+
 - Product management
 - UX/UI design for SaaS dashboard
 - Frontend development
 - DevOps and reliability engineering
 
 **Business Operations:**
+
 - Customer success team
 - Technical support
 - Billing and subscription management
@@ -829,26 +857,30 @@ Example: Online publisher with 5M monthly visitors
 
 ### Partnership Models
 
-**1. Joint Venture (50/50)**
+#### 1. Joint Venture
+
 - Shared investment in infrastructure
 - Shared revenue from subscriptions
 - Combined resources accelerate time to market
 - Aligned incentives for long-term growth
 
-**2. Licensing Agreement**
+#### 2. Licensing Agreement
+
 - License tool to established SaaS provider
-- Royalty on subscriptions (20-30%)
+- Royalty on subscriptions
 - Partner handles infrastructure and sales
 - We provide methodology and consulting
 
-**3. Acquisition + Earn-out**
+#### 3. Acquisition + Earn-out
+
 - Upfront payment for tool and methodology
-- Performance-based earn-out over 3 years
+- Performance-based earn-out structure
 - Employment agreement for ongoing development
 - Integration into existing product suite
 
-**4. Strategic Investment**
-- Funding for SaaS development (£180k)
+#### 4. Strategic Investment
+
+- Funding for SaaS development
 - Revenue share or equity stake
 - Advisory board participation
 - Access to partner's distribution channels
@@ -900,8 +932,8 @@ Example: Online publisher with 5M monthly visitors
 
 **What We Have That Competitors Don't:**
 
-✅ Production-ready tool (£120k-180k development)
-✅ Published methodology (50,000 word book)
+✅ Production-ready tool with substantial development investment
+✅ Published methodology (comprehensive book)
 ✅ Comprehensive documentation
 ✅ Testing on real production sites
 ✅ Understanding of both human and agent requirements
@@ -911,68 +943,71 @@ Example: Online publisher with 5M monthly visitors
 
 **What Competitors Would Need:**
 
-❌ 6-9 months development time
-❌ £120k-180k investment
+❌ Significant development timeline
+❌ Substantial investment
 ❌ Deep expertise across web standards, AI, and accessibility
 ❌ Testing and validation frameworks
 ❌ Methodology documentation
 ❌ Thought leadership positioning
 ❌ Market trust and credibility
 
-**We're 6-9 months ahead. That's the opportunity window.**
+**We have a meaningful head start. That's the opportunity window.**
 
 ---
 
 ## Next Steps
 
-### Immediate Actions (30 Days)
+### Immediate Actions
 
 1. **Technical Validation**
-   - Run Web Audit Suite on 10 diverse production sites
+   - Run Web Audit Suite on diverse production sites
    - Document findings and recommendations
-   - Validate ROI calculations with real data
+   - Validate business case with real data
    - Gather testimonials from test sites
 
 2. **Business Model Validation**
-   - Survey 20-30 potential customers on pricing
+   - Survey potential customers on pricing
    - Validate feature priorities
    - Test messaging and positioning
    - Identify early adopter segments
 
 3. **Partnership Conversations**
-   - Identify 5-10 potential partners
+   - Identify potential partners
    - Schedule exploratory meetings
    - Prepare detailed technical demos
-   - Share financial projections
+   - Share business projections
 
-### 90-Day Milestones
+### Implementation Milestones
 
-**Month 1: Validation**
+#### Phase 1: Validation
+
 - Complete technical testing
 - Finalize SaaS MVP requirements
 - Select technology stack for platform
 - Begin partnership conversations
 
-**Month 2: Development Planning**
+#### Phase 2: Development Planning
+
 - Detailed technical architecture design
 - Resource planning and hiring needs
 - Partnership term sheet negotiations
 - Marketing strategy development
 
-**Month 3: MVP Launch**
+#### Phase 3: MVP Launch
+
 - Complete core SaaS platform
-- Onboard 10 beta customers
+- Onboard beta customers
 - Gather feedback and iterate
 - Finalize partnership agreements
 
-### One-Year Vision
+### Growth Vision
 
-**Q1 2026:** Platform launch, 50 customers, £25k MRR
-**Q2 2026:** Agency partnerships, 150 customers, £60k MRR
-**Q3 2026:** Enterprise features, 300 customers, £100k MRR
-**Q4 2026:** Scale operations, 500 customers, £150k MRR
+Progressive customer acquisition through multiple channels:
 
-**Year 1 Target: £537k ARR + £375k book revenue = £912k total**
+- **Early Stage:** Platform launch with initial customers
+- **Growth Stage:** Agency partnerships expand reach
+- **Scale Stage:** Enterprise features drive larger accounts
+- **Maturity:** Established operations with substantial customer base
 
 ---
 
@@ -992,15 +1027,18 @@ Tool: Web Audit Suite (Private repository - access upon partnership)
 
 **LLM General Suitability Report (Sample Row):**
 
-| URL | HTML Source | Served Score | Rendered Score | Has Main | Has Nav | Standard Fields % | Has Schema.org | Essential Issues | Top Recommendation |
-|-----|-------------|--------------|----------------|----------|---------|-------------------|----------------|-----------------|-------------------|
-| example.com/checkout | rendered | 65 | 73 | Yes | Yes | 75 | No | 2 | Add Schema.org for product data |
+| URL                  | HTML Source | Served Score | Rendered Score | Has Main | Has Nav | Standard Fields % | Has Schema.org | Essential Issues | Top Recommendation              |
+| -------------------- | ----------- | ------------ | -------------- | -------- | ------- | ----------------- | -------------- | ---------------- | ------------------------------- |
+| example.com/checkout | rendered    | 65           | 73             | Yes      | Yes     | 75                | No             | 2                | Add Schema.org for product data |
 
-**Interpretation:** 65/100 served score means works for most agents but missing Schema.org hurts discoverability. 73/100 rendered score means browser agents get slightly better experience. Top priority: Add Schema.org structured data.
+**Interpretation:** 65/100 served score means works for most agents but missing
+Schema.org hurts discoverability. 73/100 rendered score means browser agents
+get slightly better experience. Top priority: Add Schema.org structured data.
 
 ### Appendix B: Technical Requirements
 
 **Minimum Server Requirements (SaaS):**
+
 - 4 CPU cores
 - 8GB RAM
 - 100GB storage
@@ -1009,6 +1047,7 @@ Tool: Web Audit Suite (Private repository - access upon partnership)
 - Node.js 20+
 
 **Recommended for 1000 concurrent audits:**
+
 - 16 CPU cores
 - 32GB RAM
 - 500GB storage
@@ -1017,28 +1056,30 @@ Tool: Web Audit Suite (Private repository - access upon partnership)
 
 ### Appendix C: Competitive Feature Matrix
 
-| Feature | Web Audit Suite | SEO Tools | Accessibility | Performance |
-|---------|----------------|-----------|---------------|-------------|
-| **AI Agent Compatibility** | ✅ | ❌ | ❌ | ❌ |
-| **Served vs Rendered** | ✅ | ❌ | ❌ | ❌ |
-| **Form Field Analysis** | ✅ | ❌ | Partial | ❌ |
-| **Semantic HTML** | ✅ | Partial | ✅ | ❌ |
-| **Structured Data** | ✅ | ✅ | ❌ | ❌ |
-| **WCAG Compliance** | ✅ | ❌ | ✅ | ❌ |
-| **Performance Metrics** | ✅ | ❌ | ❌ | ✅ |
-| **Security Headers** | ✅ | ❌ | ❌ | ❌ |
-| **Comprehensive Reports** | 11 reports | 3-5 reports | 2-3 reports | 2-3 reports |
-| **Prioritization Framework** | ✅ | ❌ | ❌ | ❌ |
+| Feature                        | Web Audit Suite | SEO Tools   | Accessibility | Performance |
+| ------------------------------ | --------------- | ----------- | ------------- | ----------- |
+| **AI Agent Compatibility**     | ✅              | ❌          | ❌            | ❌          |
+| **Served vs Rendered**         | ✅              | ❌          | ❌            | ❌          |
+| **Form Field Analysis**        | ✅              | ❌          | Partial       | ❌          |
+| **Semantic HTML**              | ✅              | Partial     | ✅            | ❌          |
+| **Structured Data**            | ✅              | ✅          | ❌            | ❌          |
+| **WCAG Compliance**            | ✅              | ❌          | ✅            | ❌          |
+| **Performance Metrics**        | ✅              | ❌          | ❌            | ✅          |
+| **Security Headers**           | ✅              | ❌          | ❌            | ❌          |
+| **Comprehensive Reports**      | 11 reports      | 3-5 reports | 2-3 reports   | 2-3 reports |
+| **Prioritization Framework**   | ✅              | ❌          | ❌            | ❌          |
 
 ### Appendix D: Case Study - E-commerce Site
 
 **Before Web Audit Suite:**
+
 - Served HTML Score: 42/100 (Poor)
 - Rendered HTML Score: 38/100 (Poor)
 - Essential Issues: 8
 - Agent conversion rate: ~0%
 
 **Issues Identified:**
+
 1. No `<main>` element (agents can't find content)
 2. Form fields named "input1", "input2" (agents don't know purpose)
 3. No Schema.org product data (agents can't extract pricing)
@@ -1046,19 +1087,21 @@ Tool: Web Audit Suite (Private repository - access upon partnership)
 5. Disabled buttons with no explanation (agents don't know why)
 
 **After Implementation:**
+
 - Served HTML Score: 88/100 (Excellent)
 - Rendered HTML Score: 92/100 (Excellent)
 - Essential Issues: 0
-- Agent conversion rate: ~2.5%
+- Agent conversion rate: Substantially improved
 
-**ROI:**
-- Tool cost: £299/month
-- Implementation: 2 weeks developer time
-- Revenue impact: £249k/month from agent conversions
-- **ROI: 83,400%**
+**Impact:**
+
+- Modest tool cost and implementation effort
+- Significant revenue impact from improved agent conversions
+- Additional benefits from SEO and accessibility improvements
 
 ---
 
-**End of Pitch Document**
+## End of Pitch Document
 
-*This pitch pairs with "The Invisible Users" book offer to provide complete methodology + measurement solution for AI agent-compatible web design.*
+*This pitch pairs with "The Invisible Users" book offer to provide complete
+methodology + measurement solution for AI agent-compatible web design.*

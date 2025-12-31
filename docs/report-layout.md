@@ -304,6 +304,7 @@ https://example.com/page,82.5,90,85,80,75,88,70,95,85,100
 ### Component Score Calculations
 
 **Structural Clarity Score**:
+
 ```
 Score = (Semantic Elements / Total Elements × 40) +
         (Heading Hierarchy Quality × 30) +
@@ -311,6 +312,7 @@ Score = (Semantic Elements / Total Elements × 40) +
 ```
 
 **Content Organization Score**:
+
 ```
 Score = (Paragraph Count > 3 × 30) +
         (List Count > 0 × 20) +
@@ -319,6 +321,7 @@ Score = (Paragraph Count > 3 × 30) +
 ```
 
 **Metadata Quality Score**:
+
 ```
 Score = (Has Structured Data × 50) +
         (OpenGraph Tags Quality × 30) +
@@ -326,6 +329,7 @@ Score = (Has Structured Data × 50) +
 ```
 
 **Text Extractability Score**:
+
 ```
 Score = (Text to Markup Ratio × 60) +
         ((1 - Hidden Content Ratio) × 40)
@@ -521,6 +525,7 @@ https://example.com/page,https://example.com/about,About Us,internal,follow,200,
 ### Domain Classification
 
 Resources from ANY domain are included:
+
 - Same-domain resources (e.g., `https://example.com/style.css`)
 - External CDN resources (e.g., `https://cdn.example.com/jquery.js`)
 - Third-party resources (e.g., `https://fonts.googleapis.com/font.woff2`)
@@ -634,6 +639,7 @@ https://example.com/about/team/member-5,5,https://example.com/about/team
 Discovered URLs are preceded by XML comment: `<!-- Discovered during analysis -->`
 
 This allows:
+
 - Visual identification in XML editors
 - Programmatic filtering if needed
 - Clear distinction between original and discovered URLs
@@ -641,8 +647,8 @@ This allows:
 ### Usage
 
 1. Review the file to verify discovered URLs are legitimate
-2. Submit to Google Search Console: https://search.google.com/search-console
-3. Submit to Bing Webmaster Tools: https://www.bing.com/webmasters
+2. Submit to Google Search Console: <https://search.google.com/search-console>
+3. Submit to Bing Webmaster Tools: <https://www.bing.com/webmasters>
 4. Use as your new canonical sitemap for complete site coverage
 5. Replace old sitemap after validation
 
@@ -758,12 +764,14 @@ with open('seo_report.csv', 'r', encoding='utf-8') as f:
 ### Common Analysis Queries
 
 **Find slow pages with poor SEO:**
+
 ```
 Filter: Load Time > 3000ms AND Overall SEO Score < 70
 Reports: performance_analysis.csv + seo_scores.csv
 ```
 
 **Find images missing alt text on high-traffic pages:**
+
 ```
 Filter: Alt Text = "" AND Optimization Score < 50
 Reports: image_optimization.csv
@@ -771,6 +779,7 @@ Join: With seo_report.csv to get page context
 ```
 
 **Identify accessibility issues by severity:**
+
 ```
 Filter: Critical Issues > 0
 Reports: accessibility_report.csv
@@ -778,6 +787,7 @@ Sort: By Critical Issues DESC
 ```
 
 **Find most-used external resources:**
+
 ```
 Filter: Resource Type = "javascript" AND Domain ≠ Site Domain
 Reports: all_resources_report.csv
@@ -797,10 +807,12 @@ Sort: By Total Count DESC
 ### Version Compatibility
 
 Results cached with schema version 1.x.y are compatible with:
+
 - Same MAJOR.MINOR version (1.x.y ↔ 1.x.z)
 - **NOT compatible** with different MAJOR or MINOR versions
 
 When schema changes:
+
 - Tool automatically detects incompatibility
 - Forces fresh analysis to regenerate reports
 - Logged as warning with explanation
