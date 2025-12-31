@@ -161,12 +161,15 @@ Current alternatives to automated measurement:
    - Served HTML score (works for ALL agents)
    - Rendered HTML score (works for browser agents)
    - Essential vs nice-to-have issue prioritization
+   - llms.txt file detection and recommendations
+   - data-agent-visible attribute usage tracking
    - Actionable recommendations
 
    **Frontend Report:**
    - Form field naming standards compliance
    - Semantic HTML structure usage
    - Dynamic state visibility
+   - Agent visibility control (data-agent-visible)
    - Persistent error handling
    - Validation feedback patterns
 
@@ -174,6 +177,7 @@ Current alternatives to automated measurement:
    - HTTP status code appropriateness
    - Security header completeness
    - Schema.org structured data presence
+   - llms.txt file presence and URL
    - API discoverability
 
 ### The Critical Distinction: Two HTML States
@@ -207,11 +211,13 @@ Based on "The Invisible Users" methodology by Tom Cranstoun:
 - Semantic HTML: `<main>`, `<nav>`, `<header>`, `<article>` (30 points)
 - Form field naming: email, firstName, lastName vs custom (40 points)
 - Schema.org structured data (20 points)
+- llms.txt file presence for AI agent guidance (10 points)
 - Proper table markup with scope/caption (10 points)
 
 **Essential_Rendered (Moderately Weighted):**
 
 - Explicit state attributes: data-state, data-validation-state (+15 points)
+- Agent visibility control: data-agent-visible attribute (+10 points)
 - Persistent error messages: role="alert" + aria-live (+15 points)
 
 **Nice_To_Have (Lightly Weighted):**
@@ -240,6 +246,35 @@ Based on "The Invisible Users" methodology by Tom Cranstoun:
 12. **`llm_backend_suitability.csv`** - Backend patterns
 
 Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
+
+### Latest Features (December 2025)
+
+#### 1. llms.txt Detection
+
+The tool now detects and validates llms.txt files - a new standard for AI agent guidance similar to robots.txt. This feature:
+
+- Detects llms.txt references via `<link>` tags, `<a>` tags, and `<meta>` tags
+- Worth 10 points in served score (ESSENTIAL_SERVED category)
+- Critical for ALL agent types (CLI and browser-based)
+- Provides recommendations when missing
+- Learn more: <https://llmstxt.org/>
+
+#### 2. data-agent-visible Attribute
+
+Tracks explicit agent visibility control, allowing developers to:
+
+- Mark content as visible or hidden to AI agents
+- Track usage patterns across sites
+- Get recommendations for implementation
+- ESSENTIAL_RENDERED category (browser agents)
+- Helps developers control what agents see vs decorative elements
+
+#### 3. Markdown Linting Integration
+
+- Added comprehensive markdown linting configuration
+- Ensures documentation quality and consistency
+- Auto-fix capability for common issues
+- Line length limits and formatting standards
 
 ---
 

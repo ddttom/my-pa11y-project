@@ -15,6 +15,9 @@ The folder /docs contains prompts in .md format that are useful for extending th
 - **Security Analysis**: Security headers and HTTPS configuration
 - **Content Quality**: Structure and freshness analysis
 - **LLM Suitability**: AI agent compatibility analysis (served vs rendered HTML)
+  - llms.txt detection for AI agent guidance
+  - data-agent-visible attribute tracking
+  - Three specialized reports (general, frontend, backend)
 - **Automatic Cache Management**: .cache directory creation and management
 - **Robust Error Handling**: Network error recovery and retry mechanism
 - **URL Processing Control**: Limit number of URLs processed using count parameter

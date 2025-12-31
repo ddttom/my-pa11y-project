@@ -277,6 +277,7 @@ We don't just tell you what's wrong. We tell you **what to fix first**.
 - Semantic HTML structure
 - Form field naming standards
 - Schema.org structured data
+- llms.txt file for AI agent guidance
 - HTTP status codes
 - Security headers
 
@@ -287,6 +288,7 @@ We don't just tell you what's wrong. We tell you **what to fix first**.
 **Essential_Rendered (Fix Second):**
 
 - Explicit state attributes
+- Agent visibility control (data-agent-visible)
 - Persistent error messages
 - Dynamic validation feedback
 
