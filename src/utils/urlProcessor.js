@@ -4,7 +4,7 @@
 
 // urlProcessor.js
 
-import { getOrRenderData } from './caching.js';
+import { getOrRenderData, setCachedData } from './caching.js';
 import { processUrl } from './pageAnalyzer.js';
 import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js';
 import analyzePerformance from './performanceAnalyzer.js';
@@ -77,7 +77,7 @@ export class UrlProcessor {
 
         if (statusCode === 200) {
           global.auditcore.logger.info(`Successfully received 200 status for ${testUrl}`);
-          await this.processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod);
+          await this.processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod, data);
         } else {
           const invalidUrl = {
             url: testUrl,
@@ -111,9 +111,10 @@ export class UrlProcessor {
    * @param {string} lastmod - The last modification date of the URL.
    * @returns {Promise<void>}
    */
-  async processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod) {
+  async processSuccessfulResponse(testUrl, html, jsErrors, headers, pageData, lastmod, cachedData = null) {
     global.auditcore.logger.info(`Processing successful response for ${testUrl}`);
     try {
+      const cachedPa11y = cachedData ? cachedData.pa11y : null;
       const result = await processUrl(
         testUrl,
         html,
@@ -130,14 +131,21 @@ export class UrlProcessor {
           retryAttempts: this.options.maxRetries,
           retryDelay: this.options.retryDelay,
         },
+        cachedPa11y,
       );
 
       if (result.pa11ySuccess) {
         global.auditcore.logger.info(`Pa11y analysis successful for ${result.url}`);
       }
 
-      global.auditcore.logger.debug(`Analyzing performance for ${testUrl}`);
-      const performanceMetrics = await analyzePerformance(testUrl, global.auditcore.logger);
+      let performanceMetrics;
+      if (cachedData && cachedData.performanceMetrics && Object.keys(cachedData.performanceMetrics).length > 0) {
+        global.auditcore.logger.info(`Using cached performance metrics for ${testUrl}`);
+        performanceMetrics = cachedData.performanceMetrics;
+      } else {
+        global.auditcore.logger.debug(`Analyzing performance for ${testUrl}`);
+        performanceMetrics = await analyzePerformance(testUrl, global.auditcore.logger);
+      }
       this.results.performanceAnalysis.push({ url: testUrl, lastmod, ...performanceMetrics });
 
       global.auditcore.logger.debug(`Calculating SEO score for ${testUrl}`);
@@ -145,6 +153,18 @@ export class UrlProcessor {
         ...pageData, testUrl, jsErrors, performanceMetrics,
       });
       this.results.seoScores.push({ url: testUrl, lastmod, ...seoScore });
+
+      // Update cache with all results
+      if (cachedData) {
+        const newCacheData = {
+          ...cachedData,
+          pa11y: result.pa11y,
+          performanceMetrics,
+          seoScore,
+        };
+        await setCachedData(testUrl, newCacheData);
+        global.auditcore.logger.debug(`Updated cache with full analysis results for ${testUrl}`);
+      }
 
       global.auditcore.logger.info(`Successfully processed ${testUrl}`);
     } catch (error) {

@@ -57,6 +57,7 @@ export async function generateGeneralLLMReport(results, outputDir) {
       ],
     });
 
+    const globalLLMsTxtExists = results.llmMetrics.some((m) => m.url.endsWith('/llms.txt') || m.url.endsWith('/llms.txt/'));
     const records = results.llmMetrics.map((metrics) => {
       const servedScore = calculateServedScore(metrics);
       const renderedScore = calculateRenderedScore(metrics);
@@ -65,7 +66,8 @@ export async function generateGeneralLLMReport(results, outputDir) {
       const standardFieldRatio = metrics.formFields?.metrics?.standardNameRatio || 0;
       const autocompleteRatio = metrics.formAutocomplete?.metrics?.autocompleteRatio || 0;
       const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference
-                         || metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
+                         || metrics.llmsTxt?.metrics?.hasLLMsTxtMeta
+                         || (metrics.url.endsWith('/llms.txt') ? true : globalLLMsTxtExists);
       const hasAiTxt = metrics.robotsTxt?.metrics?.hasAiTxtReference || false;
       const hasAgentVisibility = metrics.dataAttributes?.metrics?.hasAgentVisibilityControl || false;
       const hasRestrictions = metrics.robotsTxt?.metrics?.hasAgentRestrictions || false;
@@ -258,6 +260,8 @@ export async function generateBackendLLMReport(results, outputDir) {
       ],
     });
 
+    const globalLLMsTxtExists = results.llmMetrics.some((m) => m.url.endsWith('/llms.txt') || m.url.endsWith('/llms.txt/'));
+
     const records = results.llmMetrics.map((metrics) => {
       // Get status code and security metrics
       const statusCode = results.responseCodeMetrics?.[metrics.url]?.code
@@ -285,7 +289,8 @@ export async function generateBackendLLMReport(results, outputDir) {
 
       // llms.txt presence (10 points) - ESSENTIAL for LLM agents
       const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference
-                         || metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
+                         || metrics.llmsTxt?.metrics?.hasLLMsTxtMeta
+                         || (metrics.url.endsWith('/llms.txt') ? true : globalLLMsTxtExists);
       if (hasLLMsTxt) backendScore += 10;
 
       // ai.txt presence (5 points bonus)

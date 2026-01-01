@@ -314,6 +314,7 @@ export function analyzeAccessibilityResults(results) {
  */
 export async function runPa11yTestBatch(urls, results, concurrency = 5) {
   global.auditcore.logger.info(`[START] Running enhanced Pa11y tests for ${urls.length} URLs with concurrency ${concurrency}`);
+  const pa11yOptions = global.auditcore.options.pa11y;
 
   // Process URLs in batches based on concurrency
   const batchPromises = [];

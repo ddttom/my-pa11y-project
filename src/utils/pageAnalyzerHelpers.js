@@ -143,6 +143,7 @@ function createAnalysisResult(testUrl, duration, contentAnalysis, pa11yResult, i
     pa11ySuccess: !!pa11yResult,
     internalLinksSuccess: Array.isArray(internalLinks),
     metricsSuccess: true, // You might want to add logic to determine this
+    pa11y: pa11yResult,
   };
 
   global.auditcore.logger.debug(`Created analysis result for ${testUrl}`);

@@ -27,7 +27,7 @@ import {
   updateLLMMetrics,
 } from './llmMetrics.js';
 
-async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config) {
+async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config, cachedPa11yResult = null) {
   if (!url) {
     global.auditcore.logger.error('Attempting to process undefined URL');
     return { error: 'Undefined URL' };
@@ -45,6 +45,7 @@ async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageDa
       headers,
       pageData,
       config,
+      cachedPa11yResult,
     });
 
     global.auditcore.logger.info(`Analysis completed for ${url}`);
@@ -104,6 +105,7 @@ async function analyzePageContent({
   headers,
   pageData,
   config = {},
+  cachedPa11yResult = null,
 }) {
   const startTime = process.hrtime();
   global.auditcore.logger.info(`[START] Analyzing content for ${testUrl}`);
@@ -133,7 +135,13 @@ async function analyzePageContent({
     global.auditcore.logger.debug(`Found ${images.length} images for ${validTestUrl}`);
     global.auditcore.logger.debug(`Images without alt text: ${pageData.imagesWithoutAlt}`);
 
-    const pa11yResult = await runPa11yAnalysis(validTestUrl, html, config);
+    let pa11yResult;
+    if (cachedPa11yResult) {
+      global.auditcore.logger.info(`Using cached Pa11y results for ${validTestUrl}`);
+      pa11yResult = cachedPa11yResult;
+    } else {
+      pa11yResult = await runPa11yAnalysis(validTestUrl, html, config);
+    }
     if (!results.pa11y) results.pa11y = [];
     results.pa11y.push(pa11yResult);
 
