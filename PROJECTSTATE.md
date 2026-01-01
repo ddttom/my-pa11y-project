@@ -135,6 +135,27 @@ Current snapshot of Web Audit Suite implementation status.
 - Deleted `src/config/constants.js`
 - Updated consumers to point to single source of truth
 
+**Refinements and Bug Fixes:**
+
+- **Base Domain Auto-Discovery** (NEW)
+  - Automatically adds base domain URL (e.g., `https://example.com/`) to processing queue
+  - Automatically adds llms.txt URL for AI agent compatibility checks
+  - Priority URLs inserted at beginning of queue using `unshift()` instead of `push()`
+  - Ensures homepage and llms.txt always analyzed even with strict count limits (e.g., `-c 10`)
+  - Works with both sitemap URLs and raw page URLs
+  - Files: [src/utils/sitemap.js](src/utils/sitemap.js:119-157)
+
+- **llms.txt Detection Fixes**
+  - Fixed executive summary to check correct nested property structure
+  - Fixed counting logic to only count pages with explicit references, not all pages when global llms.txt exists
+  - Files: [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js)
+
+- **Code Quality Improvements**
+  - Reduced logging verbosity by removing configuration JSON dumps from debug logs
+  - Removed temporary debug code for specific URL search feature (346 lines)
+  - Suppressed empty "No resources found" message when no external resources exist
+  - Updated markdown linting configuration to exclude results folder and CHANGELOG.md
+
 ### December 31, 2025
 
 **Markdown Linting:**
