@@ -180,8 +180,6 @@ export async function runTestsOnSitemap() {
         .join(', ');
 
       global.auditcore.logger.info(`\n=== All Resources Summary ===\nFound ${totalResources} unique resources (${totalReferences} total references)\nBreakdown: ${typeBreakdownStr}\nSee all_resources_report.csv for details.\n=====================================\n`);
-    } else {
-      global.auditcore.logger.info('\n=== All Resources Summary ===\nNo resources found.\n=====================================\n');
     }
 
     // Missing sitemap URLs summary
