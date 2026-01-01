@@ -92,6 +92,34 @@ This file contains all default settings including:
 
 Modify this file to change the baseline behavior of the application that applies when no CLI flags or environment variables are provided.
 
+Modify this file to change the baseline behavior of the application that applies when no CLI flags or environment variables are provided.
+
+### Environment Variables
+
+You can configure the application using a `.env` file or environment variables. This is prioritized over default settings but overridden by CLI flags.
+
+**Supported Variables:**
+
+- **Core**: `SITEMAP_URL`, `OUTPUT_DIR`, `LOG_LEVEL` (`debug`, `info`, `warn`, `error`)
+- **Limits**: `LIMIT`, `COUNT`
+- **Features (true/false)**:
+  - `ENABLE_HISTORY`
+  - `GENERATE_DASHBOARD`
+  - `GENERATE_EXECUTIVE_SUMMARY`
+  - `INCLUDE_ALL_LANGUAGES`
+  - `NO_RECURSIVE`
+- **Cache**: `CACHE_ONLY`, `NO_CACHE`, `FORCE_DELETE_CACHE`
+- **Other**: `NO_PUPPETEER`, `THRESHOLDS_FILE`
+
+Example `.env`:
+
+```bash
+SITEMAP_URL=https://example.com/sitemap.xml
+LOG_LEVEL=info
+ENABLE_HISTORY=true
+GENERATE_DASHBOARD=true
+```
+
 For detailed configuration documentation, see [Configuration Guide](CONFIGURATION.md).
 
 ## Command Line Options

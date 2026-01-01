@@ -417,6 +417,16 @@ npm install
 npm start -- -s <url> -o <output-dir> [options]
 ```
 
+### Configuration Methods
+
+You can configure the tool using:
+
+1. **CLI Arguments** (Highest priority)
+2. **Environment Variables** / `.env` file
+3. **Default Configuration** (Lowest priority)
+
+See [User Manual](docs/usermanual.md#environment-variables) for full `.env` options.
+
 ### Options
 
 - `-s, --sitemap <url>`: URL of the sitemap or webpage to process (default: "<https://allabout.network/blogs/ddt/edge-delivery-services-knowledge-hub>")

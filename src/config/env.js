@@ -52,6 +52,62 @@ export function loadEnvConfig() {
     }
   }
 
+  // Feature Flags - History
+  if (process.env[ENV_VARS.ENABLE_HISTORY]) {
+    config.enableHistory = process.env[ENV_VARS.ENABLE_HISTORY].toLowerCase() === 'true';
+  }
+
+  // Feature Flags - Dashboard
+  if (process.env[ENV_VARS.GENERATE_DASHBOARD]) {
+    config.generateDashboard = process.env[ENV_VARS.GENERATE_DASHBOARD].toLowerCase() === 'true';
+  }
+
+  // Feature Flags - Executive Summary
+  if (process.env[ENV_VARS.GENERATE_EXECUTIVE_SUMMARY]) {
+    config.generateExecutiveSummary = process.env[ENV_VARS.GENERATE_EXECUTIVE_SUMMARY].toLowerCase() === 'true';
+  }
+
+  // Limit (Integers)
+  if (process.env[ENV_VARS.LIMIT]) {
+    config.limit = parseInt(process.env[ENV_VARS.LIMIT], 10);
+  }
+  if (process.env[ENV_VARS.COUNT]) {
+    config.count = parseInt(process.env[ENV_VARS.COUNT], 10);
+  }
+
+  // Boolean Flags
+  if (process.env[ENV_VARS.CACHE_ONLY]) {
+    config.cacheOnly = process.env[ENV_VARS.CACHE_ONLY].toLowerCase() === 'true';
+  }
+  if (process.env[ENV_VARS.NO_CACHE]) {
+    // Note: CLI flag is --no-cache which sets cache to false
+    // Here we map env var NO_CACHE=true to { cache: false }
+    if (process.env[ENV_VARS.NO_CACHE].toLowerCase() === 'true') {
+      config.cache = false;
+    }
+  }
+  if (process.env[ENV_VARS.NO_PUPPETEER]) {
+    if (process.env[ENV_VARS.NO_PUPPETEER].toLowerCase() === 'true') {
+      config.puppeteer = false;
+    }
+  }
+  if (process.env[ENV_VARS.FORCE_DELETE_CACHE]) {
+    config.forceDeleteCache = process.env[ENV_VARS.FORCE_DELETE_CACHE].toLowerCase() === 'true';
+  }
+  if (process.env[ENV_VARS.INCLUDE_ALL_LANGUAGES]) {
+    config.includeAllLanguages = process.env[ENV_VARS.INCLUDE_ALL_LANGUAGES].toLowerCase() === 'true';
+  }
+  if (process.env[ENV_VARS.NO_RECURSIVE]) {
+    if (process.env[ENV_VARS.NO_RECURSIVE].toLowerCase() === 'true') {
+      config.recursive = false;
+    }
+  }
+
+  // Strings
+  if (process.env[ENV_VARS.THRESHOLDS_FILE]) {
+    config.thresholds = process.env[ENV_VARS.THRESHOLDS_FILE];
+  }
+
   return config;
 }
 
@@ -185,7 +241,19 @@ ${ENV_VARS.MAX_RETRIES}=3
 ${ENV_VARS.TIMEOUT}=120000
 
 # Feature Flags
-# Add custom feature flags here as needed
+# Uncomment to enable by default
+# ${ENV_VARS.ENABLE_HISTORY}=true
+# ${ENV_VARS.GENERATE_DASHBOARD}=true
+# ${ENV_VARS.GENERATE_EXECUTIVE_SUMMARY}=true
+
+# Advanced Options
+# ${ENV_VARS.LIMIT}=10
+# ${ENV_VARS.COUNT}=50
+# ${ENV_VARS.INCLUDE_ALL_LANGUAGES}=true
+# ${ENV_VARS.THRESHOLDS_FILE}=./thresholds.json
+# ${ENV_VARS.CACHE_ONLY}=false
+# ${ENV_VARS.NO_CACHE}=false
+# ${ENV_VARS.FORCE_DELETE_CACHE}=false
 `;
 }
 
