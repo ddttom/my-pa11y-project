@@ -10,8 +10,8 @@
     "start": "node index.js",
     "test": "mocha test/**/*.test.js",
     "lint": "npx eslint .",
-    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
-    "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix"
+    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore results",
+    "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --ignore results --fix"
   },
   "keywords": [
     "seo",
