@@ -19,7 +19,7 @@ The Web Audit Suite supports three configuration methods, in order of precedence
 
 1. **CLI Arguments** (highest priority)
 2. **Environment Variables** (medium priority)
-3. **Default Values** (lowest priority)
+3. **Default Values** (lowest priority) - Defined in `src/config/defaults.js`
 
 ## CLI Options
 
@@ -230,6 +230,14 @@ npm start
 ```
 
 ## Configuration Files
+
+### Default Configuration File
+
+The consolidated default configuration is located at `src/config/defaults.js`.
+
+- Contains all baseline settings for the application
+- Includes Pa11y options, timeouts, and thresholds
+- Can be modified to change system-wide defaults
 
 ### Custom Thresholds File
 

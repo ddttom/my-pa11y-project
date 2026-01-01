@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
 import { calculateSeoScore } from './seoScoring.js';
 import { isValidUrl } from './urlUtils.js';

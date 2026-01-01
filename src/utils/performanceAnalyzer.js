@@ -1,7 +1,4 @@
 import puppeteer from 'puppeteer';
-import { globalOptions, performanceOptions } from '../config/options.js';
-
-const { MAX_RETRIES, INITIAL_BACKOFF } = globalOptions;
 
 function sleep(ms) {
   return new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -145,9 +142,10 @@ async function attemptAnalysis(url) {
     }
 
     global.auditcore.logger.debug(`Navigating to ${url}`);
+    const { performance } = global.auditcore.options;
     const navigationPromise = page.goto(url, {
-      waitUntil: performanceOptions.waitUntil,
-      timeout: performanceOptions.timeout,
+      waitUntil: performance.waitUntil,
+      timeout: performance.timeout,
     });
 
     await navigationPromise;
@@ -223,7 +221,9 @@ async function analyzePerformance(url) {
 
   global.auditcore.logger.info(`Starting performance analysis for ${url}`);
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+  const { maxRetries, initialBackoff } = global.auditcore.options;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
       const result = await attemptAnalysis(url);
       global.auditcore.logger.info(`Performance analysis completed for ${url}`);
@@ -232,8 +232,8 @@ async function analyzePerformance(url) {
       global.auditcore.logger.warn(`Attempt ${attempt} failed for ${url}: ${error.message}`);
       global.auditcore.logger.debug('Error stack:', error.stack);
 
-      if (attempt === MAX_RETRIES) {
-        global.auditcore.logger.error(`All ${MAX_RETRIES} attempts failed for ${url}`);
+      if (attempt === maxRetries) {
+        global.auditcore.logger.error(`All ${maxRetries} attempts failed for ${url}`);
         return {
           loadTime: 0,
           firstPaint: 0,
@@ -245,7 +245,7 @@ async function analyzePerformance(url) {
         };
       }
 
-      const backoffTime = INITIAL_BACKOFF * 2 ** (attempt - 1);
+      const backoffTime = initialBackoff * 2 ** (attempt - 1);
       global.auditcore.logger.debug(`Retrying in ${backoffTime}ms`);
       await sleep(backoffTime);
     }

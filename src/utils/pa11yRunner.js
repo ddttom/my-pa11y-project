@@ -14,14 +14,11 @@
 /* eslint-disable max-len */
 
 import pa11y from 'pa11y';
-import { pa11yOptions, globalOptions } from '../config/options.js';
 import {
   mapIssueToGuideline,
   getGuidelineDescription,
   getRequiredManualChecks,
 } from './reportUtils/formatUtils.js';
-
-const { MAX_RETRIES, RETRY_DELAY } = globalOptions;
 
 /**
  * Issue severity levels based on WCAG compliance
@@ -98,8 +95,8 @@ function getRemediationSuggestion(issue) {
  * Runs a Pa11y test with retry mechanism and enhanced metrics collection
  *
  * Implements exponential backoff retry strategy with:
- * - Configurable max retries (MAX_RETRIES)
- * - Configurable delay between retries (RETRY_DELAY)
+ * - Configurable max retries (maxRetries)
+ * - Configurable delay between retries (retryDelay)
  * - Enhanced error handling and logging
  *
  * @param {string} testUrl - URL to test
@@ -111,9 +108,12 @@ function getRemediationSuggestion(issue) {
  * @throws {Error} If all retry attempts fail
  */
 export async function runPa11yWithRetry(testUrl, options) {
+  const { maxRetries } = global.auditcore.options;
+  const { retryDelay } = global.auditcore.options.pa11y;
+
   global.auditcore.logger.debug(`[START] runPa11yWithRetry for ${testUrl}`);
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
     try {
       global.auditcore.logger.debug(`Pa11y test attempt ${attempt} for ${testUrl}`);
       const result = await pa11y(testUrl, options);
@@ -137,15 +137,15 @@ export async function runPa11yWithRetry(testUrl, options) {
       return result;
     } catch (error) {
       global.auditcore.logger.warn(`Pa11y test failed for ${testUrl} on attempt ${attempt}:`, error);
-      if (attempt === MAX_RETRIES) {
-        global.auditcore.logger.error(`Pa11y test failed for ${testUrl} after ${MAX_RETRIES} attempts.`);
+      if (attempt === maxRetries) {
+        global.auditcore.logger.error(`Pa11y test failed for ${testUrl} after ${maxRetries} attempts.`);
         return {
           error: error.message,
           stack: error.stack,
           issues: [],
         };
       }
-      await new Promise((resolve) => { setTimeout(resolve, RETRY_DELAY); });
+      await new Promise((resolve) => { setTimeout(resolve, retryDelay); });
     }
   }
 }
@@ -167,7 +167,7 @@ export async function runPa11yTest(testUrl, html, results) {
 
   try {
     const options = {
-      ...pa11yOptions,
+      ...global.auditcore.options.pa11y,
       html,
     };
 

@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 // pageAnalyzer.js
 
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import {
   runPa11yWithRetry,
 } from './pa11yRunner.js';

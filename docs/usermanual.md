@@ -76,6 +76,24 @@ npm start -- --cache-only -o reports-from-cache
 npm start -- -s https://example.com/sitemap.xml --include-all-languages
 ```
 
+## Configuration
+
+The application accepts configuration via CLI arguments, environment variables, and a centralized default configuration file.
+
+### Default Configuration
+
+**Location**: `src/config/defaults.js`
+
+This file contains all default settings including:
+
+- Pa11y options (timeout, viewport, ignore rules)
+- Performance thresholds
+- Sitemap processing limits
+
+Modify this file to change the baseline behavior of the application that applies when no CLI flags or environment variables are provided.
+
+For detailed configuration documentation, see [Configuration Guide](CONFIGURATION.md).
+
 ## Command Line Options
 
 ### Required Options
@@ -556,7 +574,7 @@ Solution: Tool will automatically attempt bypass using stealth mode
 - `Failed to parse HTML`: Check if URL returns valid HTML
 - `Network error`: Check internet connection
 - `Permission denied`: Check directory permissions
-- `Pa11y timeout`: Large pages may need longer timeout (adjust in code)
+- `Pa11y timeout`: Large pages may need longer timeout (adjust `pa11y.timeout` in `src/config/defaults.js`)
 
 ## Best Practices
 

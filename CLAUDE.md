@@ -115,7 +115,7 @@ web-audit-suite/
 ├── src/
 │   ├── main.js             # Orchestrates 3-phase pipeline
 │   ├── config/
-│   │   └── options.js      # Configuration management
+│   │   └── defaults.js     # Default configuration values
 │   └── utils/
 │       ├── sitemap.js      # URL extraction (Phase 1)
 │       ├── pageAnalyzer.js # Page content analysis

@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
-import { passFailThresholds } from '../../config/options.js';
+
 
 /**
  * Generates an interactive HTML dashboard with embedded charts
@@ -91,10 +91,10 @@ async function generatePerformanceChart(canvas, results) {
         label: 'Performance Metrics (ms)',
         data: [avgLoadTime, avgLCP, avgFCP, avgTTI],
         backgroundColor: [
-          getStatusColor(avgLoadTime, passFailThresholds.performance.loadTime),
-          getStatusColor(avgLCP, passFailThresholds.performance.lcp),
-          getStatusColor(avgFCP, passFailThresholds.performance.fcp),
-          getStatusColor(avgTTI, passFailThresholds.performance.tti),
+          getStatusColor(avgLoadTime, global.auditcore.options.thresholds.performance.loadTime),
+          getStatusColor(avgLCP, global.auditcore.options.thresholds.performance.lcp),
+          getStatusColor(avgFCP, global.auditcore.options.thresholds.performance.fcp),
+          getStatusColor(avgTTI, global.auditcore.options.thresholds.performance.tti),
         ],
       }],
     },
@@ -296,8 +296,8 @@ async function generateLLMChart(canvas, results) {
         label: 'LLM Suitability Score',
         data: [avgServedScore, avgRenderedScore],
         backgroundColor: [
-          getStatusColor(avgServedScore, passFailThresholds.llm.minServedScore, true),
-          getStatusColor(avgRenderedScore, passFailThresholds.llm.minRenderedScore, true),
+          getStatusColor(avgServedScore, global.auditcore.options.thresholds.llm.minServedScore, true),
+          getStatusColor(avgRenderedScore, global.auditcore.options.thresholds.llm.minRenderedScore, true),
         ],
       }],
     },
@@ -933,8 +933,8 @@ function calculatePassFailMetrics(results) {
       category: 'Performance',
       metric: 'Avg Load Time',
       value: `${Math.round(avgLoadTime)}ms`,
-      status: avgLoadTime <= passFailThresholds.performance.loadTime.pass ? 'Pass'
-        : avgLoadTime <= passFailThresholds.performance.loadTime.warn ? 'Warn' : 'Fail',
+      status: avgLoadTime <= global.auditcore.options.thresholds.performance.loadTime.pass ? 'Pass'
+        : avgLoadTime <= global.auditcore.options.thresholds.performance.loadTime.warn ? 'Warn' : 'Fail',
     });
 
     const avgLCP = average(perf.map((m) => m.largestContentfulPaint || 0));
@@ -942,8 +942,8 @@ function calculatePassFailMetrics(results) {
       category: 'Performance',
       metric: 'Avg LCP',
       value: `${Math.round(avgLCP)}ms`,
-      status: avgLCP <= passFailThresholds.performance.lcp.pass ? 'Pass'
-        : avgLCP <= passFailThresholds.performance.lcp.warn ? 'Warn' : 'Fail',
+      status: avgLCP <= global.auditcore.options.thresholds.performance.lcp.pass ? 'Pass'
+        : avgLCP <= global.auditcore.options.thresholds.performance.lcp.warn ? 'Warn' : 'Fail',
     });
   }
 
@@ -958,8 +958,8 @@ function calculatePassFailMetrics(results) {
       category: 'Accessibility',
       metric: 'Total Errors',
       value: errors,
-      status: errors <= passFailThresholds.accessibility.maxErrors.pass ? 'Pass'
-        : errors <= passFailThresholds.accessibility.maxErrors.warn ? 'Warn' : 'Fail',
+      status: errors <= global.auditcore.options.thresholds.accessibility.maxErrors.pass ? 'Pass'
+        : errors <= global.auditcore.options.thresholds.accessibility.maxErrors.warn ? 'Warn' : 'Fail',
     });
   }
 
@@ -970,8 +970,8 @@ function calculatePassFailMetrics(results) {
       category: 'SEO',
       metric: 'Avg Score',
       value: `${Math.round(avgScore)}/100`,
-      status: avgScore >= passFailThresholds.seo.minScore.pass ? 'Pass'
-        : avgScore >= passFailThresholds.seo.minScore.warn ? 'Warn' : 'Fail',
+      status: avgScore >= global.auditcore.options.thresholds.seo.minScore.pass ? 'Pass'
+        : avgScore >= global.auditcore.options.thresholds.seo.minScore.warn ? 'Warn' : 'Fail',
     });
   }
 
@@ -982,8 +982,8 @@ function calculatePassFailMetrics(results) {
       category: 'LLM',
       metric: 'Served Score',
       value: `${Math.round(avgServed)}/100`,
-      status: avgServed >= passFailThresholds.llm.minServedScore.pass ? 'Pass'
-        : avgServed >= passFailThresholds.llm.minServedScore.warn ? 'Warn' : 'Fail',
+      status: avgServed >= global.auditcore.options.thresholds.llm.minServedScore.pass ? 'Pass'
+        : avgServed >= global.auditcore.options.thresholds.llm.minServedScore.warn ? 'Warn' : 'Fail',
     });
   }
 

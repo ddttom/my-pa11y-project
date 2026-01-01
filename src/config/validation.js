@@ -339,18 +339,34 @@ export function validateThresholds(thresholds) {
   };
 }
 
+import { defaultOptions } from './defaults.js';
+
 /**
  * Applies default values to configuration
  * @param {Object} config - Configuration object
- * @param {Object} schema - Schema with default values
  * @returns {Object} - Configuration with defaults applied
  */
-export function applyDefaults(config, schema = configSchema) {
-  const result = { ...config };
+export function applyDefaults(config) {
+  // Start with default options
+  const result = { ...defaultOptions };
 
-  for (const [key, rules] of Object.entries(schema)) {
-    if (result[key] === undefined && rules.default !== undefined) {
-      result[key] = rules.default;
+  // Override with provided config
+  // We do a shallow merge for top-level keys
+  // For nested objects like pa11y, thresholds, etc., we need to handle them carefully
+  for (const [key, value] of Object.entries(config)) {
+    if (value === undefined) continue;
+
+    if (
+      typeof value === 'object'
+      && value !== null
+      && !Array.isArray(value)
+      && defaultOptions[key]
+      && typeof defaultOptions[key] === 'object'
+    ) {
+      // Shallow merge for second level (e.g. pa11y settings)
+      result[key] = { ...defaultOptions[key], ...value };
+    } else {
+      result[key] = value;
     }
   }
 
@@ -394,13 +410,15 @@ export function sanitizeConfig(config) {
  * @returns {Object} - { valid: boolean, config: Object, errors: string[] }
  */
 export function prepareConfig(config) {
-  // Apply defaults
+  // Apply defaults using the central defaultOptions
   let prepared = applyDefaults(config);
 
   // Sanitize values
   prepared = sanitizeConfig(prepared);
 
   // Validate
+  // Note: We might want to extend validation to cover the new sections from defaultOptions
+  // but for now we stick to the existing schema validation for the core fields
   const validation = validateConfig(prepared);
 
   return {
