@@ -116,12 +116,27 @@ export async function getUrlsFromSitemap(url, limit = -1) {
       }
     }
 
-    // Automatically add llms.txt if not present
+    // Automatically add base domain and llms.txt if not present
     try {
       const inputUrlObj = new URL(url);
+      const baseUrl = `${inputUrlObj.origin}/`;
       const llmsTxtUrl = `${inputUrlObj.origin}/llms.txt`;
-      const exists = urls.some((u) => u.url === llmsTxtUrl);
-      if (!exists) {
+
+      // Add base domain if not present
+      const baseExists = urls.some((u) => u.url === baseUrl || u.url === inputUrlObj.origin);
+      if (!baseExists) {
+        global.auditcore.logger.info(`Automatically adding base domain ${baseUrl} to processing list`);
+        urls.push({
+          url: baseUrl,
+          lastmod: new Date().toISOString(),
+          changefreq: 'daily',
+          priority: 1.0,
+        });
+      }
+
+      // Add llms.txt if not present
+      const llmsExists = urls.some((u) => u.url === llmsTxtUrl);
+      if (!llmsExists) {
         global.auditcore.logger.info(`Automatically adding ${llmsTxtUrl} to processing list`);
         urls.push({
           url: llmsTxtUrl,
@@ -131,7 +146,7 @@ export async function getUrlsFromSitemap(url, limit = -1) {
         });
       }
     } catch (error) {
-      global.auditcore.logger.debug(`Could not add llms.txt: ${error.message}`);
+      global.auditcore.logger.debug(`Could not add base domain or llms.txt: ${error.message}`);
     }
 
     // Filter and validate URLs
