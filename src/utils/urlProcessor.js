@@ -49,7 +49,7 @@ export class UrlProcessor {
   async processUrl(testUrl, lastmod, index, totalTests) {
     // Log the initial state and input parameters
     global.auditcore.logger.info(`Initiating processing for URL at index ${index + 1} of ${totalTests}: ${testUrl}`);
-    global.auditcore.logger.debug(`Last modified date: ${lastmod}, Configuration: ${JSON.stringify(this.options)}`);
+    global.auditcore.logger.debug(`Last modified date: ${lastmod}`);
 
     // Early validation check
     if (!testUrl) {

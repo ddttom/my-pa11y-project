@@ -202,7 +202,7 @@ async function getOrRenderData(url, options = {}) {
   // If cache is false (from --no-cache), then noCache should be true
   const noCache = options.noCache || !cache;
 
-  global.auditcore.logger.debug(`getOrRenderData called for ${url} with options: ${JSON.stringify(options)}`);
+  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
 
   if (!noCache) {
     const cachedData = await getCachedData(url);
