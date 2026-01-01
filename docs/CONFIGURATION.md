@@ -1,4 +1,4 @@
-```markdown
+
 # Configuration Guide
 
 Complete guide to configuring the Web Audit Suite.
@@ -349,7 +349,7 @@ All constants are now defined in `src/config/defaults.js`.
 ### Timeouts
 
 | Constant | Value | Description |
-|----------|-------|-------------|
+| :--- | :--- | :--- |
 | `PA11Y` | 60000 | Pa11y test timeout (ms) |
 | `PA11Y_WAIT` | 2000 | Wait before Pa11y analysis (ms) |
 | `PERFORMANCE` | 60000 | Performance analysis timeout (ms) |
@@ -358,7 +358,7 @@ All constants are now defined in `src/config/defaults.js`.
 ### Content Thresholds
 
 | Constant | Value | Description |
-|----------|-------|-------------|
+| :--- | :--- | :--- |
 | `LOW_WORD_COUNT` | 300 | Minimum words for quality content |
 | `MIN_HEADINGS` | 3 | Minimum heading count |
 | `HIGH_EXTERNAL_LINKS` | 100 | Threshold for excessive external links |
@@ -366,7 +366,7 @@ All constants are now defined in `src/config/defaults.js`.
 ### SEO Thresholds
 
 | Constant | Value | Description |
-|----------|-------|-------------|
+| :--- | :--- | :--- |
 | `TITLE_MIN_LENGTH` | 30 | Minimum title tag length |
 | `TITLE_MAX_LENGTH` | 60 | Maximum title tag length |
 | `META_DESC_MIN_LENGTH` | 70 | Minimum meta description length |
@@ -375,7 +375,7 @@ All constants are now defined in `src/config/defaults.js`.
 ### Performance Thresholds
 
 | Metric | Excellent | Good | Fair |
-|--------|-----------|------|------|
+| :--- | :--- | :--- | :--- |
 | Load Time | <1000ms | <2000ms | <3000ms |
 | LCP | <2500ms | <4000ms | >4000ms |
 | FCP | <1500ms | <2500ms | <4000ms |
@@ -384,7 +384,7 @@ All constants are now defined in `src/config/defaults.js`.
 ### LLM Scoring
 
 | Metric | Points | Category |
-|--------|--------|----------|
+| :--- | :--- | :--- |
 | Semantic HTML (main) | 10 | Essential (Served) |
 | Semantic HTML (nav) | 5 | Essential (Served) |
 | Standard Form Field | 2 | Essential (Served) |
@@ -565,7 +565,7 @@ npm start -- --log-level debug
 # Result: Uses 'debug' (CLI takes precedence)
 ```
 
-## Validation
+## Configuration Validation
 
 All configuration is validated before use:
 
@@ -585,5 +585,3 @@ Validation errors will be displayed before the audit starts, preventing wasted p
 5. **Enable history for production** - Track changes over time
 6. **Use strict logging in production** - Reduce log volume
 7. **Create environment-specific threshold files** - Different standards for dev/staging/prod
-
-```

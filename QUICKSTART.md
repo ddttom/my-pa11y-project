@@ -271,7 +271,7 @@ npm start -- -s <url> --log-level warn
 ### CLI Flags
 
 | Flag | Description |
-|------|-------------|
+| :--- | :--- |
 | `-s, --sitemap <url>` | Sitemap or page URL (required) |
 | `-o, --output <dir>` | Output directory (default: results) |
 | `-c, --count <n>` | Limit URLs to process (-1 = all) |
@@ -286,7 +286,7 @@ npm start -- -s <url> --log-level warn
 ### Output Files
 
 | File | Description |
-|------|-------------|
+| :--- | :--- |
 | `dashboard.html` | Interactive visual dashboard |
 | `executive_summary.md` | Executive summary report |
 | `seo_report.csv` | Page-by-page SEO metrics |

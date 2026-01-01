@@ -284,7 +284,7 @@ Customize pass/fail criteria for all metrics.
 
 Centralized constants for all magic numbers and configuration values.
 
-**Location**: `src/config/constants.js`
+**Location**: `src/config/defaults.js`
 
 **Categories**:
 

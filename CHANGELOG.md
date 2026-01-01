@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Configuration Consolidation**: Merged `src/config/constants.js` into `src/config/defaults.js`
+  - Created a single source of truth for all static configuration and constants
+  - Deleted `src/config/constants.js`
+  - Updated `src/config/env.js` and `src/config/validation.js` to import from `defaults.js`
+  - Updated documentation to reflect the unified configuration structure
+
 ### Added
 
 - **GitHub Actions CI/CD Integration**: Automated quality gate workflow
@@ -75,7 +83,7 @@ All notable changes to this project will be documented in this file.
   - JSON-based threshold configuration system
   - Category-specific thresholds: performance, accessibility, SEO, content, LLM
   - Two-level thresholds: "pass" and "warn" for each metric
-  - Default thresholds defined in `src/config/options.js`
+  - Default thresholds defined in `src/config/defaults.js`
   - Example thresholds:
     - Performance: Load time (pass: 3000ms, warn: 5000ms)
     - Accessibility: Max errors (pass: 0, warn: 5)

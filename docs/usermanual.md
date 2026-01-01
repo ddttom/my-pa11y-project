@@ -82,7 +82,7 @@ The application accepts configuration via CLI arguments, environment variables, 
 
 ### Default Configuration
 
-**Location**: `src/config/defaults.js`
+**Location**: `src/config/defaults.js` (see [Configuration Guide](CONFIGURATION.md))
 
 This file contains all default settings including:
 
@@ -536,7 +536,7 @@ This filtering applies to:
 
 ### Common Issues
 
-**Connection Timeouts**
+#### Connection Timeouts
 
 ```bash
 Error: ETIMEDOUT
@@ -544,7 +544,7 @@ Error: ETIMEDOUT
 
 Solution: Check internet connection and try again
 
-**Invalid URLs**
+#### Invalid URLs
 
 ```bash
 Error: Invalid URL format
@@ -552,7 +552,7 @@ Error: Invalid URL format
 
 Solution: Ensure URL includes protocol (http:// or https://)
 
-**Memory Issues**
+#### Memory Issues
 
 ```bash
 JavaScript heap out of memory
@@ -560,7 +560,7 @@ JavaScript heap out of memory
 
 Solution: Reduce number of URLs using `-l` or `-c` options
 
-**Cloudflare Protection**
+#### Cloudflare Protection
 
 ```bash
 Error: Cloudflare challenge detected
@@ -676,14 +676,14 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages -o all-l
 
 ### Interpreting Scores
 
-**Served HTML Score (0-100)**
+#### Served HTML Score (0-100)
 
 - **80-100**: Excellent - Works well for all AI agents
 - **60-79**: Good - Minor improvements needed
 - **40-59**: Fair - Several essential issues to fix
 - **0-39**: Poor - Major issues preventing AI agent compatibility
 
-**Rendered HTML Score (0-100)**
+#### Rendered HTML Score (0-100)
 
 - **80-100**: Excellent - Works well for browser-based agents
 - **60-79**: Good - Some dynamic features could improve

@@ -1,6 +1,6 @@
 # Project State
 
-**Last Updated:** 2025-12-31
+**Last Updated:** 2026-01-01
 
 Current snapshot of Web Audit Suite implementation status.
 
@@ -97,6 +97,15 @@ Current snapshot of Web Audit Suite implementation status.
 - [src/utils/reportUtils/linkAnalysis.js](src/utils/reportUtils/linkAnalysis.js)
 
 ## Recent Enhancements
+
+### January 1, 2026
+
+**Configuration Consolidation:**
+
+- Merged `src/config/constants.js` into `src/config/defaults.js`
+- Centralized all static configuration and constants
+- Deleted `src/config/constants.js`
+- Updated consumers to point to single source of truth
 
 ### December 31, 2025
 
@@ -269,7 +278,9 @@ web-audit-suite/
 ├── src/
 │   ├── main.js             # Pipeline orchestration
 │   ├── config/
-│   │   └── options.js      # CLI option handling
+│   │   ├── defaults.js     # Consolidated constants and defaults
+│   │   ├── env.js          # Environment configuration
+│   │   └── validation.js   # Configuration validation
 │   └── utils/
 │       ├── sitemap.js      # URL collection
 │       ├── pageAnalyzer.js # Page analysis
