@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Base Domain Auto-Discovery**: Automatically include homepage in analysis
+  - Base domain URL (e.g., `https://example.com/`) automatically added to processing queue
+  - llms.txt URL automatically added for AI agent compatibility checks
+  - Both URLs inserted at beginning of queue (priority processing)
+  - Ensures homepage always analyzed even when using count limits (e.g., `-c 10`)
+  - Works with both sitemap URLs and raw page URLs
+
 - **Major Performance Optimizations (75-85% faster)**: Browser pooling and concurrent processing
   - **Browser Pooling**: Reuses Puppeteer browser instances for dramatic speed improvement
     - Pool of 3 browsers by default (configurable via `browserPoolSize` in defaults.js)
@@ -40,6 +47,20 @@ All notable changes to this project will be documented in this file.
   - Deleted `src/config/constants.js`
   - Updated `src/config/env.js` and `src/config/validation.js` to import from `defaults.js`
   - Updated documentation to reflect the unified configuration structure
+
+- **Markdown Linting Configuration**: Updated to exclude generated files and project changelog
+  - Added `--ignore results` to exclude dynamically generated report files
+  - Added `--ignore CHANGELOG.md` to prevent linting project changelog
+  - Applied to both `lint:md` and `lint:md:fix` scripts in [package.json](package.json)
+
+- **Logging Verbosity**: Reduced debug output for improved log readability
+  - Removed configuration JSON output from debug logs in [src/utils/urlProcessor.js](src/utils/urlProcessor.js:52)
+  - Removed configuration JSON output from debug logs in [src/utils/caching.js](src/utils/caching.js:205)
+  - Debug messages now show only essential information without verbose object dumps
+
+- **Empty Message Suppression**: Removed "No resources found" message when no external resources exist
+  - Only displays external resource message when resources are actually found
+  - Changed in [src/main.js](src/main.js:184)
 
 - **GitHub Actions CI/CD Integration**: Automated quality gate workflow
   - Added `.github/workflows/quality-gate.yml` workflow file
@@ -233,7 +254,34 @@ All notable changes to this project will be documented in this file.
   - docs/system.md: Added llms.txt and data-agent-visible implementation details
   - docs/usermanual.md: Enhanced LLM suitability report documentation
 
+### Fixed
+
+- **llms.txt Detection in Executive Summary**: Corrected nested property path for accurate llms.txt detection
+  - Fixed executive summary to check correct nested structure: `m.llmsTxt?.metrics?.hasLLMsTxtReference`, `hasLLMsTxtMeta`
+  - Previously checked non-existent property `m.hasLlmsTxt` causing false negatives
+  - Now correctly identifies pages with llms.txt references in both served and rendered HTML
+  - Changed in [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js:253-261)
+
+- **Priority URL Queue Processing**: Fixed base domain and llms.txt URLs being cut off by count limits
+  - Changed from `push()` to `unshift()` to insert priority URLs at beginning of queue
+  - Ensures base domain and llms.txt are always processed even with strict count limits (e.g., `-c 10`)
+  - Previously, two slice operations caused priority URLs added at end to be truncated
+  - Root cause: `processSitemapContent()` returned limited URLs, then `push()` added more, then `main.js:132` sliced again
+  - Changed in [src/utils/sitemap.js](src/utils/sitemap.js:119-157)
+
+- **llms.txt Counting Logic**: Fixed incorrect counting of pages benefiting from global llms.txt
+  - Now only counts pages with explicit llms.txt references (via `<link>`, `<a>`, or `<meta>` tags)
+  - Previously counted ALL pages when global llms.txt existed, inflating metrics incorrectly
+  - Removed `|| globalLLMsTxtExists` from filter logic to ensure accurate per-page counting
+  - Changed in [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js)
+
 ### Removed
+
+- **Debug Code Cleanup**: Removed temporary specific URL search feature (346 lines)
+  - Removed `updateSpecificUrlMetrics()` function from [src/utils/metricsUpdater.js](src/utils/metricsUpdater.js) (35 lines)
+  - Removed `generateSpecificUrlReport()` function from [src/utils/reportUtils/reportGenerators.js](src/utils/reportUtils/reportGenerators.js) (24 lines)
+  - Removed specific URL search console output from [src/main.js](src/main.js)
+  - This was temporary debug code with hardcoded URL substring checks for development testing
 
 - **virtual_sitemap.xml generation**: Removed redundant virtual sitemap file generation
   - Removed `generateVirtualSitemap()` and `saveVirtualSitemap()` functions from `src/utils/sitemap.js`
