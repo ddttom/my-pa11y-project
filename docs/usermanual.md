@@ -10,7 +10,7 @@ Web Audit Suite is a comprehensive website analysis tool that generates detailed
 - **Security**: HTTPS configuration, security headers (HSTS, CSP, X-Frame-Options)
 - **Content Quality**: Content freshness, uniqueness, media richness, structure
 - **LLM Suitability**: AI agent compatibility analysis for both served and rendered HTML
-- **LLMS.txt**: Automatically detects and processes `llms.txt` at the domain root for AI agent compatibility checks.
+- **Base Domain Auto-Discovery**: Automatically includes homepage and `llms.txt` in analysis for comprehensive AI agent compatibility checks
 
 ## Getting Started
 
@@ -559,6 +559,49 @@ This filtering applies to:
 - URL extraction from sitemaps
 - Report generation
 - Content analysis
+
+## Base Domain Auto-Discovery
+
+The tool automatically ensures comprehensive AI agent compatibility analysis by adding priority URLs to the processing queue:
+
+### Automatic URL Addition
+
+When analyzing any website, the tool automatically adds:
+
+1. **Base Domain URL** (e.g., `https://example.com/`)
+   - Ensures homepage is always analyzed
+   - Critical for overall site assessment
+   - Works even when passing a sitemap URL or specific page URL
+
+2. **llms.txt URL** (e.g., `https://example.com/llms.txt`)
+   - Checks for AI agent guidance file (see [llmstxt.org](https://llmstxt.org/))
+   - Essential for LLM suitability scoring
+   - Worth 10 points in served score (ESSENTIAL_SERVED metric)
+
+### Priority Processing
+
+- Both URLs are inserted at the **beginning** of the processing queue
+- Guarantees analysis even with strict count limits (e.g., `-c 10`)
+- No configuration required - works automatically
+
+### Example Behavior
+
+```bash
+# Even when limiting to 10 URLs, base domain and llms.txt are included
+npm start -- -s https://example.com/sitemap.xml -c 10
+
+# Output includes:
+# 1. https://example.com/ (base domain - added automatically)
+# 2. https://example.com/llms.txt (added automatically)
+# 3-10. First 8 URLs from sitemap
+```
+
+### Benefits
+
+- **Complete Coverage**: Never miss homepage analysis
+- **AI Compatibility**: Always checks for llms.txt guidance file
+- **Flexible Input**: Works with sitemap URLs, page URLs, or any valid URL
+- **Zero Configuration**: Automatic detection and addition
 
 ## Troubleshooting
 

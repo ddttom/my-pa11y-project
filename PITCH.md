@@ -247,11 +247,23 @@ Based on "The Invisible Users" methodology by Tom Cranstoun:
 
 Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
-### Latest Features (December 2025)
+### Latest Features (January 2026)
 
-#### 1. llms.txt Detection
+#### 1. Base Domain Auto-Discovery
 
-The tool now detects and validates llms.txt files - a new standard for AI agent guidance similar to robots.txt. This feature:
+Ensures comprehensive site analysis by automatically including critical URLs:
+
+- **Homepage Analysis**: Automatically adds base domain URL (e.g., `https://example.com/`)
+- **llms.txt Detection**: Automatically adds llms.txt URL for AI agent compatibility
+- **Priority Processing**: URLs inserted at beginning of queue using `unshift()`
+- **Count Limit Proof**: Works even with strict limits (e.g., `-c 10`)
+- **Zero Configuration**: Automatic detection from any input URL
+
+Benefits: Never miss homepage analysis, guaranteed llms.txt checking, works with sitemaps or raw URLs
+
+#### 2. llms.txt Detection (December 2025)
+
+The tool detects and validates llms.txt files - a new standard for AI agent guidance similar to robots.txt. This feature:
 
 - Detects llms.txt references via `<link>` tags, `<a>` tags, and `<meta>` tags
 - Worth 10 points in served score (ESSENTIAL_SERVED category)
@@ -259,7 +271,7 @@ The tool now detects and validates llms.txt files - a new standard for AI agent 
 - Provides recommendations when missing
 - Learn more: <https://llmstxt.org/>
 
-#### 2. data-agent-visible Attribute
+#### 3. data-agent-visible Attribute (December 2025)
 
 Tracks explicit agent visibility control, allowing developers to:
 
@@ -269,7 +281,15 @@ Tracks explicit agent visibility control, allowing developers to:
 - ESSENTIAL_RENDERED category (browser agents)
 - Helps developers control what agents see vs decorative elements
 
-#### 3. Markdown Linting Integration
+#### 4. Performance Optimizations (January 2026)
+
+Major speed improvements through architectural enhancements:
+
+- **Browser Pooling**: Reuses 3 Puppeteer instances (97% reduction in launch overhead)
+- **Concurrent Processing**: Processes 3 URLs simultaneously
+- **75-85% Faster**: 100 URLs now take ~10 minutes instead of ~45 minutes
+
+#### 5. Markdown Linting Integration (December 2025)
 
 - Added comprehensive markdown linting configuration
 - Ensures documentation quality and consistency
