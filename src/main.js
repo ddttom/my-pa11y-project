@@ -4,6 +4,7 @@ import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHand
 import { executeNetworkOperation } from './utils/networkUtils.js';
 import { getDiscoveredUrls } from './utils/sitemapUtils.js';
 import { RESULTS_SCHEMA_VERSION, areVersionsCompatible } from './utils/schemaVersion.js';
+import { storeHistoricalResult } from './utils/historicalComparison.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -132,6 +133,16 @@ export async function runTestsOnSitemap() {
 
     // Update current results for shutdown handler to ensure data persistence
     updateCurrentResults(results);
+
+    // Store historical result if enabled
+    if (global.auditcore.options.enableHistory) {
+      try {
+        await storeHistoricalResult(results, outputDir);
+        global.auditcore.logger.info('Historical result stored for future comparison');
+      } catch (error) {
+        global.auditcore.logger.warn('Could not store historical result:', error.message);
+      }
+    }
 
     // Phase 3: Generate comprehensive reports from collected data
     global.auditcore.logger.info('Phase 3: Generating reports...');

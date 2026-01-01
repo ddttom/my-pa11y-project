@@ -48,6 +48,22 @@ npm start -- -s https://example.com/sitemap.xml -l 10
 npm start -- -s https://example.com/sitemap.xml -c 50
 
 # Test with small sample before full analysis
+npm start -- -s https://example.com/sitemap.xml -c 10
+
+# Enable historical tracking and generate dashboard
+npm start -- -s https://example.com/sitemap.xml --enable-history --generate-dashboard
+
+# Generate executive summary
+npm start -- -s https://example.com/sitemap.xml --generate-executive-summary
+
+# Full analysis with all enhanced features
+npm start -- -s https://example.com/sitemap.xml \
+  --enable-history \
+  --generate-dashboard \
+  --generate-executive-summary
+
+# Use custom thresholds
+npm start -- -s https://example.com/sitemap.xml --thresholds ./custom-thresholds.json
 npm start -- -s https://example.com/sitemap.xml -l 10 -o test-results
 # Review reports in test-results directory
 # When satisfied, run full analysis:
@@ -85,6 +101,26 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
 - `--force-delete-cache`: Clear cache before starting
+
+### Enhanced Features
+
+- `--enable-history`: Enable historical tracking for comparative analysis
+  - Stores timestamped results in `history/` directory
+  - Enables comparison with previous runs
+  - Tracks trends over time
+- `--generate-dashboard`: Generate interactive HTML dashboard with charts
+  - Visual analytics with embedded charts
+  - Performance, accessibility, SEO, content, and LLM metrics
+  - Historical trend charts (when history enabled)
+  - Comparison tables and pass/fail summaries
+- `--generate-executive-summary`: Generate executive summary report
+  - Single-page overview with key insights
+  - Generates both Markdown (`executive_summary.md`) and JSON formats
+  - Key findings and actionable recommendations
+  - Comparison with previous run (when history enabled)
+- `--thresholds <file>`: Path to custom thresholds configuration (JSON)
+  - Customize pass/fail criteria for all metrics
+  - See [Configuration Guide](CONFIGURATION.md) for details
 
 ## Generated Reports
 
@@ -366,6 +402,35 @@ All files are generated in the output directory (default: `results/`):
 ### Markdown Reports
 
 - `wcag_report.md` - Human-readable accessibility report
+
+### Enhanced Reports (Optional)
+
+Generated when corresponding CLI flags are used:
+
+- `executive_summary.md` - Executive summary report (--generate-executive-summary)
+  - Overall status across all categories
+  - Key findings and recommendations
+  - Pass/fail status with configurable thresholds
+  - Comparison with previous run (if history enabled)
+
+- `executive_summary.json` - Machine-readable executive summary
+  - Structured data format for automation
+  - Integration-ready format
+
+- `dashboard.html` - Interactive HTML dashboard (--generate-dashboard)
+  - Visual analytics with embedded charts
+  - Performance, accessibility, SEO, content, and LLM metrics
+  - Historical trend charts (if multiple runs tracked)
+  - Comparison tables showing changes over time
+  - Pass/fail summary tables
+
+### Historical Data
+
+Created when `--enable-history` is used:
+
+- `history/` directory - Timestamped historical results
+  - `results-<timestamp>.json` - Complete results from each run
+  - Enables comparative analysis and trend tracking
 
 ### Sitemaps
 

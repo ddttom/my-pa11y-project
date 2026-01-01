@@ -1,0 +1,104 @@
+{
+  "$schema": "Custom thresholds configuration for Web Audit Suite",
+  "$comment": "Copy this file to custom-thresholds.json and adjust values for your requirements",
+
+  "performance": {
+    "loadTime": {
+      "pass": 3000,
+      "warn": 5000,
+      "$comment": "Page load time in milliseconds. Pass: excellent (<3s), Warn: acceptable (<5s)"
+    },
+    "lcp": {
+      "pass": 2500,
+      "warn": 4000,
+      "$comment": "Largest Contentful Paint in milliseconds. Based on Core Web Vitals: Good (<2.5s), Needs Improvement (<4s)"
+    },
+    "fcp": {
+      "pass": 1800,
+      "warn": 3000,
+      "$comment": "First Contentful Paint in milliseconds. Good (<1.8s), Needs Improvement (<3s)"
+    },
+    "cls": {
+      "pass": 0.1,
+      "warn": 0.25,
+      "$comment": "Cumulative Layout Shift score. Good (<0.1), Needs Improvement (<0.25). Scale: 0-1"
+    },
+    "tti": {
+      "pass": 3800,
+      "warn": 7300,
+      "$comment": "Time to Interactive in milliseconds. Fast (<3.8s), Moderate (<7.3s)"
+    }
+  },
+
+  "accessibility": {
+    "maxErrors": {
+      "pass": 0,
+      "warn": 5,
+      "$comment": "Maximum WCAG error count. Pass: zero errors, Warn: up to 5 errors"
+    },
+    "maxWarnings": {
+      "pass": 10,
+      "warn": 30,
+      "$comment": "Maximum WCAG warning count. Pass: up to 10, Warn: up to 30"
+    },
+    "maxTotalIssues": {
+      "pass": 20,
+      "warn": 50,
+      "$comment": "Maximum total accessibility issues (errors + warnings + notices)"
+    }
+  },
+
+  "seo": {
+    "minScore": {
+      "pass": 80,
+      "warn": 60,
+      "$comment": "Minimum SEO score (0-100). Pass: 80+, Warn: 60+"
+    },
+    "minTitleLength": {
+      "pass": 30,
+      "warn": 20,
+      "$comment": "Minimum title tag length in characters. Google typically shows 50-60 characters"
+    },
+    "maxTitleLength": {
+      "pass": 60,
+      "warn": 70,
+      "$comment": "Maximum title tag length in characters. Longer titles may be truncated in search results"
+    },
+    "minMetaDescLength": {
+      "pass": 70,
+      "warn": 50,
+      "$comment": "Minimum meta description length in characters. Google typically shows 120-156 characters"
+    },
+    "maxMetaDescLength": {
+      "pass": 155,
+      "warn": 170,
+      "$comment": "Maximum meta description length in characters. Longer descriptions may be truncated"
+    }
+  },
+
+  "content": {
+    "minWordCount": {
+      "pass": 300,
+      "warn": 150,
+      "$comment": "Minimum word count for quality content. Pass: 300+ words, Warn: 150+ words"
+    },
+    "minHeadings": {
+      "pass": 3,
+      "warn": 1,
+      "$comment": "Minimum heading count for structured content. Pass: 3+ headings, Warn: 1+ heading"
+    }
+  },
+
+  "llm": {
+    "minServedScore": {
+      "pass": 70,
+      "warn": 50,
+      "$comment": "Minimum LLM suitability score for served HTML (0-100). Critical for all AI agents including CLI agents"
+    },
+    "minRenderedScore": {
+      "pass": 60,
+      "warn": 40,
+      "$comment": "Minimum LLM suitability score for rendered HTML (0-100). Important for browser-based AI agents"
+    }
+  }
+}

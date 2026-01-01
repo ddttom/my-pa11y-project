@@ -30,6 +30,15 @@ npm start -- -s <url> -c 10
 # Include all language variants (default: only /en and /us)
 npm start -- --include-all-languages
 
+# Generate dashboard with historical tracking
+npm start -- -s <url> --enable-history --generate-dashboard
+
+# Generate executive summary
+npm start -- -s <url> --generate-executive-summary
+
+# Full analysis with all enhanced features
+npm start -- -s <url> --enable-history --generate-dashboard --generate-executive-summary
+
 # Run linting (IMPORTANT: use npm script, not global eslint)
 npm run lint
 
@@ -61,6 +70,10 @@ Some issues like line length and table formatting require manual fixes.
 - `--force-delete-cache`: Force delete existing cache
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants
+- `--enable-history`: Enable historical tracking for comparative analysis
+- `--generate-dashboard`: Generate interactive HTML dashboard with charts
+- `--generate-executive-summary`: Generate executive summary report
+- `--thresholds <file>`: Path to custom thresholds configuration (JSON)
 
 ## Architecture
 
@@ -284,6 +297,16 @@ All files generated in the output directory (default: `results/`):
 - `llm_frontend_suitability.csv` - Frontend-specific AI patterns analysis
 - `llm_backend_suitability.csv` - Backend/server-side AI patterns analysis
 
+### Enhanced Reports (New Features)
+
+- `executive_summary.md` - Executive summary with key insights (--generate-executive-summary)
+- `executive_summary.json` - Machine-readable executive summary
+- `dashboard.html` - Interactive HTML dashboard with charts (--generate-dashboard)
+
+### Historical Data (--enable-history)
+
+- `history/results-<timestamp>.json` - Timestamped historical results for comparison
+
 ### Sitemaps
 
 - `virtual_sitemap.xml` - Initial crawl results
@@ -416,6 +439,23 @@ The `.claude/settings.local.json` file pre-approves common operations:
 └── prompt-master/            # Reserved for future use
 ```
 
-## Extension Prompts
+## Documentation Structure
 
-The `/docs` folder contains markdown files with prompts useful for extending this project. These can guide development of new features or modifications.
+The `docs/` directory contains comprehensive documentation:
+
+### User Documentation
+
+- `usermanual.md` - Complete user guide
+- `CONFIGURATION.md` - Configuration reference
+- `FEATURES.md` - Feature overview
+- `report-layout.md` - Report structure and data schema
+
+### AI Assistant Extension Prompts
+
+The `docs/for-ai/` subdirectory contains prompts for extending this project:
+
+- `comment.md` - Guidelines for code comments
+- `modification.md` - Templates for code modifications
+- `system.md` - Development standards and conventions
+
+These files guide development of new features or modifications.

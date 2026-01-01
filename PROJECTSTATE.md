@@ -293,10 +293,19 @@ web-audit-suite/
 │   ├── skills/
 │   └── hooks/
 ├── docs/                   # Documentation
-│   ├── report-layout.md
-│   ├── system.md
-│   ├── usermanual.md
-│   └── modification.md
+│   ├── CONFIGURATION.md    # Configuration guide
+│   ├── FEATURES.md         # Feature overview
+│   ├── report-layout.md    # Report structure documentation
+│   ├── usermanual.md       # User manual
+│   └── for-ai/             # AI assistant extension prompts
+│       ├── comment.md          # Commenting guidelines
+│       ├── modification.md     # Code modification templates
+│       └── system.md           # Development standards
+├── examples/               # Example configurations
+│   ├── README.md               # Threshold configuration guide
+│   ├── strict-thresholds.json  # High-quality production standards
+│   ├── relaxed-thresholds.json # Development/staging standards
+│   └── ci-thresholds.json      # CI/CD quality gate standards
 ├── results/                # Generated output (gitignored)
 ├── .cache/                 # Puppeteer cache (gitignored)
 ├── LEARNINGS.md           # AI assistant guidance
@@ -304,9 +313,12 @@ web-audit-suite/
 ├── CHANGELOG.md           # Change history
 ├── CLAUDE.md              # Project instructions for Claude
 ├── README.md              # Project overview
+├── QUICKSTART.md          # 5-minute getting started guide
 ├── BLOG.md                # Marketing content
 ├── PITCH.md               # Business pitch
-└── TODO.md                # Task tracking
+├── TODO.md                # Task tracking
+├── .env.example           # Environment variable template
+└── custom-thresholds.example.json # Custom thresholds template
 ```
 
 ## Deployment
@@ -330,10 +342,14 @@ web-audit-suite/
 ### Documentation
 
 - [README.md](README.md) - Quick start and overview
+- [QUICKSTART.md](QUICKSTART.md) - 5-minute getting started guide
 - [CLAUDE.md](CLAUDE.md) - Comprehensive technical guide
 - [docs/usermanual.md](docs/usermanual.md) - User manual
-- [docs/system.md](docs/system.md) - Architecture details
+- [docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Configuration reference
+- [docs/FEATURES.md](docs/FEATURES.md) - Feature overview
 - [docs/report-layout.md](docs/report-layout.md) - Report specifications
+- [docs/for-ai/system.md](docs/for-ai/system.md) - Architecture details
+- [examples/README.md](examples/README.md) - Threshold configuration examples
 
 ### Logs
 

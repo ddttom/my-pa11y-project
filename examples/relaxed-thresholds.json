@@ -1,0 +1,86 @@
+{
+  "$comment": "Relaxed thresholds for development/staging environments",
+
+  "performance": {
+    "loadTime": {
+      "pass": 5000,
+      "warn": 8000
+    },
+    "lcp": {
+      "pass": 4000,
+      "warn": 6000
+    },
+    "fcp": {
+      "pass": 3000,
+      "warn": 5000
+    },
+    "cls": {
+      "pass": 0.25,
+      "warn": 0.5
+    },
+    "tti": {
+      "pass": 7300,
+      "warn": 10000
+    }
+  },
+
+  "accessibility": {
+    "maxErrors": {
+      "pass": 5,
+      "warn": 10
+    },
+    "maxWarnings": {
+      "pass": 30,
+      "warn": 50
+    },
+    "maxTotalIssues": {
+      "pass": 50,
+      "warn": 100
+    }
+  },
+
+  "seo": {
+    "minScore": {
+      "pass": 60,
+      "warn": 40
+    },
+    "minTitleLength": {
+      "pass": 20,
+      "warn": 10
+    },
+    "maxTitleLength": {
+      "pass": 70,
+      "warn": 100
+    },
+    "minMetaDescLength": {
+      "pass": 50,
+      "warn": 30
+    },
+    "maxMetaDescLength": {
+      "pass": 170,
+      "warn": 200
+    }
+  },
+
+  "content": {
+    "minWordCount": {
+      "pass": 150,
+      "warn": 50
+    },
+    "minHeadings": {
+      "pass": 1,
+      "warn": 0
+    }
+  },
+
+  "llm": {
+    "minServedScore": {
+      "pass": 50,
+      "warn": 30
+    },
+    "minRenderedScore": {
+      "pass": 40,
+      "warn": 20
+    }
+  }
+}

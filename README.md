@@ -28,6 +28,22 @@ The folder /docs contains prompts in .md format that are useful for extending th
 - **Language Variant Filtering**: Skip non-English variants by default (only process /en and /us)
   - Enhanced URL extraction logic with automatic language variant detection
   - Centralized language variant checking in report generation
+- **Historical Comparison**: Track changes over time with comparative analysis
+  - Stores historical results in timestamped files
+  - Compares current run with previous runs
+  - Identifies improvements and regressions
+- **Executive Summary**: Single-page overview with key insights
+  - High-level status across all categories
+  - Key findings and actionable recommendations
+  - Pass/fail status based on configurable thresholds
+- **Interactive Dashboard**: HTML dashboard with visual analytics
+  - Embedded charts for performance, accessibility, SEO
+  - Historical trend visualization
+  - Comparison tables and pass/fail summaries
+- **Configurable Thresholds**: Customize pass/fail criteria
+  - JSON-based threshold configuration
+  - Category-specific thresholds (performance, SEO, accessibility)
+  - Warn and fail levels for each metric
 
 ## Complete Website Analysis Tool: Business Guide
 
@@ -282,22 +298,29 @@ The tool collects comprehensive data about each page and stores it in `results.j
 }
 ```
 
-See [Product Requirements](docs/prd.md) for complete specifications.
-
 ## Documentation
 
-- [User Manual](docs/usermanual.md)
-- [Product Requirements](docs/prd.md)
-- [Project State](docs/projectstate.md)
+- [Quick Start Guide](QUICKSTART.md) - Get started in 5 minutes
+- [User Manual](docs/usermanual.md) - Complete user documentation
+- [Configuration Guide](docs/CONFIGURATION.md) - Detailed configuration reference
+- [Features Overview](docs/FEATURES.md) - All available features
+- [Report Layout](docs/report-layout.md) - Understanding report structure and data
+- [CI/CD Integration Guide](docs/CI-CD-INTEGRATION.md) - GitHub Actions and CI/CD setup
+- [Example Thresholds](examples/README.md) - Threshold configuration examples
 
 ## Project Structure
 
 ```bash
-seo-audit-tool/
+web-audit-suite/
 ├── docs/           # Documentation files
-│   ├── prd.md          # Product requirements
-│   ├── projectstate.md # Current project status
-│   └── usermanual.md   # User guide
+│   ├── CONFIGURATION.md    # Configuration guide
+│   ├── FEATURES.md         # Feature overview
+│   ├── report-layout.md    # Report structure documentation
+│   ├── usermanual.md       # User guide
+│   └── for-ai/             # AI assistant extension prompts
+│       ├── comment.md          # Commenting guidelines
+│       ├── modification.md     # Code modification templates
+│       └── system.md           # Development standards
 ├── results/        # Generated reports and analysis
 │   ├── seo_report.csv
 │   ├── performance_analysis.csv
@@ -407,6 +430,10 @@ npm start -- -s <url> -o <output-dir> [options]
 - `--force-delete-cache`: Force delete existing cache
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
+- `--enable-history`: Enable historical tracking (stores results for comparison over time)
+- `--generate-dashboard`: Generate interactive HTML dashboard with charts
+- `--generate-executive-summary`: Generate executive summary report
+- `--thresholds <file>`: Path to custom thresholds configuration file (JSON)
 
 ### Output Files
 
@@ -482,3 +509,111 @@ npm start -- -s <url> -o <output-dir> [options]
   - Processing failures
   - Invalid URLs
   - Connection issues
+
+- `executive_summary.md`: Executive summary report (generated with --generate-executive-summary)
+  - Overall status across all categories
+  - Key findings and recommendations
+  - Pass/fail status with configurable thresholds
+  - Comparison with previous run (if historical tracking enabled)
+
+- `executive_summary.json`: Machine-readable executive summary
+  - Structured data format
+  - Integration-ready format
+
+- `dashboard.html`: Interactive HTML dashboard (generated with --generate-dashboard)
+  - Visual analytics with embedded charts
+  - Performance, accessibility, SEO, content, and LLM metrics
+  - Historical trend charts (if multiple runs tracked)
+  - Comparison tables showing changes over time
+  - Pass/fail summary tables
+
+- `history/`: Historical results directory (created with --enable-history)
+  - `results-<timestamp>.json`: Timestamped historical results
+  - Enables comparative analysis and trend tracking
+
+### Usage Examples
+
+#### Basic Analysis
+
+```bash
+# Run basic analysis on a sitemap
+npm start -- -s https://example.com/sitemap.xml
+
+# Limit to 10 pages for testing
+npm start -- -s https://example.com/sitemap.xml -c 10
+```
+
+#### Advanced Features
+
+```bash
+# Generate dashboard with historical tracking
+npm start -- -s https://example.com/sitemap.xml --enable-history --generate-dashboard
+
+# Generate executive summary only
+npm start -- -s https://example.com/sitemap.xml --generate-executive-summary
+
+# Full analysis with all enhanced features
+npm start -- -s https://example.com/sitemap.xml \
+  --enable-history \
+  --generate-dashboard \
+  --generate-executive-summary
+
+# Use custom thresholds
+npm start -- -s https://example.com/sitemap.xml \
+  --thresholds ./custom-thresholds.json \
+  --generate-dashboard
+```
+
+#### Custom Thresholds Configuration
+
+Create a JSON file with your custom pass/fail criteria. Several examples are provided:
+
+**Example Files** (in `examples/` directory):
+
+- `strict-thresholds.json` - High-quality production sites
+- `relaxed-thresholds.json` - Development/staging environments
+- `ci-thresholds.json` - CI/CD quality gates
+- See `examples/README.md` for detailed documentation
+
+**Create Your Own**:
+
+```bash
+# Copy the example template
+cp custom-thresholds.example.json my-thresholds.json
+
+# Edit and customize
+# Then use it:
+npm start -- -s https://example.com/sitemap.xml --thresholds ./my-thresholds.json
+```
+
+**Example Format**:
+
+```json
+{
+  "performance": {
+    "loadTime": { "pass": 2000, "warn": 4000 },
+    "lcp": { "pass": 2000, "warn": 3500 }
+  },
+  "accessibility": {
+    "maxErrors": { "pass": 0, "warn": 3 }
+  },
+  "seo": {
+    "minScore": { "pass": 85, "warn": 70 }
+  }
+}
+```
+
+#### Historical Tracking Workflow
+
+```bash
+# First run - establishes baseline
+npm start -- -s https://example.com/sitemap.xml --enable-history --generate-dashboard
+
+# Subsequent runs - automatically compares with previous
+npm start -- -s https://example.com/sitemap.xml --enable-history --generate-dashboard
+
+# Dashboard will show:
+# - Comparison tables with previous run
+# - Trend charts across all runs
+# - Improvements and regressions
+```

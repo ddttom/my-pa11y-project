@@ -1,0 +1,86 @@
+{
+  "$comment": "CI/CD thresholds - Balance between quality and build success",
+
+  "performance": {
+    "loadTime": {
+      "pass": 3000,
+      "warn": 5000
+    },
+    "lcp": {
+      "pass": 2500,
+      "warn": 4000
+    },
+    "fcp": {
+      "pass": 1800,
+      "warn": 3000
+    },
+    "cls": {
+      "pass": 0.1,
+      "warn": 0.25
+    },
+    "tti": {
+      "pass": 3800,
+      "warn": 7300
+    }
+  },
+
+  "accessibility": {
+    "maxErrors": {
+      "pass": 0,
+      "warn": 2
+    },
+    "maxWarnings": {
+      "pass": 10,
+      "warn": 20
+    },
+    "maxTotalIssues": {
+      "pass": 20,
+      "warn": 40
+    }
+  },
+
+  "seo": {
+    "minScore": {
+      "pass": 75,
+      "warn": 60
+    },
+    "minTitleLength": {
+      "pass": 30,
+      "warn": 20
+    },
+    "maxTitleLength": {
+      "pass": 60,
+      "warn": 70
+    },
+    "minMetaDescLength": {
+      "pass": 70,
+      "warn": 50
+    },
+    "maxMetaDescLength": {
+      "pass": 155,
+      "warn": 170
+    }
+  },
+
+  "content": {
+    "minWordCount": {
+      "pass": 300,
+      "warn": 150
+    },
+    "minHeadings": {
+      "pass": 2,
+      "warn": 1
+    }
+  },
+
+  "llm": {
+    "minServedScore": {
+      "pass": 65,
+      "warn": 50
+    },
+    "minRenderedScore": {
+      "pass": 55,
+      "warn": 40
+    }
+  }
+}

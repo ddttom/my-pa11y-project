@@ -1,0 +1,86 @@
+{
+  "$comment": "Strict thresholds for high-quality production sites",
+
+  "performance": {
+    "loadTime": {
+      "pass": 1000,
+      "warn": 2000
+    },
+    "lcp": {
+      "pass": 2000,
+      "warn": 2500
+    },
+    "fcp": {
+      "pass": 1000,
+      "warn": 1800
+    },
+    "cls": {
+      "pass": 0.05,
+      "warn": 0.1
+    },
+    "tti": {
+      "pass": 2000,
+      "warn": 3800
+    }
+  },
+
+  "accessibility": {
+    "maxErrors": {
+      "pass": 0,
+      "warn": 0
+    },
+    "maxWarnings": {
+      "pass": 5,
+      "warn": 10
+    },
+    "maxTotalIssues": {
+      "pass": 10,
+      "warn": 20
+    }
+  },
+
+  "seo": {
+    "minScore": {
+      "pass": 90,
+      "warn": 80
+    },
+    "minTitleLength": {
+      "pass": 40,
+      "warn": 30
+    },
+    "maxTitleLength": {
+      "pass": 60,
+      "warn": 65
+    },
+    "minMetaDescLength": {
+      "pass": 100,
+      "warn": 70
+    },
+    "maxMetaDescLength": {
+      "pass": 155,
+      "warn": 160
+    }
+  },
+
+  "content": {
+    "minWordCount": {
+      "pass": 500,
+      "warn": 300
+    },
+    "minHeadings": {
+      "pass": 5,
+      "warn": 3
+    }
+  },
+
+  "llm": {
+    "minServedScore": {
+      "pass": 80,
+      "warn": 70
+    },
+    "minRenderedScore": {
+      "pass": 70,
+      "warn": 60
+    }
+  }
+}

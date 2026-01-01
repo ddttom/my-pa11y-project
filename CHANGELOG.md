@@ -6,6 +6,94 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Historical Comparison and Trend Analysis**: Track website changes over time
+  - Added `--enable-history` CLI flag to enable historical tracking
+  - Stores timestamped results in `history/` directory for comparative analysis
+  - Compares current run with previous runs to identify improvements and regressions
+  - Generates trend data across multiple runs for visualization
+  - Calculates percentage changes for all key metrics (performance, accessibility, SEO, LLM)
+  - Module: `src/utils/historicalComparison.js`
+
+- **Executive Summary Report**: Single-page overview with actionable insights
+  - Added `--generate-executive-summary` CLI flag
+  - Generates both Markdown and JSON formats
+  - Provides high-level status across all analysis categories
+  - Key findings section highlighting critical issues
+  - Actionable recommendations prioritized by severity
+  - Comparison with previous run (when historical tracking enabled)
+  - Pass/fail status based on configurable thresholds
+  - Module: `src/utils/reportUtils/executiveSummary.js`
+  - Output files: `executive_summary.md`, `executive_summary.json`
+
+- **Interactive HTML Dashboard**: Visual analytics with embedded charts
+  - Added `--generate-dashboard` CLI flag
+  - Generates comprehensive HTML dashboard with embedded PNG charts
+  - Performance metrics visualization (load time, LCP, FCP, TTI)
+  - Accessibility issues breakdown (pie chart)
+  - SEO score distribution across pages
+  - Content quality metrics visualization
+  - LLM suitability scores (served vs rendered)
+  - Historical trend charts (when multiple runs tracked)
+  - Comparison tables showing changes between runs
+  - Pass/fail summary tables with color-coded status
+  - Module: `src/utils/reportUtils/dashboardGenerator.js`
+  - Output file: `dashboard.html`
+
+- **Configurable Pass/Fail Thresholds**: Customize quality gates
+  - Added `--thresholds <file>` CLI option to load custom thresholds
+  - JSON-based threshold configuration system
+  - Category-specific thresholds: performance, accessibility, SEO, content, LLM
+  - Two-level thresholds: "pass" and "warn" for each metric
+  - Default thresholds defined in `src/config/options.js`
+  - Example thresholds:
+    - Performance: Load time (pass: 3000ms, warn: 5000ms)
+    - Accessibility: Max errors (pass: 0, warn: 5)
+    - SEO: Min score (pass: 80, warn: 60)
+    - LLM: Min served score (pass: 70, warn: 50)
+  - Thresholds used in dashboard color-coding and pass/fail reports
+
+- **Chart Generation Infrastructure**: Visual data representation
+  - Added `chart.js` and `chartjs-node-canvas` dependencies
+  - Generates PNG chart images embedded in HTML dashboard
+  - Support for bar charts, line charts, and pie charts
+  - Color-coded metrics based on configurable thresholds
+  - Historical trend visualization across multiple runs
+
+- **Configuration System Overhaul**: Centralized constants and validation
+  - Created `src/config/constants.js` with all magic numbers and configuration values
+  - Moved hardcoded values to named constants for maintainability
+  - Centralized timeouts, thresholds, colors, file names, and regex patterns
+  - HTTP status codes, performance limits, SEO limits, LLM scoring
+  - Chrome launch arguments, WCAG levels, logging levels
+
+- **Configuration Schema Validation**: Type-safe configuration
+  - Created `src/config/validation.js` with comprehensive schema validation
+  - Validates all CLI options and configuration values
+  - Type checking (string, number, boolean, object)
+  - Range validation (min/max values, URL format)
+  - Custom validation functions for complex rules
+  - Threshold configuration validation with logical consistency checks
+  - Sanitization of input values (trim strings, normalize paths)
+  - Clear error messages for invalid configuration
+
+- **Environment Variable Support**: Flexible deployment configuration
+  - Created `src/config/env.js` for environment variable management
+  - Support for `.env` file loading (dotenv-like functionality)
+  - Environment variables: `NODE_ENV`, `LOG_LEVEL`, `OUTPUT_DIR`, `SITEMAP_URL`
+  - Additional variables: `CACHE_DIR`, `MAX_RETRIES`, `TIMEOUT`
+  - Configuration priority: CLI flags > Environment variables > Defaults
+  - Environment validation with clear error messages
+  - Generates `.env.example` file for documentation
+
+- **Configuration Documentation**: Comprehensive configuration guide
+  - Created `docs/CONFIGURATION.md` with complete configuration reference
+  - Documents all CLI options with examples
+  - Environment variable guide with usage examples
+  - Threshold configuration schema and examples
+  - Constants reference tables
+  - Best practices for different deployment scenarios
+  - CI/CD and Docker deployment examples
+
 - **Markdown Linting Configuration**: Added markdownlint-cli with comprehensive project rules
   - Created `.markdownlint.json` with project-specific configuration
   - Line length limit: 200 characters (MD013)

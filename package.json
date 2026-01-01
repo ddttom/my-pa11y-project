@@ -29,6 +29,8 @@
   "description": "Comprehensive website analysis suite for SEO, accessibility, performance, security, and AI agent compatibility",
   "dependencies": {
     "axios": "^1.7.3",
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
     "cheerio": "^1.0.0-rc.12",
     "commander": "^12.1.0",
     "csv-stringify": "^6.5.1",

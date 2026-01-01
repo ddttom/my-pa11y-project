@@ -247,4 +247,4 @@ if (isSafari) { applyWorkaround(); }
 
 ## Maintenance & Updates
 
-**Important**: Remember to perform linting and update [README.md](/README.md), `/docs/prd.md`, and `Claude.md` to reflect any significant changes made to this standards document before committing to version control.
+**Important**: Remember to perform linting and update [README.md](/README.md), [CLAUDE.md](/CLAUDE.md), and relevant documentation in `/docs` to reflect any significant changes made to this standards document before committing to version control.

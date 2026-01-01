@@ -16,6 +16,8 @@ import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
 import { runTestsOnSitemap } from './src/main.js';
+import { loadDotEnv, mergeConfig, validateEnvConfig } from './src/config/env.js';
+import { prepareConfig } from './src/config/validation.js';
 
 let defurl;
 let defcount;
@@ -76,16 +78,62 @@ program
     '--no-recursive',
     'Disable recursive crawling (only scan sitemap URLs, not discovered pages)'
   )
+  .option(
+    '--enable-history',
+    'Enable historical tracking (stores results for comparison over time)'
+  )
+  .option(
+    '--generate-dashboard',
+    'Generate interactive HTML dashboard with charts'
+  )
+  .option(
+    '--generate-executive-summary',
+    'Generate executive summary report'
+  )
+  .option(
+    '--thresholds <file>',
+    'Path to custom thresholds configuration file (JSON)'
+  )
   .parse(process.argv);
+
+// Initialize configuration with validation
+async function initializeConfig() {
+  // Load environment variables from .env file if present
+  await loadDotEnv();
+
+  // Validate environment configuration
+  const envValidation = validateEnvConfig();
+  if (!envValidation.valid) {
+    console.error('Environment configuration errors:');
+    envValidation.errors.forEach(err => console.error(`  - ${err}`));
+    process.exit(1);
+  }
+
+  // Merge CLI options with environment variables
+  const rawOptions = mergeConfig(program.opts());
+
+  // Validate and prepare configuration
+  const configResult = prepareConfig(rawOptions);
+  if (!configResult.valid) {
+    console.error('Configuration validation errors:');
+    configResult.errors.forEach(err => console.error(`  - ${err}`));
+    process.exit(1);
+  }
+
+  return configResult.config;
+}
+
+// Initialize configuration
+const options = await initializeConfig();
 
 // Global configuration object for shared state
 global.auditcore = {
   logger: null,
-  options: program.opts(),
+  options,
 };
 
 // Destructure output directory from options
-const { output: outputDir } = global.auditcore.options;
+const { output: outputDir } = options;
 
 // Ensure output directory exists
 try {

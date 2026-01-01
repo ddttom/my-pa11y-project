@@ -4,14 +4,14 @@ This document provides a comprehensive technical reference for all report struct
 
 **Purpose**: Enable AI assistants to accurately parse, analyze, and query report data without requiring human interpretation.
 
-**Last Updated**: 2025-12-07
-**Schema Version**: 1.2.0
+**Last Updated**: 2026-01-01
+**Schema Version**: 2.0.0
 
 ---
 
 ## Report Overview
 
-The tool generates **13+ reports** in CSV format (plus 2 XML/Markdown files):
+The tool generates **15+ reports** in CSV format (plus XML, Markdown, JSON, and HTML files):
 
 | Report File | Primary Key | Record Type | Aggregation Level |
 |-------------|-------------|-------------|-------------------|
@@ -28,6 +28,24 @@ The tool generates **13+ reports** in CSV format (plus 2 XML/Markdown files):
 | `all_resources_report.csv` | Resource URL | Per-resource | Site-wide |
 | `missing_sitemap_urls.csv` | Discovered URL | Per-URL | Site-wide |
 | `v-sitemap.xml` | loc (URL) | Per-URL | Site-wide |
+| `executive_summary.md` | - | Site-wide | Site-wide |
+| `executive_summary.json` | - | Site-wide | Site-wide |
+| `dashboard.html` | - | Site-wide | Site-wide |
+| `history/results-*.json` | - | Site-wide | Historical |
+
+### Enhanced Reports (Optional)
+
+The following reports are generated when specific CLI flags are used:
+
+- **Executive Summary** (`--generate-executive-summary`):
+  - `executive_summary.md` - Human-readable executive summary
+  - `executive_summary.json` - Machine-readable summary for automation
+
+- **Interactive Dashboard** (`--generate-dashboard`):
+  - `dashboard.html` - Self-contained HTML with embedded charts
+
+- **Historical Data** (`--enable-history`):
+  - `history/results-<timestamp>.json` - Timestamped complete results
 
 ---
 
@@ -843,10 +861,285 @@ The tool also generates cache files for debugging:
 
 ---
 
+## 14. Executive Summary (Markdown) (`executive_summary.md`)
+
+**Purpose**: High-level overview report with key insights and recommendations
+**Generated**: When `--generate-executive-summary` flag is used
+**Format**: Markdown (human-readable)
+
+### Structure
+
+```markdown
+# Executive Summary
+
+**Site:** [domain]
+**Generated:** [timestamp]
+**Pages Analyzed:** [count]
+
+## Overall Status
+[Table with Performance, Accessibility, SEO, LLM status and scores]
+
+## Performance
+- Status, Average Load Time, LCP, FCP, CLS
+- Trend information (if history enabled)
+
+## Accessibility
+- Status, Total Issues, Errors, Warnings, Notices
+- Trend information (if history enabled)
+
+## SEO
+- Status, Average Score, Pages Analyzed
+- Trend information (if history enabled)
+
+## Content Quality
+- Average Word Count, Headings, Low Content Pages
+- Trend information (if history enabled)
+
+## LLM Agent Suitability
+- Status, Served Score, Rendered Score, llms.txt count
+- Trend information (if history enabled)
+
+## Key Findings
+[Numbered list of critical findings with severity icons]
+
+## Recommendations
+[Numbered list of actionable recommendations with priority]
+
+## Comparison with Previous Run
+[If history enabled: improvements and regressions]
+```
+
+### Key Fields
+
+- **Overall Status**: Pass/Warn/Fail for each category
+- **Scores**: Numerical scores (0-100 where applicable)
+- **Trends**: Percentage changes from previous run
+- **Findings**: Critical issues requiring attention
+- **Recommendations**: Prioritized action items
+
+---
+
+## 15. Executive Summary (JSON) (`executive_summary.json`)
+
+**Purpose**: Machine-readable executive summary for automation
+**Generated**: When `--generate-executive-summary` flag is used
+**Format**: JSON
+
+### JSON Structure
+
+```json
+{
+  "generatedAt": "ISO 8601 timestamp",
+  "site": "domain name",
+  "overview": {
+    "totalPages": 100,
+    "analysisDate": "YYYY-MM-DD",
+    "schemaVersion": "2.0.0"
+  },
+  "performance": {
+    "status": "Excellent|Good|Fair|Poor",
+    "score": 0-100,
+    "averageLoadTime": "ms",
+    "averageLCP": "ms",
+    "averageFCP": "ms",
+    "averageCLS": "0.0-1.0",
+    "trend": { "loadTime": "%", "lcp": "%" }
+  },
+  "accessibility": {
+    "status": "Excellent|Good|Fair|Critical",
+    "score": 0-100,
+    "totalIssues": "count",
+    "errors": "count",
+    "warnings": "count",
+    "notices": "count",
+    "averageIssuesPerPage": "float",
+    "trend": { "totalIssues": "delta", "percentChange": "%" }
+  },
+  "seo": {
+    "status": "Excellent|Very Good|Good|Fair|Needs Improvement",
+    "score": 0-100,
+    "pagesAnalyzed": "count",
+    "trend": { "score": "delta", "percentChange": "%" }
+  },
+  "content": {
+    "averageWordCount": "count",
+    "averageHeadings": "float",
+    "pagesWithLowContent": "count",
+    "lowContentPercentage": "float",
+    "trend": { "wordCount": "%" }
+  },
+  "llmSuitability": {
+    "status": "Good|Fair|Needs Improvement",
+    "servedScore": 0-100,
+    "renderedScore": 0-100,
+    "pagesWithLLMsTxt": "count",
+    "trend": { "servedScore": "%", "renderedScore": "%" }
+  },
+  "keyFindings": [
+    {
+      "category": "Performance|Accessibility|SEO|Content|LLM",
+      "severity": "Critical|High|Medium|Low",
+      "finding": "description"
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "Performance|Accessibility|SEO|Content|LLM",
+      "priority": "Critical|High|Medium|Low",
+      "recommendation": "action item"
+    }
+  ],
+  "comparison": {
+    "improvements": ["list of improvements"],
+    "regressions": ["list of regressions"],
+    "urlCountChange": "delta"
+  }
+}
+```
+
+---
+
+## 16. Interactive Dashboard (`dashboard.html`)
+
+**Purpose**: Visual analytics dashboard with embedded charts
+**Generated**: When `--generate-dashboard` flag is used
+**Format**: Self-contained HTML with inline CSS, JavaScript, and embedded PNG charts
+
+### Features
+
+- **Overview Cards**: High-level status for each category
+- **Embedded Charts**: Base64-encoded PNG images
+  - Performance metrics bar chart
+  - Accessibility issues pie chart
+  - SEO score distribution bar chart
+  - Content metrics bar chart
+  - LLM suitability comparison chart
+  - Historical trend line charts (if history enabled)
+- **Comparison Tables**: Changes between runs (if history enabled)
+- **Pass/Fail Tables**: Color-coded status summaries
+
+### Chart Data Sources
+
+All charts are generated from `results.json` and rendered as PNG images using Chart.js, then embedded as base64 data URIs.
+
+---
+
+## 17. Historical Results (`history/results-<timestamp>.json`)
+
+**Purpose**: Timestamped snapshots for comparative analysis and trend tracking
+**Generated**: When `--enable-history` flag is used
+**Format**: JSON
+**Filename Pattern**: `results-YYYY-MM-DDTHH-mm-ss-sssZ.json`
+
+### Historical Data Structure
+
+```json
+{
+  "timestamp": "ISO 8601 timestamp",
+  "schemaVersion": "2.0.0",
+  "results": {
+    "urls": [...],
+    "performanceAnalysis": [...],
+    "pa11y": [...],
+    "seoScores": [...],
+    "contentAnalysis": [...],
+    "llmMetrics": [...],
+    "internalLinks": [...],
+    "imageAnalysis": [...]
+  }
+}
+```
+
+### Usage
+
+- **Comparative Analysis**: Compare metrics between runs
+- **Trend Analysis**: Track changes over time
+- **Regression Detection**: Identify performance degradation
+- **Improvement Tracking**: Measure optimization impact
+
+### Access Pattern
+
+Historical results are loaded chronologically and compared:
+
+```javascript
+// Load all historical results
+const historicalResults = await loadHistoricalResults(outputDir);
+
+// Get most recent for comparison
+const previousResult = historicalResults[historicalResults.length - 1];
+
+// Compare with current
+const comparison = compareResults(previousResult.results, currentResults);
+```
+
+---
+
+## Configuration Files
+
+### Threshold Configuration (`custom-thresholds.json`)
+
+**Purpose**: Custom pass/fail criteria for all metrics
+**Format**: JSON
+**Location**: User-specified via `--thresholds` flag
+
+### Structure
+
+```json
+{
+  "performance": {
+    "loadTime": { "pass": 3000, "warn": 5000 },
+    "lcp": { "pass": 2500, "warn": 4000 },
+    "fcp": { "pass": 1800, "warn": 3000 },
+    "cls": { "pass": 0.1, "warn": 0.25 },
+    "tti": { "pass": 3800, "warn": 7300 }
+  },
+  "accessibility": {
+    "maxErrors": { "pass": 0, "warn": 5 },
+    "maxWarnings": { "pass": 10, "warn": 30 },
+    "maxTotalIssues": { "pass": 20, "warn": 50 }
+  },
+  "seo": {
+    "minScore": { "pass": 80, "warn": 60 },
+    "minTitleLength": { "pass": 30, "warn": 20 },
+    "maxTitleLength": { "pass": 60, "warn": 70 },
+    "minMetaDescLength": { "pass": 70, "warn": 50 },
+    "maxMetaDescLength": { "pass": 155, "warn": 170 }
+  },
+  "content": {
+    "minWordCount": { "pass": 300, "warn": 150 },
+    "minHeadings": { "pass": 3, "warn": 1 }
+  },
+  "llm": {
+    "minServedScore": { "pass": 70, "warn": 50 },
+    "minRenderedScore": { "pass": 60, "warn": 40 }
+  }
+}
+```
+
+### Validation Rules
+
+- All values must be numbers
+- For performance metrics: `warn >= pass` (lower is better)
+- For scores: `warn <= pass` (higher is better)
+- CLS must be between 0 and 1
+
+---
+
 ## Document Metadata
 
-- **Last Updated**: 2025-12-07
-- **Schema Version**: 1.2.0
-- **Tool Version**: SEO Analysis Tool v1.x
+- **Last Updated**: 2026-01-01
+- **Schema Version**: 2.0.0
+- **Tool Version**: Web Audit Suite v2.0.0
 - **Document Purpose**: AI assistant reference for programmatic report parsing
 - **Audience**: AI assistants, automated analysis tools, integration developers
+
+### Change Log
+
+**v2.0.0** (2026-01-01):
+
+- Added Executive Summary reports (Markdown and JSON)
+- Added Interactive Dashboard (HTML with charts)
+- Added Historical Results tracking
+- Added Threshold Configuration schema
+- Updated report count from 13 to 15+
+- Added enhanced reports section

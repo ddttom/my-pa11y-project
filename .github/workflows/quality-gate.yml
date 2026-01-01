@@ -1,0 +1,166 @@
+name: Quality Gate
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      sitemap_url:
+        description: 'Sitemap URL to audit'
+        required: true
+        default: 'https://example.com/sitemap.xml'
+      url_limit:
+        description: 'Number of URLs to audit (-1 for all)'
+        required: false
+        default: '10'
+      threshold_profile:
+        description: 'Threshold profile to use'
+        required: false
+        default: 'ci'
+        type: choice
+        options:
+          - ci
+          - strict
+          - relaxed
+
+jobs:
+  web-audit:
+    name: Web Audit Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: |
+        npm run lint
+        npm run lint:md
+
+    - name: Determine audit configuration
+      id: config
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "sitemap_url=${{ github.event.inputs.sitemap_url }}" >> $GITHUB_OUTPUT
+          echo "url_limit=${{ github.event.inputs.url_limit }}" >> $GITHUB_OUTPUT
+          echo "threshold_profile=${{ github.event.inputs.threshold_profile }}" >> $GITHUB_OUTPUT
+        else
+          # Use environment variables or defaults for automated runs
+          echo "sitemap_url=${STAGING_URL:-https://example.com/sitemap.xml}" >> $GITHUB_OUTPUT
+          echo "url_limit=${AUDIT_URL_LIMIT:-10}" >> $GITHUB_OUTPUT
+          echo "threshold_profile=ci" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run Web Audit Suite
+      run: |
+        npm start -- \
+          -s "${{ steps.config.outputs.sitemap_url }}" \
+          -c "${{ steps.config.outputs.url_limit }}" \
+          --thresholds "./examples/${{ steps.config.outputs.threshold_profile }}-thresholds.json" \
+          --enable-history \
+          --generate-dashboard \
+          --generate-executive-summary \
+          --log-level info
+      env:
+        NODE_ENV: ci
+      continue-on-error: true
+      id: audit
+
+    - name: Upload audit results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: audit-results-${{ github.run_number }}
+        path: |
+          results/
+          !results/.cache
+        retention-days: 30
+
+    - name: Generate audit summary
+      if: always()
+      run: |
+        echo "## Web Audit Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ -f "results/executive_summary.md" ]; then
+          cat results/executive_summary.md >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Executive summary not generated" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Audit Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Sitemap URL:** ${{ steps.config.outputs.sitemap_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **URL Limit:** ${{ steps.config.outputs.url_limit }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Threshold Profile:** ${{ steps.config.outputs.threshold_profile }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 [Download full audit results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+    - name: Comment PR with audit results
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+
+          let comment = '## 🔍 Web Audit Quality Gate Results\n\n';
+
+          if (fs.existsSync('results/executive_summary.md')) {
+            const summary = fs.readFileSync('results/executive_summary.md', 'utf8');
+            comment += summary + '\n\n';
+          } else {
+            comment += '❌ Executive summary not available\n\n';
+          }
+
+          comment += '### 📊 Detailed Reports\n\n';
+          comment += 'Download the full audit results artifact from the [Actions run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).\n\n';
+          comment += '**Reports included:**\n';
+          comment += '- Interactive Dashboard (`dashboard.html`)\n';
+          comment += '- Executive Summary (`executive_summary.md`)\n';
+          comment += '- SEO Report (`seo_report.csv`)\n';
+          comment += '- Performance Analysis (`performance_analysis.csv`)\n';
+          comment += '- Accessibility Report (`accessibility_report.csv`)\n';
+          comment += '- And more...\n\n';
+          comment += `**Audit Configuration:**\n`;
+          comment += `- URL Limit: ${{ steps.config.outputs.url_limit }}\n`;
+          comment += `- Threshold Profile: ${{ steps.config.outputs.threshold_profile }}\n`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+    - name: Check audit status
+      if: always()
+      run: |
+        if [ "${{ steps.audit.outcome }}" = "failure" ]; then
+          echo "::error::Web audit quality gate failed. Check the audit results for details."
+          exit 1
+        fi
+
+    - name: Notify on failure
+      if: failure() && github.event_name == 'push'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '🚨 Quality Gate Failed on ' + context.ref,
+            body: `The web audit quality gate failed on push to ${context.ref}.\n\nCheck the [failed run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.\n\n**Commit:** ${context.sha}\n**Author:** @${context.actor}`,
+            labels: ['quality-gate', 'automated']
+          });
