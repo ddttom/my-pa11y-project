@@ -626,6 +626,7 @@ npm start -- -s https://example.com/sitemap.xml -l 10 -o test
 
 - Check `error.log` for issues
 - Use `--log-level debug` for detailed troubleshooting
+- **Note**: Startup parameters are always printed to the terminal regardless of log level for verification.
 - Watch for patterns in failures
 
 ### 4. Regular Cache Cleanup

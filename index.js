@@ -186,14 +186,20 @@ global.auditcore.logger = winston.createLogger({
 
 /**
  * Log startup parameters
+ * Using console.log to ensure visibility regardless of configured log level
  */
-global.auditcore.logger.info('=== Application Started ===');
-global.auditcore.logger.info(`Command: ${process.argv.join(' ')}`);
-global.auditcore.logger.info('Input Parameters:');
+/* eslint-disable no-console */
+console.log('=== Application Started ===');
+console.log(`Command: ${process.argv.join(' ')}`);
+console.log('Input Parameters:');
+const excludedKeys = ['pa11y', 'sitemapProcessing', 'performance', 'thresholds'];
 Object.entries(global.auditcore.options).forEach(([key, value]) => {
-  global.auditcore.logger.info(`  ${key}: ${JSON.stringify(value)}`);
+  if (!excludedKeys.includes(key)) {
+    console.log(`  ${key}: ${JSON.stringify(value)}`);
+  }
 });
-global.auditcore.logger.info('===========================');
+console.log('===========================');
+/* eslint-enable no-console */
 
 /**
  * Ensures cache directory exists for storing temporary data
