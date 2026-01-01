@@ -1,46 +1,37 @@
 module.exports = {
+  root: true,
+  extends: 'airbnb-base',
   env: {
     browser: true,
     node: true,
     es2021: true,
   },
-  extends: [
-    'eslint:recommended',
-    'plugin:node/recommended',
-  ],
+  parser: '@babel/eslint-parser',
   parserOptions: {
     ecmaVersion: 2023,
     sourceType: 'module',
+    requireConfigFile: false,
   },
-  plugins: [
-    'node',
-    'import',
-  ],
   rules: {
-    'node/file-extension-in-import': ['error', 'always'],
-    'node/no-unsupported-features/es-syntax': ['error', {
-      version: '>=20.0.0',
-      ignores: ['modules', 'dynamicImport'],
-    }],
-    'no-process-exit': 'off', // Turning off this rule as it's causing issues
-  },
-  settings: {
-    node: {
-      version: '>=20.0.0',
-    },
+    'import/extensions': ['error', { js: 'always' }],
+    'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+    'no-param-reassign': [2, { props: false }],
+    'no-console': 'off',
+    'max-len': 'off',
+    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    'no-underscore-dangle': 'off',
+    'linebreak-style': 'off',
+    'no-process-exit': 'off',
   },
   ignorePatterns: [
     '.claude/**/*.md',
+    'node_modules',
   ],
   overrides: [
     {
       files: ['test/**/*.js'],
       env: {
         mocha: true,
-      },
-      rules: {
-        'node/no-unpublished-import': 'off',
-        'node/no-missing-import': 'off',
       },
     },
   ],

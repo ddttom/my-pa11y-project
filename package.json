@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "mocha test/**/*.test.js",
-    "lint": "eslint .",
+    "lint": "npx eslint .",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules",
     "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --fix"
   },
@@ -48,17 +48,13 @@
     "xmlbuilder2": "^3.1.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.23.7",
+    "@babel/eslint-parser": "^7.23.3",
     "chai": "^6.2.1",
     "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-node": "^4.1.0",
-    "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-prettier": "^5.2.1",
-    "globals": "^15.9.0",
     "markdownlint-cli": "^0.47.0",
-    "mocha": "^11.7.5",
-    "prettier": "^3.3.3"
+    "mocha": "^11.7.5"
   }
 }

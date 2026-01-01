@@ -13,7 +13,7 @@ Task tracking for Web Audit Suite development.
 ### Core Functionality
 
 - [ ] Add tests (currently no test suite despite npm test script)
-- [ ] Fix setup.js eslint errors (import/extensions, import/prefer-default-export rules)
+- [ ] Fix ESLint installation issues (devDependencies not installing properly)
 - [ ] Add resume capability documentation with examples
 - [ ] Implement rate limiting configuration for large sites
 
@@ -125,7 +125,7 @@ Task tracking for Web Audit Suite development.
 
 ### Bugs
 
-- [ ] setup.js has eslint rule definition errors
+- [ ] ESLint devDependencies not installing properly (npm install says "up to date" but packages missing)
 - [ ] Some sites with heavy JavaScript fail to render properly
 - [ ] Cloudflare bypass doesn't work on all sites
 - [ ] Language variant filtering may be too aggressive
@@ -170,6 +170,8 @@ Task tracking for Web Audit Suite development.
 - [x] Update CLAUDE.md with comprehensive guidance
 - [x] Fix linting errors in llmMetrics.js and llmReports.js
 - [x] Update all documentation with new project name
+- [x] Update ESLint configuration to use airbnb-base (2026-01-01)
+- [x] Remove erroneous package-lock.json policy from PROJECTSTATE.md (2026-01-01)
 
 ## Notes
 

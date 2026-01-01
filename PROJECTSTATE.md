@@ -125,7 +125,6 @@ Current snapshot of Web Audit Suite implementation status.
 
 - ESLint: Added `node/no-missing-import: 'off'`
 - Claude Code: Added `npm install` to approved operations
-- Removed package-lock.json (project policy)
 
 ## Known Issues
 
