@@ -439,32 +439,6 @@ function formatScore(score) {
 }
 
 /**
- * Generates specific URL report in CSV format
- * @param {Object} results - Analysis results object containing specific URL metrics
- * @param {string} outputDir - Directory path to save the report
- * @returns {Promise<void>}
- */
-export async function generateSpecificUrlReport(results, outputDir) {
-  if (!results.specificUrlMetrics || results.specificUrlMetrics.length === 0) {
-    global.auditcore.logger.info('No specific URL matches found, skipping report generation');
-    return;
-  }
-
-  const csvWriter = createObjectCsvWriter({
-    path: path.join(outputDir, 'specific_url_report.csv'),
-    header: [
-      { id: 'pageUrl', title: 'Page URL' },
-      { id: 'foundUrl', title: 'Found URL' },
-      { id: 'elementType', title: 'Element Type' },
-      { id: 'attribute', title: 'Attribute' },
-    ],
-  });
-
-  await csvWriter.writeRecords(results.specificUrlMetrics);
-  global.auditcore.logger.info(`Specific URL report generated with ${results.specificUrlMetrics.length} records`);
-}
-
-/**
  * Generates external resources report in CSV format
  * @param {Object} results - Analysis results object containing external resources aggregation
  * @param {string} outputDir - Directory path to save the report

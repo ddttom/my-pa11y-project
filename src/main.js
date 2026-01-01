@@ -165,12 +165,6 @@ export async function runTestsOnSitemap() {
       'report generation',
     );
 
-    if (results.specificUrlMetrics && results.specificUrlMetrics.length > 0) {
-      global.auditcore.logger.info(`\n=== Specific URL Search Results ===\nFound ${results.specificUrlMetrics.length} occurrences of the target URL.\nSee specific_url_report.csv for details.\n=====================================\n`);
-    } else {
-      global.auditcore.logger.info('\n=== Specific URL Search Results ===\nNo occurrences of the target URL were found.\n=====================================\n');
-    }
-
     if (results.externalResourcesAggregation && Object.keys(results.externalResourcesAggregation).length > 0) {
       const totalResources = Object.keys(results.externalResourcesAggregation).length;
       const totalReferences = Object.values(results.externalResourcesAggregation).reduce((sum, r) => sum + r.count, 0);
