@@ -250,11 +250,14 @@ function buildLLMSummary(results, comparisonData) {
 
   const status = avgServedScore >= 70 ? 'Good' : avgServedScore >= 50 ? 'Fair' : 'Needs Improvement';
 
+  // Check if llms.txt exists globally (if any page has it, all benefit)
+  const globalLLMsTxtExists = metrics.some((m) => m.url.endsWith('/llms.txt') || m.url.endsWith('/llms.txt/'));
+
   const summary = {
     status,
     servedScore: Math.round(avgServedScore),
     renderedScore: Math.round(avgRenderedScore),
-    pagesWithLLMsTxt: metrics.filter((m) => m.hasLlmsTxt).length,
+    pagesWithLLMsTxt: metrics.filter((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta || m.url.endsWith('/llms.txt') || globalLLMsTxtExists).length,
   };
 
   if (comparisonData) {
@@ -328,8 +331,10 @@ function buildKeyFindings(results) {
 
   // LLM findings
   const llmMetrics = results.llmMetrics || [];
-  const pagesWithoutLLMsTxt = llmMetrics.filter((m) => !m.hasLlmsTxt).length;
-  if (pagesWithoutLLMsTxt === llmMetrics.length && llmMetrics.length > 0) {
+  const globalLLMsTxtExists = llmMetrics.some((m) => m.url.endsWith('/llms.txt') || m.url.endsWith('/llms.txt/'));
+  const pagesWithLLMsTxt = llmMetrics.filter((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta || m.url.endsWith('/llms.txt') || globalLLMsTxtExists).length;
+
+  if (pagesWithLLMsTxt === 0 && llmMetrics.length > 0) {
     findings.push({
       category: 'LLM Suitability',
       severity: 'Low',
