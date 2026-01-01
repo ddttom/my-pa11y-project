@@ -2,8 +2,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
-
-
 /**
  * Generates an interactive HTML dashboard with embedded charts
  * @param {Object} results - Analysis results

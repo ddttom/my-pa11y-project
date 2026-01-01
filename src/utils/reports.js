@@ -90,10 +90,10 @@ export async function generateReports(results, urls, outputDir) {
       }
     }
 
-    // Save complete results as JSON
+    // Save complete results as JSON (minified for performance)
     await fs.writeFile(
       path.join(outputDir, 'results.json'),
-      JSON.stringify(results, null, 2),
+      JSON.stringify(results),
     );
 
     global.auditcore.logger.info('All reports generated successfully');

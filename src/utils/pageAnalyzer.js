@@ -212,36 +212,39 @@ async function runPa11yAnalysis(testUrl, html, config) {
   }
 }
 
+/**
+ * Initialize metrics structure for a URL (consolidated for performance)
+ * @param {Object} results - Results object to initialize
+ * @param {string} testUrl - URL to initialize metrics for
+ */
+function initializeMetricsForUrl(results, testUrl) {
+  const metricTypes = [
+    'urlMetrics',
+    'responseCodeMetrics',
+    'titleMetrics',
+    'metaDescriptionMetrics',
+    'h1Metrics',
+    'h2Metrics',
+    'imageMetrics',
+    'linkMetrics',
+    'securityMetrics',
+    'hreflangMetrics',
+    'canonicalMetrics',
+    'contentMetrics',
+  ];
+
+  // Initialize all metric objects at root level
+  metricTypes.forEach((metricType) => {
+    results[metricType] = results[metricType] || {};
+    results[metricType][testUrl] = results[metricType][testUrl] || {};
+  });
+}
+
 async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
   global.auditcore.logger.info(`[START] Running metrics analysis for ${testUrl}`);
   try {
-    // Initialize all metric objects
-    results.urlMetrics = results.urlMetrics || {};
-    results.responseCodeMetrics = results.responseCodeMetrics || {};
-    results.titleMetrics = results.titleMetrics || {};
-    results.metaDescriptionMetrics = results.metaDescriptionMetrics || {};
-    results.h1Metrics = results.h1Metrics || {};
-    results.h2Metrics = results.h2Metrics || {};
-    results.imageMetrics = results.imageMetrics || {};
-    results.linkMetrics = results.linkMetrics || {};
-    results.securityMetrics = results.securityMetrics || {};
-    results.hreflangMetrics = results.hreflangMetrics || {};
-    results.canonicalMetrics = results.canonicalMetrics || {};
-    results.contentMetrics = results.contentMetrics || {};
-
-    // Initialize metric objects for this specific URL
-    results.urlMetrics[testUrl] = results.urlMetrics[testUrl] || {};
-    results.responseCodeMetrics[testUrl] = results.responseCodeMetrics[testUrl] || {};
-    results.titleMetrics[testUrl] = results.titleMetrics[testUrl] || {};
-    results.metaDescriptionMetrics[testUrl] = results.metaDescriptionMetrics[testUrl] || {};
-    results.h1Metrics[testUrl] = results.h1Metrics[testUrl] || {};
-    results.h2Metrics[testUrl] = results.h2Metrics[testUrl] || {};
-    results.imageMetrics[testUrl] = results.imageMetrics[testUrl] || {};
-    results.linkMetrics[testUrl] = results.linkMetrics[testUrl] || {};
-    results.securityMetrics[testUrl] = results.securityMetrics[testUrl] || {};
-    results.hreflangMetrics[testUrl] = results.hreflangMetrics[testUrl] || {};
-    results.canonicalMetrics[testUrl] = results.canonicalMetrics[testUrl] || {};
-    results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
+    // Initialize all metrics in one pass (performance optimization)
+    initializeMetricsForUrl(results, testUrl);
 
     await updateTitleMetrics($, results, testUrl);
     await updateMetaDescriptionMetrics($, results, testUrl);

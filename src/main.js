@@ -3,7 +3,7 @@ import path from 'path';
 import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
 import { generateReports } from './utils/reports.js';
 import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHandler.js';
-import { executeNetworkOperation } from './utils/networkUtils.js';
+import { executeNetworkOperation, initializeBrowserPool, shutdownBrowserPool } from './utils/networkUtils.js';
 import { getDiscoveredUrls } from './utils/sitemapUtils.js';
 import { RESULTS_SCHEMA_VERSION, areVersionsCompatible } from './utils/schemaVersion.js';
 import { storeHistoricalResult } from './utils/historicalComparison.js';
@@ -46,6 +46,15 @@ export async function runTestsOnSitemap() {
 
   global.auditcore.logger.info(`Starting process for sitemap or page: ${sitemapUrl}`);
   global.auditcore.logger.info(`Results will be saved to: ${outputDir}`);
+
+  // Initialize browser pool for performance optimization
+  try {
+    await initializeBrowserPool({
+      poolSize: global.auditcore.options.browserPoolSize || 3,
+    });
+  } catch (error) {
+    global.auditcore.logger.warn('Failed to initialize browser pool, will use fallback mode:', error.message);
+  }
 
   // Check for existing results to support resume functionality
   const resultsPath = path.join(outputDir, 'results.json');
@@ -132,7 +141,7 @@ export async function runTestsOnSitemap() {
       // Add schema version to results
       results.schemaVersion = RESULTS_SCHEMA_VERSION;
 
-      // Save results for future use and resume capability
+      // Save results for future use and resume capability (minified for performance)
       await fs.writeFile(resultsPath, JSON.stringify(results));
     }
 
@@ -194,5 +203,8 @@ export async function runTestsOnSitemap() {
   } catch (error) {
     global.auditcore.logger.error('Error in runTestsOnSitemap:', error);
     throw error;
+  } finally {
+    // Cleanup browser pool
+    await shutdownBrowserPool();
   }
 }

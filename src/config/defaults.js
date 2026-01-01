@@ -349,6 +349,10 @@ export const defaultOptions = {
   generateDashboard: false,
   generateExecutiveSummary: false,
 
+  // Performance optimization options
+  browserPoolSize: 3, // Number of concurrent browser instances in pool
+  urlConcurrency: 3, // Number of URLs to process concurrently
+
   // Pa11y specific configuration
   pa11y: {
     timeout: TIMEOUTS.PA11Y,
