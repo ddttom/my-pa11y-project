@@ -6,6 +6,37 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **GitHub Actions CI/CD Integration**: Automated quality gate workflow
+  - Added `.github/workflows/quality-gate.yml` workflow file
+  - Automated quality checks on pull requests and pushes
+  - Manual workflow dispatch with custom configuration
+  - Three threshold profiles: strict, CI, relaxed
+  - Automatic PR comments with audit results
+  - Artifact storage for 30 days (all reports and dashboard)
+  - GitHub Actions summary page generation
+  - Failure notifications via GitHub issues
+  - Environment variable support (STAGING_URL, AUDIT_URL_LIMIT)
+  - Documentation: `docs/CI-CD-INTEGRATION.md`
+  - Examples for GitLab CI, Jenkins, Azure Pipelines, CircleCI
+
+- **Comprehensive Documentation Suite**: Complete guides and examples
+  - Created `QUICKSTART.md` - 5-minute getting started guide
+  - Created `docs/CONFIGURATION.md` - Complete configuration reference
+  - Created `docs/FEATURES.md` - Feature overview with examples
+  - Created `docs/CI-CD-INTEGRATION.md` - CI/CD setup and usage
+  - Created `examples/README.md` - Threshold configuration guide
+  - Created `.env.example` - Environment variable template
+  - Created `custom-thresholds.example.json` - Threshold template
+  - Reorganized `docs/for-ai/` subdirectory for AI assistant prompts
+  - Updated all documentation to reflect new structure
+
+- **Example Threshold Configurations**: Pre-configured quality standards
+  - `examples/strict-thresholds.json` - High-quality production standards (< 1s load, 0 errors)
+  - `examples/relaxed-thresholds.json` - Development standards (< 5s load, 5 errors)
+  - `examples/ci-thresholds.json` - CI/CD quality gates (< 3s load, 0-2 errors)
+  - Comprehensive documentation in `examples/README.md`
+  - Use cases, best practices, and workflows
+
 - **Historical Comparison and Trend Analysis**: Track website changes over time
   - Added `--enable-history` CLI flag to enable historical tracking
   - Stores timestamped results in `history/` directory for comparative analysis
