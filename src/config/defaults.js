@@ -337,6 +337,17 @@ export const defaultOptions = {
   output: OUTPUT.DEFAULT_DIR,
   sitemap: DEFAULTS.SITEMAP_URL,
   cacheDir: CACHE.DIRECTORY,
+  limit: -1,
+  count: -1,
+  cache: true,
+  cacheOnly: false,
+  puppeteer: true,
+  forceDeleteCache: false,
+  includeAllLanguages: false,
+  recursive: true,
+  enableHistory: false,
+  generateDashboard: false,
+  generateExecutiveSummary: false,
 
   // Pa11y specific configuration
   pa11y: {

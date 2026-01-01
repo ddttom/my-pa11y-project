@@ -19,11 +19,6 @@ import { runTestsOnSitemap } from './src/main.js';
 import { loadDotEnv, mergeConfig, validateEnvConfig } from './src/config/env.js';
 import { prepareConfig } from './src/config/validation.js';
 
-// Default URL for analysis when none is provided
-const defurl = 'https://example.com/sitemap.xml';
-// Default count for analysis when none is provided, -1 = infinite
-const defcount = -1;
-
 /**
  * Configure command line options using Commander
  *
@@ -43,20 +38,17 @@ program
   .option(
     '-s, --sitemap <url>',
     'URL of the sitemap to process',
-    defurl,
   )
-  .option('-o, --output <directory>', 'Output directory for results', 'results')
+  .option('-o, --output <directory>', 'Output directory for results')
   .option(
     '-l, --limit <number>',
     'Limit the number of URLs to test. Use -1 to test all URLs.',
     (value) => parseInt(value, 10),
-    defcount,
   )
   .option(
     '-c, --count <number>',
     'Number of files to include in analysis. Use -1 for infinite.',
     (value) => parseInt(value, 10),
-    defcount,
   )
   .option('--cache-only', 'Use only cached data, do not fetch new data')
   .option('--no-cache', 'Disable caching, always fetch fresh data')
@@ -65,7 +57,6 @@ program
   .option(
     '--log-level <level>',
     'Set logging level (error, warn, info, debug)',
-    'debug',
   )
   .option(
     '--include-all-languages',
@@ -107,7 +98,15 @@ async function initializeConfig() {
   }
 
   // Merge CLI options with environment variables
-  const rawOptions = mergeConfig(program.opts());
+  // Only include options that were explicitly set in the CLI to avoid defaults overriding ENV vars
+  const cliOpts = program.opts();
+  const explicitCliOpts = {};
+  Object.keys(cliOpts).forEach((key) => {
+    if (program.getOptionValueSource(key) === 'cli') {
+      explicitCliOpts[key] = cliOpts[key];
+    }
+  });
+  const rawOptions = mergeConfig(explicitCliOpts);
 
   // Validate and prepare configuration
   const configResult = prepareConfig(rawOptions);

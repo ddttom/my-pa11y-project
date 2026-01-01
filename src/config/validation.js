@@ -3,7 +3,7 @@
  * Ensures all configuration values are valid before use
  */
 
-import { LOG_LEVELS } from './defaults.js';
+import { LOG_LEVELS, defaultOptions } from './defaults.js';
 
 /**
  * Configuration schema definition
@@ -120,11 +120,10 @@ export const configSchema = {
     default: false,
   },
   thresholds: {
-    type: 'string',
     required: false,
     validate: (value) => {
-      if (value && typeof value !== 'string') {
-        return 'Thresholds file path must be a string';
+      if (value && typeof value !== 'string' && typeof value !== 'object') {
+        return 'Thresholds must be a file path (string) or configuration object';
       }
       return null;
     },
@@ -338,8 +337,6 @@ export function validateThresholds(thresholds) {
     errors,
   };
 }
-
-import { defaultOptions } from './defaults.js';
 
 /**
  * Applies default values to configuration

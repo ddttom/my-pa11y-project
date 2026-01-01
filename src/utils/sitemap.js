@@ -116,6 +116,24 @@ export async function getUrlsFromSitemap(url, limit = -1) {
       }
     }
 
+    // Automatically add llms.txt if not present
+    try {
+      const inputUrlObj = new URL(url);
+      const llmsTxtUrl = `${inputUrlObj.origin}/llms.txt`;
+      const exists = urls.some((u) => u.url === llmsTxtUrl);
+      if (!exists) {
+        global.auditcore.logger.info(`Automatically adding ${llmsTxtUrl} to processing list`);
+        urls.push({
+          url: llmsTxtUrl,
+          lastmod: new Date().toISOString(),
+          changefreq: 'daily',
+          priority: 0.8,
+        });
+      }
+    } catch (error) {
+      global.auditcore.logger.debug(`Could not add llms.txt: ${error.message}`);
+    }
+
     // Filter and validate URLs
     const validUrls = urls.filter((urlObj) => isValidUrl(urlObj.url, url));
     global.auditcore.logger.info(`Found ${validUrls.length} valid URLs out of ${urls.length} total URLs`);

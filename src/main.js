@@ -62,6 +62,11 @@ export async function runTestsOnSitemap() {
       global.auditcore.logger.info('Force delete cache: Deleted results directory');
       // Recreate the output directory
       await fs.mkdir(outputDir, { recursive: true });
+
+      const cacheDir = global.auditcore.options.cacheDir || '.cache';
+      await fs.rm(cacheDir, { recursive: true, force: true });
+      global.auditcore.logger.info(`Force delete cache: Deleted cache directory (${cacheDir})`);
+      await fs.mkdir(cacheDir, { recursive: true });
       global.auditcore.logger.info(`Recreated output directory: ${outputDir}`);
     } catch (error) {
       global.auditcore.logger.debug('Error clearing results directory:', error.message);

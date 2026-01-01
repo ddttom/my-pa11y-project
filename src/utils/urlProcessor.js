@@ -284,6 +284,12 @@ export class UrlProcessor {
     let index = 0;
 
     while (urlQueue.length > 0) {
+      // Check if we've reached the absolute limit (if set)
+      if (this.options.limit > 0 && processedUrls.size >= this.options.limit) {
+        global.auditcore.logger.info(`Reached configured limit of ${this.options.limit} URLs. Stopping recursive crawl.`);
+        break;
+      }
+
       const urlObj = urlQueue.shift();
       const { url, lastmod } = urlObj;
 

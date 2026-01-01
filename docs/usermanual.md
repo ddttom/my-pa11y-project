@@ -10,6 +10,7 @@ Web Audit Suite is a comprehensive website analysis tool that generates detailed
 - **Security**: HTTPS configuration, security headers (HSTS, CSP, X-Frame-Options)
 - **Content Quality**: Content freshness, uniqueness, media richness, structure
 - **LLM Suitability**: AI agent compatibility analysis for both served and rendered HTML
+- **LLMS.txt**: Automatically detects and processes `llms.txt` at the domain root for AI agent compatibility checks.
 
 ## Getting Started
 
@@ -92,11 +93,10 @@ This file contains all default settings including:
 
 Modify this file to change the baseline behavior of the application that applies when no CLI flags or environment variables are provided.
 
-Modify this file to change the baseline behavior of the application that applies when no CLI flags or environment variables are provided.
-
 ### Environment Variables
 
-You can configure the application using a `.env` file or environment variables. This is prioritized over default settings but overridden by CLI flags.
+You can configure the application using a `.env` file or environment variables. This is prioritized over default settings but overridden by **explicit** CLI flags.
+**Note**: Implicit default values from CLI flags are ignored to allow environment variables to take precedence. You must explicitly provide a flag in the command line for it to override a value set in `.env`.
 
 **Supported Variables:**
 

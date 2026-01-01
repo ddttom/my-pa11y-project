@@ -16,6 +16,7 @@ The folder /docs contains prompts in .md format that are useful for extending th
 - **Content Quality**: Structure and freshness analysis
 - **LLM Suitability**: AI agent compatibility analysis (served vs rendered HTML)
   - llms.txt detection for AI agent guidance
+  - Automatic `llms.txt` discovery at domain root
   - data-agent-visible attribute tracking
   - Three specialized reports (general, frontend, backend)
 - **Automatic Cache Management**: .cache directory creation and management
@@ -421,9 +422,11 @@ npm start -- -s <url> -o <output-dir> [options]
 
 You can configure the tool using:
 
-1. **CLI Arguments** (Highest priority)
+1. **CLI Arguments** (Highest priority, explicit flags only)
 2. **Environment Variables** / `.env` file
 3. **Default Configuration** (Lowest priority)
+
+**Note**: CLI flags are only prioritized if explicitly provided. Default values from the CLI help text do NOT override environment variables.
 
 See [User Manual](docs/usermanual.md#environment-variables) for full `.env` options.
 
