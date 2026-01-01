@@ -3,7 +3,7 @@
  * Ensures all configuration values are valid before use
  */
 
-import { LOG_LEVELS } from './constants.js';
+import { LOG_LEVELS } from './defaults.js';
 
 /**
  * Configuration schema definition

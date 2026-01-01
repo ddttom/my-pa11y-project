@@ -9,7 +9,6 @@ Complete guide to configuring the Web Audit Suite.
 - [CLI Options](#cli-options)
 - [Environment Variables](#environment-variables)
 - [Configuration Files](#configuration-files)
-- [Constants Reference](#constants-reference)
 - [Threshold Configuration](#threshold-configuration)
 - [Examples](#examples)
 
@@ -343,9 +342,9 @@ Create a JSON file to customize pass/fail thresholds for different metrics.
 - For **accessibility** counts: warn ≥ pass (more issues allowed)
 - For **scores** (SEO, LLM): warn ≤ pass (lower score allowed)
 
-## Constants Reference
+### Constants Reference
 
-All constants are defined in `src/config/constants.js`.
+All constants are now defined in `src/config/defaults.js`.
 
 ### Timeouts
 

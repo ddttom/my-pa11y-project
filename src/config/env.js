@@ -3,7 +3,7 @@
  * Allows configuration via environment variables for containerized deployments
  */
 
-import { ENV_VARS, NODE_ENV, LOG_LEVELS } from './constants.js';
+import { ENV_VARS, NODE_ENV, LOG_LEVELS } from './defaults.js';
 
 /**
  * Loads configuration from environment variables
