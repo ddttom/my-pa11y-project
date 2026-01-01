@@ -497,9 +497,11 @@ workflows:
 
 - Reduce URL limit: `-c 10` instead of `-c -1`
 - Increase timeout in workflow:
+
   ```yaml
   timeout-minutes: 30  # Default is 360 (6 hours)
   ```
+
 - Check if target site is accessible from GitHub runners
 
 ### Artifacts Not Uploaded

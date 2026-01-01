@@ -10,7 +10,8 @@
       "Bash(tree:*)",
       "Bash(find:*)",
       "Bash(npm install)",
-      "Bash(npm run lint:md:fix:*)"
+      "Bash(npm run lint:md:fix:*)",
+      "Bash(npx eslint .)"
     ],
     "deny": [],
     "ask": []
