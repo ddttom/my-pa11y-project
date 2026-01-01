@@ -16,23 +16,23 @@ export const HTTP_STATUS = {
   INTERNAL_SERVER_ERROR: 500,
   BAD_GATEWAY: 502,
   SERVICE_UNAVAILABLE: 503,
-  GATEWAY_TIMEOUT: 504
+  GATEWAY_TIMEOUT: 504,
 };
 
 // Timeouts (milliseconds)
 export const TIMEOUTS = {
-  PA11Y: 60000,               // 60 seconds for Pa11y tests
-  PA11Y_WAIT: 2000,           // 2 seconds wait before Pa11y analysis
-  PA11Y_RETRY_DELAY: 3000,    // 3 seconds between Pa11y retries
-  PERFORMANCE: 60000,         // 60 seconds for performance analysis
-  INITIAL_BACKOFF: 1000,      // 1 second initial backoff for retries
-  DEFAULT_COMMAND: 120000     // 2 minutes default command timeout
+  PA11Y: 60000, // 60 seconds for Pa11y tests
+  PA11Y_WAIT: 2000, // 2 seconds wait before Pa11y analysis
+  PA11Y_RETRY_DELAY: 3000, // 3 seconds between Pa11y retries
+  PERFORMANCE: 60000, // 60 seconds for performance analysis
+  INITIAL_BACKOFF: 1000, // 1 second initial backoff for retries
+  DEFAULT_COMMAND: 120000, // 2 minutes default command timeout
 };
 
 // Retry Configuration
 export const RETRY = {
   MAX_RETRIES: 3,
-  BACKOFF_MULTIPLIER: 2
+  BACKOFF_MULTIPLIER: 2,
 };
 
 // Cache Configuration
@@ -40,27 +40,27 @@ export const CACHE = {
   DIRECTORY: '.cache',
   RENDERED_DIR: 'rendered',
   SERVED_DIR: 'served',
-  SELF_CLEANING_TTL: 900000   // 15 minutes
+  SELF_CLEANING_TTL: 900000, // 15 minutes
 };
 
 // Sitemap Configuration
 export const SITEMAP = {
   MAX_URLS_PER_FILE: 50000,
-  DEFAULT_COUNT: -1,          // -1 means process all URLs
-  COMPRESS: true
+  DEFAULT_COUNT: -1, // -1 means process all URLs
+  COMPRESS: true,
 };
 
 // Viewport Configuration
 export const VIEWPORT = {
   WIDTH: 1280,
-  HEIGHT: 1024
+  HEIGHT: 1024,
 };
 
 // Content Thresholds
 export const CONTENT_LIMITS = {
   LOW_WORD_COUNT: 300,
   MIN_HEADINGS: 3,
-  HIGH_EXTERNAL_LINKS: 100
+  HIGH_EXTERNAL_LINKS: 100,
 };
 
 // SEO Thresholds
@@ -69,7 +69,7 @@ export const SEO_LIMITS = {
   TITLE_MAX_LENGTH: 60,
   META_DESC_MIN_LENGTH: 70,
   META_DESC_MAX_LENGTH: 155,
-  URL_MAX_LENGTH: 115
+  URL_MAX_LENGTH: 115,
 };
 
 // Performance Thresholds
@@ -77,38 +77,38 @@ export const PERFORMANCE_LIMITS = {
   LOAD_TIME: {
     EXCELLENT: 1000,
     GOOD: 2000,
-    FAIR: 3000
+    FAIR: 3000,
   },
   DOM_CONTENT_LOADED: {
     EXCELLENT: 500,
     GOOD: 1000,
-    FAIR: 2000
+    FAIR: 2000,
   },
   FIRST_PAINT: {
     EXCELLENT: 1000,
     GOOD: 2000,
-    FAIR: 3000
+    FAIR: 3000,
   },
   FIRST_CONTENTFUL_PAINT: {
     EXCELLENT: 1500,
     GOOD: 2500,
-    FAIR: 4000
+    FAIR: 4000,
   },
   LARGEST_CONTENTFUL_PAINT: {
     EXCELLENT: 2500,
     GOOD: 4000,
-    FAIL: 4000
+    FAIL: 4000,
   },
   CUMULATIVE_LAYOUT_SHIFT: {
     EXCELLENT: 0.1,
     GOOD: 0.25,
-    FAIL: 0.25
+    FAIL: 0.25,
   },
   TIME_TO_INTERACTIVE: {
     EXCELLENT: 3800,
     GOOD: 7300,
-    FAIL: 7300
-  }
+    FAIL: 7300,
+  },
 };
 
 // SEO Score Thresholds
@@ -117,7 +117,7 @@ export const SEO_SCORE = {
   VERY_GOOD: 80,
   GOOD: 70,
   FAIR: 60,
-  NEEDS_IMPROVEMENT: 50
+  NEEDS_IMPROVEMENT: 50,
 };
 
 // LLM Suitability Scoring
@@ -128,49 +128,49 @@ export const LLM_SCORING = {
     SEMANTIC_HTML_NAV: 5,
     SEMANTIC_HTML_HEADER: 5,
     SEMANTIC_HTML_ARTICLE: 5,
-    STANDARD_FORM_FIELD: 2,      // per field
-    FORM_LABEL_ASSOCIATION: 5,   // per form
+    STANDARD_FORM_FIELD: 2, // per field
+    FORM_LABEL_ASSOCIATION: 5, // per form
     JSON_LD_SCHEMA: 10,
     LLMS_TXT: 10,
     HTTP_STATUS_OK: 5,
-    SECURITY_HEADERS: 5
+    SECURITY_HEADERS: 5,
   },
   // Essential rendered metrics (browser agents only)
   ESSENTIAL_RENDERED: {
     EXPLICIT_STATE_ATTR: 10,
     AGENT_VISIBLE_CONTROL: 5,
     PERSISTENT_ERROR_MSG: 10,
-    DYNAMIC_VALIDATION: 5
+    DYNAMIC_VALIDATION: 5,
   },
   // Nice-to-have metrics (speculative)
   NICE_TO_HAVE: {
-    TABLE_DATA_ATTR: 1,          // per attribute
+    TABLE_DATA_ATTR: 1, // per attribute
     BUTTON_DISABLED_REASON: 2,
-    AUTH_STATE_ATTR: 3
+    AUTH_STATE_ATTR: 3,
   },
   // Maximum scores
   MAX_SERVED_SCORE: 100,
-  MAX_RENDERED_SCORE: 100
+  MAX_RENDERED_SCORE: 100,
 };
 
 // Accessibility Issue Severity
 export const A11Y_SEVERITY = {
   ERROR: 'error',
   WARNING: 'warning',
-  NOTICE: 'notice'
+  NOTICE: 'notice',
 };
 
 // Accessibility Score Deductions
 export const A11Y_SCORE_DEDUCTIONS = {
   ERROR: 5,
   WARNING: 2,
-  NOTICE: 0.5
+  NOTICE: 0.5,
 };
 
 // Language Variants (for filtering)
 export const LANGUAGE_VARIANTS = {
   ALLOWED_PATTERNS: ['/en', '/us'],
-  EXCLUDED_PATTERNS: ['/de', '/fr', '/es', '/it', '/pt', '/ja', '/zh', '/ko']
+  EXCLUDED_PATTERNS: ['/de', '/fr', '/es', '/it', '/pt', '/ja', '/zh', '/ko'],
 };
 
 // File Output Configuration
@@ -185,7 +185,7 @@ export const OUTPUT = {
   ERROR_LOG: 'error.log',
   COMBINED_LOG: 'combined.log',
   VIRTUAL_SITEMAP: 'virtual_sitemap.xml',
-  FINAL_SITEMAP: 'final_sitemap.xml'
+  FINAL_SITEMAP: 'final_sitemap.xml',
 };
 
 // Report File Names
@@ -201,14 +201,14 @@ export const REPORTS = {
   SECURITY: 'security_report.csv',
   LLM_GENERAL: 'llm_general_suitability.csv',
   LLM_FRONTEND: 'llm_frontend_suitability.csv',
-  LLM_BACKEND: 'llm_backend_suitability.csv'
+  LLM_BACKEND: 'llm_backend_suitability.csv',
 };
 
 // Chart Configuration
 export const CHART = {
   WIDTH: 800,
   HEIGHT: 400,
-  BACKGROUND_COLOR: 'white'
+  BACKGROUND_COLOR: 'white',
 };
 
 // Chart Colors
@@ -219,23 +219,23 @@ export const CHART_COLORS = {
   DANGER: '#dc3545',
   INFO: '#17a2b8',
   PRIMARY: '#007bff',
-  SECONDARY: '#6c757d'
+  SECONDARY: '#6c757d',
 };
 
 // Status Colors for Dashboard
 export const STATUS_COLORS = {
   PASS: {
     BACKGROUND: '#d4edda',
-    TEXT: '#155724'
+    TEXT: '#155724',
   },
   WARN: {
     BACKGROUND: '#fff3cd',
-    TEXT: '#856404'
+    TEXT: '#856404',
   },
   FAIL: {
     BACKGROUND: '#f8d7da',
-    TEXT: '#721c24'
-  }
+    TEXT: '#721c24',
+  },
 };
 
 // Logging Levels
@@ -243,13 +243,13 @@ export const LOG_LEVELS = {
   ERROR: 'error',
   WARN: 'warn',
   INFO: 'info',
-  DEBUG: 'debug'
+  DEBUG: 'debug',
 };
 
 // Schema Version
 export const SCHEMA = {
   CURRENT_VERSION: '1.0.0',
-  COMPATIBILITY_MAJOR: 1
+  COMPATIBILITY_MAJOR: 1,
 };
 
 // Chrome Launch Arguments
@@ -260,7 +260,7 @@ export const CHROME_ARGS = [
   '--disable-gpu',
   '--ignore-certificate-errors',
   '--ignore-certificate-errors-spki-list',
-  '--disable-extensions'
+  '--disable-extensions',
 ];
 
 // Wait Until Options for Puppeteer
@@ -268,20 +268,20 @@ export const WAIT_UNTIL = {
   LOAD: 'load',
   DOM_CONTENT_LOADED: 'domcontentloaded',
   NETWORK_IDLE_0: 'networkidle0',
-  NETWORK_IDLE_2: 'networkidle2'
+  NETWORK_IDLE_2: 'networkidle2',
 };
 
 // WCAG Levels
 export const WCAG_LEVELS = {
   A: 'WCAG2A',
   AA: 'WCAG2AA',
-  AAA: 'WCAG2AAA'
+  AAA: 'WCAG2AAA',
 };
 
 // File Size Limits
 export const FILE_SIZE = {
-  MAX_OUTPUT_CHARS: 30000,     // For truncating large outputs
-  MAX_LINE_LENGTH: 2000        // For truncating long lines in file reads
+  MAX_OUTPUT_CHARS: 30000, // For truncating large outputs
+  MAX_LINE_LENGTH: 2000, // For truncating long lines in file reads
 };
 
 // Regex Patterns
@@ -289,13 +289,13 @@ export const PATTERNS = {
   EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   URL: /^https?:\/\/.+/,
   LANGUAGE_VARIANT: /\/(de|fr|es|it|pt|ja|zh|ko)\//,
-  ALLOWED_LANGUAGE: /\/(en|us)\//
+  ALLOWED_LANGUAGE: /\/(en|us)\//,
 };
 
 // Default URLs (for development/testing)
 export const DEFAULTS = {
   SITEMAP_URL: 'https://example.com/sitemap.xml',
-  COUNT: -1
+  COUNT: -1,
 };
 
 // Environment Variable Keys
@@ -306,12 +306,12 @@ export const ENV_VARS = {
   SITEMAP_URL: 'SITEMAP_URL',
   CACHE_DIR: 'CACHE_DIR',
   MAX_RETRIES: 'MAX_RETRIES',
-  TIMEOUT: 'TIMEOUT'
+  TIMEOUT: 'TIMEOUT',
 };
 
 // Node Environment Values
 export const NODE_ENV = {
   DEVELOPMENT: 'development',
   PRODUCTION: 'production',
-  TEST: 'test'
+  TEST: 'test',
 };

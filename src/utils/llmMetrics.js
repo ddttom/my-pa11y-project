@@ -19,9 +19,9 @@
  * Metric importance levels
  */
 const IMPORTANCE = {
-  ESSENTIAL_SERVED: 'essential_served',    // Works for all agents
+  ESSENTIAL_SERVED: 'essential_served', // Works for all agents
   ESSENTIAL_RENDERED: 'essential_rendered', // Works for browser agents
-  NICE_TO_HAVE: 'nice_to_have'             // Speculative, not critical
+  NICE_TO_HAVE: 'nice_to_have', // Speculative, not critical
 };
 
 /**
@@ -42,7 +42,7 @@ function analyzeSemanticHTML($) {
       articleCount: $('article').length,
       sectionCount: $('section').length,
       divCount: $('div').length,
-    }
+    },
   };
 }
 
@@ -62,7 +62,7 @@ function analyzeFormFields($) {
     'address2', 'city', 'county', 'state', 'country', 'country_code',
     'cardNumber', 'card_number', 'expiryDate', 'expiry',
     'cvv', 'cvc', 'password', 'username',
-    'dateOfBirth', 'date_of_birth', 'company', 'company_name', 'quantity'
+    'dateOfBirth', 'date_of_birth', 'company', 'company_name', 'quantity',
   ];
 
   let standardNamedFields = 0;
@@ -78,7 +78,7 @@ function analyzeFormFields($) {
     const type = $input.attr('type');
 
     // ESSENTIAL: Standard naming
-    if (standardNames.some(std => name === std || id === std)) {
+    if (standardNames.some((std) => name === std || id === std)) {
       standardNamedFields++;
     } else if (name) {
       nonStandardNamedFields++;
@@ -112,7 +112,7 @@ function analyzeFormFields($) {
       fieldsWithRequired,
       standardNameRatio: inputs.length > 0 ? standardNamedFields / inputs.length : 1,
       labelRatio: inputs.length > 0 ? fieldsWithLabels / inputs.length : 1,
-    }
+    },
   };
 }
 
@@ -149,7 +149,7 @@ function analyzeStructuredData($) {
       // Microdata is NICE_TO_HAVE, not essential
       hasMicrodata: $('[itemscope]').length > 0,
       microdataCount: $('[itemscope]').length,
-    }
+    },
   };
 }
 
@@ -175,7 +175,7 @@ function analyzeLLMsTxt($) {
       llmsTxtUrl: hasLLMsTxtReference ? llmsTxtLink.attr('href') : null,
       // Note: Actual llms.txt content would be fetched separately by the pageAnalyzer
       // This is just detecting the presence of the reference
-    }
+    },
   };
 }
 
@@ -211,7 +211,7 @@ function analyzeRobotsTxt($) {
       isNoArchive,
       hasAgentRestrictions,
       // Note: Actual robots.txt and ai.txt content would be fetched at domain level
-    }
+    },
   };
 }
 
@@ -257,7 +257,7 @@ function analyzeFormAutocomplete($) {
       autocompleteRatio,
       autocompleteValues,
       hasGoodAutocompleteCoverage: autocompleteRatio >= 0.7,
-    }
+    },
   };
 }
 
@@ -267,23 +267,23 @@ function analyzeFormAutocomplete($) {
  */
 function analyzeCaptchaAndBotProtection($) {
   // Common CAPTCHA indicators
-  const hasRecaptcha = $('.g-recaptcha, [data-sitekey]').length > 0 ||
-                       $('script[src*="recaptcha"]').length > 0;
-  const hasHCaptcha = $('.h-captcha').length > 0 ||
-                      $('script[src*="hcaptcha"]').length > 0;
-  const hasTurnstile = $('[data-sitekey], script[src*="turnstile"]').length > 0 &&
-                       $('script[src*="cloudflare"]').length > 0;
+  const hasRecaptcha = $('.g-recaptcha, [data-sitekey]').length > 0
+                       || $('script[src*="recaptcha"]').length > 0;
+  const hasHCaptcha = $('.h-captcha').length > 0
+                      || $('script[src*="hcaptcha"]').length > 0;
+  const hasTurnstile = $('[data-sitekey], script[src*="turnstile"]').length > 0
+                       && $('script[src*="cloudflare"]').length > 0;
 
   // Generic CAPTCHA/challenge indicators
   const hasCaptchaKeyword = $('*').filter((_, el) => {
     const text = $(el).text().toLowerCase();
-    return text.includes('captcha') || text.includes('verify you are human') ||
-           text.includes('security check') || text.includes('bot protection');
+    return text.includes('captcha') || text.includes('verify you are human')
+           || text.includes('security check') || text.includes('bot protection');
   }).length > 0;
 
   // Cloudflare challenge indicator
-  const hasCloudflareChallenge = $('script[src*="cloudflare"]').length > 0 ||
-                                  $('.cf-browser-verification').length > 0;
+  const hasCloudflareChallenge = $('script[src*="cloudflare"]').length > 0
+                                  || $('.cf-browser-verification').length > 0;
 
   const hasCaptcha = hasRecaptcha || hasHCaptcha || hasTurnstile || hasCaptchaKeyword;
   const hasBotProtection = hasCaptcha || hasCloudflareChallenge;
@@ -297,11 +297,11 @@ function analyzeCaptchaAndBotProtection($) {
       hasTurnstile,
       hasCloudflareChallenge,
       hasBotProtection,
-      captchaType: hasRecaptcha ? 'reCAPTCHA' :
-                   hasHCaptcha ? 'hCaptcha' :
-                   hasTurnstile ? 'Turnstile' :
-                   hasCaptcha ? 'Unknown' : 'None',
-    }
+      captchaType: hasRecaptcha ? 'reCAPTCHA'
+        : hasHCaptcha ? 'hCaptcha'
+          : hasTurnstile ? 'Turnstile'
+            : hasCaptcha ? 'Unknown' : 'None',
+    },
   };
 }
 
@@ -334,10 +334,10 @@ function analyzeApiEndpoints($) {
     return href.includes('openapi') || href.includes('swagger');
   }).length > 0;
 
-  const apiEndpointScore = (hasApiDocs ? 25 : 0) +
-                           (hasOpenApiSpec ? 25 : 0) +
-                           (hasRestIndicators ? 15 : 0) +
-                           (hasGraphQLIndicators ? 15 : 0);
+  const apiEndpointScore = (hasApiDocs ? 25 : 0)
+                           + (hasOpenApiSpec ? 25 : 0)
+                           + (hasRestIndicators ? 15 : 0)
+                           + (hasGraphQLIndicators ? 15 : 0);
 
   return {
     importance: IMPORTANCE.NICE_TO_HAVE,
@@ -349,7 +349,7 @@ function analyzeApiEndpoints($) {
       hasOpenApiSpec,
       apiDiscoverabilityScore: apiEndpointScore,
       apiLinksCount: apiLinks.length,
-    }
+    },
   };
 }
 
@@ -386,7 +386,7 @@ function analyzeDataAttributes($) {
       agentVisibleCount: agentVisibleElements.length,
       visibleToAgents,
       hiddenFromAgents,
-    }
+    },
   };
 }
 
@@ -410,7 +410,7 @@ function analyzeErrorHandling($) {
       hasAriaInvalid: $('[aria-invalid="true"]').length > 0,
       invalidFieldCount: $('[aria-invalid="true"]').length,
       hasPersistentErrors: hasRoleAlert && hasAriaLive,
-    }
+    },
   };
 }
 
@@ -426,9 +426,9 @@ function analyzeTableData($) {
   // Having data attributes is NICE_TO_HAVE
   const cellsWithDataAttributes = tableCells.filter((_, el) => {
     const $el = $(el);
-    return $el.attr('data-price') || $el.attr('data-currency') ||
-           $el.attr('data-quantity') || $el.attr('data-in-stock') ||
-           $el.attr('data-product-id') || $el.attr('data-rating');
+    return $el.attr('data-price') || $el.attr('data-currency')
+           || $el.attr('data-quantity') || $el.attr('data-in-stock')
+           || $el.attr('data-product-id') || $el.attr('data-rating');
   }).length;
 
   return {
@@ -440,7 +440,7 @@ function analyzeTableData($) {
       cellsWithDataAttributes,
       totalCells: tableCells.length,
       machineReadableRatio: tableCells.length > 0 ? cellsWithDataAttributes / tableCells.length : 0,
-    }
+    },
   };
 }
 
@@ -462,7 +462,7 @@ function analyzeButtonStates($) {
       disabledWithExplanation,
       disabledWithoutExplanation: disabledButtons.length - disabledWithExplanation,
       explanationRatio: disabledButtons.length > 0 ? disabledWithExplanation / disabledButtons.length : 1,
-    }
+    },
   };
 }
 
@@ -479,7 +479,7 @@ function analyzeAuthenticationState($) {
       hasLogoutLink: $('a[href*="logout"], a[href*="signout"], a[href*="sign-out"], form[action*="logout"]').length > 0,
       hasAccountLink: $('a[href*="account"], a[href*="profile"]').length > 0,
       hasUserIdentifier: $('[data-user-id], [data-user-name], [data-user-email]').length > 0,
-    }
+    },
   };
 }
 
@@ -576,8 +576,8 @@ export function calculateServedScore(metrics) {
 
   // NICE_TO_HAVE: Tables (10 points) - only if tables exist
   if (metrics.tableData?.metrics && metrics.tableData.metrics.tableCount > 0) {
-    const hasProperMarkup = metrics.tableData.metrics.tablesWithScope > 0 &&
-                            metrics.tableData.metrics.tablesWithCaption > 0;
+    const hasProperMarkup = metrics.tableData.metrics.tablesWithScope > 0
+                            && metrics.tableData.metrics.tablesWithCaption > 0;
     if (hasProperMarkup) score += 10;
   } else if (metrics.tableData?.metrics && metrics.tableData.metrics.tableCount === 0) {
     score += 10; // No tables means no opportunity to fail
@@ -636,7 +636,7 @@ export function generateFeedback(metrics) {
     return {
       essentialIssues: ['Failed to collect LLM metrics'],
       niceToHaveIssues: [],
-      recommendations: []
+      recommendations: [],
     };
   }
 
@@ -658,7 +658,7 @@ export function generateFeedback(metrics) {
       recommendations.push('Use standard field names: email, firstName, lastName, phone, etc.');
     }
 
-    const labelRatio = metrics.formFields.metrics.labelRatio;
+    const { labelRatio } = metrics.formFields.metrics;
     if (labelRatio < 0.8) {
       essentialIssues.push(`${Math.round((1 - labelRatio) * 100)}% of form fields missing labels`);
       recommendations.push('Add <label> or aria-label to all form fields');
@@ -677,7 +677,7 @@ export function generateFeedback(metrics) {
 
   // Form autocomplete issues
   if (metrics.formAutocomplete?.metrics && metrics.formAutocomplete.metrics.totalFormFields > 0) {
-    const autocompleteRatio = metrics.formAutocomplete.metrics.autocompleteRatio;
+    const { autocompleteRatio } = metrics.formAutocomplete.metrics;
     if (autocompleteRatio < 0.5) {
       essentialIssues.push(`Only ${Math.round(autocompleteRatio * 100)}% of form fields have autocomplete attributes`);
       recommendations.push('Add autocomplete attributes to form fields (e.g., autocomplete="email", "name", "tel")');

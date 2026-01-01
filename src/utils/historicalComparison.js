@@ -20,7 +20,7 @@ export async function storeHistoricalResult(results, outputDir) {
   const historicalEntry = {
     timestamp: new Date().toISOString(),
     schemaVersion: results.schemaVersion || '1.0.0',
-    results
+    results,
   };
 
   await fs.writeFile(historyFile, JSON.stringify(historicalEntry, null, 2));
@@ -40,7 +40,7 @@ export async function loadHistoricalResults(outputDir) {
   try {
     const files = await fs.readdir(historyDir);
     const historyFiles = files
-      .filter(f => f.startsWith('results-') && f.endsWith('.json'))
+      .filter((f) => f.startsWith('results-') && f.endsWith('.json'))
       .sort(); // Chronological order by filename
 
     const historicalResults = [];
@@ -91,29 +91,29 @@ export function compareResults(oldResults, newResults) {
   const comparison = {
     performance: comparePerformanceMetrics(
       oldResults.performanceAnalysis || [],
-      newResults.performanceAnalysis || []
+      newResults.performanceAnalysis || [],
     ),
     accessibility: compareAccessibilityMetrics(
       oldResults.pa11y || [],
-      newResults.pa11y || []
+      newResults.pa11y || [],
     ),
     seo: compareSeoMetrics(
       oldResults.seoScores || [],
-      newResults.seoScores || []
+      newResults.seoScores || [],
     ),
     content: compareContentMetrics(
       oldResults.contentAnalysis || [],
-      newResults.contentAnalysis || []
+      newResults.contentAnalysis || [],
     ),
     llm: compareLLMMetrics(
       oldResults.llmMetrics || [],
-      newResults.llmMetrics || []
+      newResults.llmMetrics || [],
     ),
     urlCount: {
       old: (oldResults.urls || []).length,
       new: (newResults.urls || []).length,
-      delta: (newResults.urls || []).length - (oldResults.urls || []).length
-    }
+      delta: (newResults.urls || []).length - (oldResults.urls || []).length,
+    },
   };
 
   return comparison;
@@ -131,26 +131,26 @@ function comparePerformanceMetrics(oldMetrics, newMetrics) {
       old: oldAvg.loadTime,
       new: newAvg.loadTime,
       delta: newAvg.loadTime - oldAvg.loadTime,
-      percentChange: calculatePercentChange(oldAvg.loadTime, newAvg.loadTime)
+      percentChange: calculatePercentChange(oldAvg.loadTime, newAvg.loadTime),
     },
     largestContentfulPaint: {
       old: oldAvg.largestContentfulPaint,
       new: newAvg.largestContentfulPaint,
       delta: newAvg.largestContentfulPaint - oldAvg.largestContentfulPaint,
-      percentChange: calculatePercentChange(oldAvg.largestContentfulPaint, newAvg.largestContentfulPaint)
+      percentChange: calculatePercentChange(oldAvg.largestContentfulPaint, newAvg.largestContentfulPaint),
     },
     firstContentfulPaint: {
       old: oldAvg.firstContentfulPaint,
       new: newAvg.firstContentfulPaint,
       delta: newAvg.firstContentfulPaint - oldAvg.firstContentfulPaint,
-      percentChange: calculatePercentChange(oldAvg.firstContentfulPaint, newAvg.firstContentfulPaint)
+      percentChange: calculatePercentChange(oldAvg.firstContentfulPaint, newAvg.firstContentfulPaint),
     },
     cumulativeLayoutShift: {
       old: oldAvg.cumulativeLayoutShift,
       new: newAvg.cumulativeLayoutShift,
       delta: newAvg.cumulativeLayoutShift - oldAvg.cumulativeLayoutShift,
-      percentChange: calculatePercentChange(oldAvg.cumulativeLayoutShift, newAvg.cumulativeLayoutShift)
-    }
+      percentChange: calculatePercentChange(oldAvg.cumulativeLayoutShift, newAvg.cumulativeLayoutShift),
+    },
   };
 }
 
@@ -166,23 +166,23 @@ function compareAccessibilityMetrics(oldMetrics, newMetrics) {
       old: oldIssues.total,
       new: newIssues.total,
       delta: newIssues.total - oldIssues.total,
-      percentChange: calculatePercentChange(oldIssues.total, newIssues.total)
+      percentChange: calculatePercentChange(oldIssues.total, newIssues.total),
     },
     errorCount: {
       old: oldIssues.errors,
       new: newIssues.errors,
-      delta: newIssues.errors - oldIssues.errors
+      delta: newIssues.errors - oldIssues.errors,
     },
     warningCount: {
       old: oldIssues.warnings,
       new: newIssues.warnings,
-      delta: newIssues.warnings - oldIssues.warnings
+      delta: newIssues.warnings - oldIssues.warnings,
     },
     noticeCount: {
       old: oldIssues.notices,
       new: newIssues.notices,
-      delta: newIssues.notices - oldIssues.notices
-    }
+      delta: newIssues.notices - oldIssues.notices,
+    },
   };
 }
 
@@ -198,8 +198,8 @@ function compareSeoMetrics(oldMetrics, newMetrics) {
       old: oldAvg,
       new: newAvg,
       delta: newAvg - oldAvg,
-      percentChange: calculatePercentChange(oldAvg, newAvg)
-    }
+      percentChange: calculatePercentChange(oldAvg, newAvg),
+    },
   };
 }
 
@@ -215,13 +215,13 @@ function compareContentMetrics(oldMetrics, newMetrics) {
       old: oldAvg.wordCount,
       new: newAvg.wordCount,
       delta: newAvg.wordCount - oldAvg.wordCount,
-      percentChange: calculatePercentChange(oldAvg.wordCount, newAvg.wordCount)
+      percentChange: calculatePercentChange(oldAvg.wordCount, newAvg.wordCount),
     },
     headingCount: {
       old: oldAvg.headingCount,
       new: newAvg.headingCount,
-      delta: newAvg.headingCount - oldAvg.headingCount
-    }
+      delta: newAvg.headingCount - oldAvg.headingCount,
+    },
   };
 }
 
@@ -237,14 +237,14 @@ function compareLLMMetrics(oldMetrics, newMetrics) {
       old: oldAvg.servedScore,
       new: newAvg.servedScore,
       delta: newAvg.servedScore - oldAvg.servedScore,
-      percentChange: calculatePercentChange(oldAvg.servedScore, newAvg.servedScore)
+      percentChange: calculatePercentChange(oldAvg.servedScore, newAvg.servedScore),
     },
     renderedScore: {
       old: oldAvg.renderedScore,
       new: newAvg.renderedScore,
       delta: newAvg.renderedScore - oldAvg.renderedScore,
-      percentChange: calculatePercentChange(oldAvg.renderedScore, newAvg.renderedScore)
-    }
+      percentChange: calculatePercentChange(oldAvg.renderedScore, newAvg.renderedScore),
+    },
   };
 }
 
@@ -253,21 +253,25 @@ function compareLLMMetrics(oldMetrics, newMetrics) {
  */
 function calculateAverageMetrics(metrics) {
   if (!metrics || metrics.length === 0) {
-    return { loadTime: 0, largestContentfulPaint: 0, firstContentfulPaint: 0, cumulativeLayoutShift: 0 };
+    return {
+      loadTime: 0, largestContentfulPaint: 0, firstContentfulPaint: 0, cumulativeLayoutShift: 0,
+    };
   }
 
   const sum = metrics.reduce((acc, m) => ({
     loadTime: acc.loadTime + (m.loadTime || 0),
     largestContentfulPaint: acc.largestContentfulPaint + (m.largestContentfulPaint || 0),
     firstContentfulPaint: acc.firstContentfulPaint + (m.firstContentfulPaint || 0),
-    cumulativeLayoutShift: acc.cumulativeLayoutShift + (m.cumulativeLayoutShift || 0)
-  }), { loadTime: 0, largestContentfulPaint: 0, firstContentfulPaint: 0, cumulativeLayoutShift: 0 });
+    cumulativeLayoutShift: acc.cumulativeLayoutShift + (m.cumulativeLayoutShift || 0),
+  }), {
+    loadTime: 0, largestContentfulPaint: 0, firstContentfulPaint: 0, cumulativeLayoutShift: 0,
+  });
 
   return {
     loadTime: sum.loadTime / metrics.length,
     largestContentfulPaint: sum.largestContentfulPaint / metrics.length,
     firstContentfulPaint: sum.firstContentfulPaint / metrics.length,
-    cumulativeLayoutShift: sum.cumulativeLayoutShift / metrics.length
+    cumulativeLayoutShift: sum.cumulativeLayoutShift / metrics.length,
   };
 }
 
@@ -275,11 +279,12 @@ function calculateAverageMetrics(metrics) {
  * Helper: Count accessibility issues by type
  */
 function countAccessibilityIssues(metrics) {
-  let errors = 0, warnings = 0, notices = 0;
+  let errors = 0; let warnings = 0; let
+    notices = 0;
 
-  metrics.forEach(m => {
+  metrics.forEach((m) => {
     if (m.issues) {
-      m.issues.forEach(issue => {
+      m.issues.forEach((issue) => {
         if (issue.type === 'error') errors++;
         else if (issue.type === 'warning') warnings++;
         else if (issue.type === 'notice') notices++;
@@ -287,7 +292,9 @@ function countAccessibilityIssues(metrics) {
     }
   });
 
-  return { total: errors + warnings + notices, errors, warnings, notices };
+  return {
+    total: errors + warnings + notices, errors, warnings, notices,
+  };
 }
 
 /**
@@ -309,12 +316,12 @@ function calculateAverageContentMetrics(metrics) {
 
   const sum = metrics.reduce((acc, m) => ({
     wordCount: acc.wordCount + (m.wordCount || 0),
-    headingCount: acc.headingCount + (m.headingCount || 0)
+    headingCount: acc.headingCount + (m.headingCount || 0),
   }), { wordCount: 0, headingCount: 0 });
 
   return {
     wordCount: sum.wordCount / metrics.length,
-    headingCount: sum.headingCount / metrics.length
+    headingCount: sum.headingCount / metrics.length,
   };
 }
 
@@ -328,12 +335,12 @@ function calculateAverageLLMScore(metrics) {
 
   const sum = metrics.reduce((acc, m) => ({
     servedScore: acc.servedScore + (m.servedScore || 0),
-    renderedScore: acc.renderedScore + (m.renderedScore || 0)
+    renderedScore: acc.renderedScore + (m.renderedScore || 0),
   }), { servedScore: 0, renderedScore: 0 });
 
   return {
     servedScore: sum.servedScore / metrics.length,
-    renderedScore: sum.renderedScore / metrics.length
+    renderedScore: sum.renderedScore / metrics.length,
   };
 }
 
@@ -358,52 +365,52 @@ export async function generateTrendData(outputDir) {
   }
 
   const trendData = {
-    timestamps: historicalResults.map(r => r.timestamp),
+    timestamps: historicalResults.map((r) => r.timestamp),
     performance: {
-      loadTime: historicalResults.map(r => {
+      loadTime: historicalResults.map((r) => {
         const metrics = r.results.performanceAnalysis || [];
         return calculateAverageMetrics(metrics).loadTime;
       }),
-      lcp: historicalResults.map(r => {
+      lcp: historicalResults.map((r) => {
         const metrics = r.results.performanceAnalysis || [];
         return calculateAverageMetrics(metrics).largestContentfulPaint;
       }),
-      fcp: historicalResults.map(r => {
+      fcp: historicalResults.map((r) => {
         const metrics = r.results.performanceAnalysis || [];
         return calculateAverageMetrics(metrics).firstContentfulPaint;
       }),
-      cls: historicalResults.map(r => {
+      cls: historicalResults.map((r) => {
         const metrics = r.results.performanceAnalysis || [];
         return calculateAverageMetrics(metrics).cumulativeLayoutShift;
-      })
+      }),
     },
     accessibility: {
-      totalIssues: historicalResults.map(r => {
+      totalIssues: historicalResults.map((r) => {
         const metrics = r.results.pa11y || [];
         return countAccessibilityIssues(metrics).total;
       }),
-      errors: historicalResults.map(r => {
+      errors: historicalResults.map((r) => {
         const metrics = r.results.pa11y || [];
         return countAccessibilityIssues(metrics).errors;
-      })
+      }),
     },
     seo: {
-      averageScore: historicalResults.map(r => {
+      averageScore: historicalResults.map((r) => {
         const metrics = r.results.seoScores || [];
         return calculateAverageSeoScore(metrics);
-      })
+      }),
     },
     llm: {
-      servedScore: historicalResults.map(r => {
+      servedScore: historicalResults.map((r) => {
         const metrics = r.results.llmMetrics || [];
         return calculateAverageLLMScore(metrics).servedScore;
       }),
-      renderedScore: historicalResults.map(r => {
+      renderedScore: historicalResults.map((r) => {
         const metrics = r.results.llmMetrics || [];
         return calculateAverageLLMScore(metrics).renderedScore;
-      })
+      }),
     },
-    urlCount: historicalResults.map(r => (r.results.urls || []).length)
+    urlCount: historicalResults.map((r) => (r.results.urls || []).length),
   };
 
   return trendData;

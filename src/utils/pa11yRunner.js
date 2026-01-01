@@ -1,6 +1,7 @@
+/* eslint-disable consistent-return */
 /**
  * Accessibility testing utilities using Pa11y
- * 
+ *
  * This module provides enhanced accessibility testing capabilities using Pa11y,
  * including:
  * - Retry mechanisms for flaky tests
@@ -14,10 +15,10 @@
 
 import pa11y from 'pa11y';
 import { pa11yOptions, globalOptions } from '../config/options.js';
-import { 
-  mapIssueToGuideline, 
+import {
+  mapIssueToGuideline,
   getGuidelineDescription,
-  getRequiredManualChecks
+  getRequiredManualChecks,
 } from './reportUtils/formatUtils.js';
 
 const { MAX_RETRIES, RETRY_DELAY } = globalOptions;
@@ -34,17 +35,17 @@ const SEVERITY_LEVELS = {
   CRITICAL: 'Critical',
   SERIOUS: 'Serious',
   MODERATE: 'Moderate',
-  MINOR: 'Minor'
+  MINOR: 'Minor',
 };
 
 /**
  * Classifies issue severity based on WCAG level and impact
- * 
+ *
  * Severity is determined by:
  * - WCAG level (AA, A, etc.)
  * - Issue type (error, warning)
  * - Specific code patterns
- * 
+ *
  * @param {Object} issue - Pa11y issue object
  * @returns {string} - Severity level (Critical, Serious, Moderate, Minor)
  * @example
@@ -66,10 +67,10 @@ function classifySeverity(issue) {
 
 /**
  * Provides remediation suggestions for common accessibility issues
- * 
+ *
  * Contains predefined suggestions for common WCAG violations,
  * with fallback to generic guidance for unknown issues.
- * 
+ *
  * @param {Object} issue - Pa11y issue object
  * @returns {string} - Remediation suggestion
  * @example
@@ -81,12 +82,12 @@ function getRemediationSuggestion(issue) {
     WCAG2AA: {
       'Principle1.Guideline1_1.1_1_1.H30.2': 'Add descriptive text to links',
       'Principle1.Guideline1_3.1_3_1.H42.2': 'Use proper heading structure',
-      'Principle1.Guideline1_4.1_4_3.G18.Fail': 'Ensure sufficient color contrast'
+      'Principle1.Guideline1_4.1_4_3.G18.Fail': 'Ensure sufficient color contrast',
     },
     WCAG2A: {
       'Principle2.Guideline2_4.2_4_1.H64.1': 'Add iframe title attribute',
-      'Principle3.Guideline3_1.3_1_1.H57.2': 'Add lang attribute to html tag'
-    }
+      'Principle3.Guideline3_1.3_1_1.H57.2': 'Add lang attribute to html tag',
+    },
   };
 
   const [standard, code] = issue.code.split('.');
@@ -95,12 +96,12 @@ function getRemediationSuggestion(issue) {
 
 /**
  * Runs a Pa11y test with retry mechanism and enhanced metrics collection
- * 
+ *
  * Implements exponential backoff retry strategy with:
  * - Configurable max retries (MAX_RETRIES)
  * - Configurable delay between retries (RETRY_DELAY)
  * - Enhanced error handling and logging
- * 
+ *
  * @param {string} testUrl - URL to test
  * @param {Object} options - Pa11y configuration options
  * @returns {Promise<Object>} - Enhanced test results containing:
@@ -111,24 +112,24 @@ function getRemediationSuggestion(issue) {
  */
 export async function runPa11yWithRetry(testUrl, options) {
   global.auditcore.logger.debug(`[START] runPa11yWithRetry for ${testUrl}`);
-  
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
       global.auditcore.logger.debug(`Pa11y test attempt ${attempt} for ${testUrl}`);
       const result = await pa11y(testUrl, options);
-      
+
       // Enhance results with additional metrics
-      result.issues = result.issues.map(issue => {
+      result.issues = result.issues.map((issue) => {
         const guideline = mapIssueToGuideline(issue);
         return {
           ...issue,
           severity: classifySeverity(issue),
           remediation: getRemediationSuggestion(issue),
-          wcagLevel: issue.code.startsWith('WCAG2') ? 
-            issue.code.split('.')[0].replace('WCAG2', '') : 'Unknown',
+          wcagLevel: issue.code.startsWith('WCAG2')
+            ? issue.code.split('.')[0].replace('WCAG2', '') : 'Unknown',
           guideline,
           guidelineDescription: guideline ? getGuidelineDescription(guideline) : 'N/A',
-          requiresManualCheck: guideline ? getRequiredManualChecks(guideline).length > 0 : false
+          requiresManualCheck: guideline ? getRequiredManualChecks(guideline).length > 0 : false,
         };
       });
 
@@ -138,10 +139,10 @@ export async function runPa11yWithRetry(testUrl, options) {
       global.auditcore.logger.warn(`Pa11y test failed for ${testUrl} on attempt ${attempt}:`, error);
       if (attempt === MAX_RETRIES) {
         global.auditcore.logger.error(`Pa11y test failed for ${testUrl} after ${MAX_RETRIES} attempts.`);
-        return { 
+        return {
           error: error.message,
           stack: error.stack,
-          issues: []
+          issues: [],
         };
       }
       await new Promise((resolve) => { setTimeout(resolve, RETRY_DELAY); });
@@ -151,7 +152,7 @@ export async function runPa11yWithRetry(testUrl, options) {
 
 /**
  * Runs a Pa11y test for a single URL with enhanced results
- * 
+ *
  * @param {string} testUrl - URL to test
  * @param {string} html - HTML content to test
  * @param {Object} results - Results object to store findings
@@ -189,7 +190,7 @@ export async function runPa11yTest(testUrl, html, results) {
       totalIssues: 0,
       bySeverity: {},
       byWCAGLevel: {},
-      byGuideline: {}
+      byGuideline: {},
     });
 
     // Store enhanced results
@@ -197,7 +198,7 @@ export async function runPa11yTest(testUrl, html, results) {
     results.pa11y.push({
       url: testUrl,
       issues: pa11yResult.issues,
-      analysis: issueAnalysis
+      analysis: issueAnalysis,
     });
 
     global.auditcore.logger.info('Enhanced Pa11y test summary:');
@@ -221,13 +222,13 @@ export async function runPa11yTest(testUrl, html, results) {
 
 /**
  * Analyzes accessibility results with enhanced metrics
- * 
+ *
  * Aggregates results across multiple tests to provide:
  * - Total issue counts
  * - Severity breakdown
  * - WCAG level compliance
  * - Guideline-specific metrics
- * 
+ *
  * @param {Object} results - Results object containing Pa11y findings
  * @returns {Object} - Aggregated analysis results containing:
  *   - totalIssues: Total number of issues found
@@ -248,7 +249,7 @@ export function analyzeAccessibilityResults(results) {
     if (result.analysis) {
       acc.totalIssues += result.analysis.totalIssues;
       acc.urlsWithIssues += result.analysis.totalIssues > 0 ? 1 : 0;
-      
+
       // Aggregate severity counts
       Object.entries(result.analysis.bySeverity).forEach(([severity, count]) => {
         acc.bySeverity[severity] = (acc.bySeverity[severity] || 0) + count;
@@ -270,13 +271,13 @@ export function analyzeAccessibilityResults(results) {
     urlsWithIssues: 0,
     bySeverity: {},
     byWCAGLevel: {},
-    byGuideline: {}
+    byGuideline: {},
   });
 
   global.auditcore.logger.info('Enhanced accessibility analysis:');
   global.auditcore.logger.info(`  Total issues: ${analysis.totalIssues}`);
   global.auditcore.logger.info(`  URLs with issues: ${analysis.urlsWithIssues}`);
-  
+
   global.auditcore.logger.info('  By severity:');
   Object.entries(analysis.bySeverity).forEach(([severity, count]) => {
     global.auditcore.logger.info(`    ${severity}: ${count}`);
@@ -298,12 +299,12 @@ export function analyzeAccessibilityResults(results) {
 
 /**
  * Runs Pa11y tests for a batch of URLs with enhanced results
- * 
+ *
  * Processes URLs in parallel batches with:
  * - Configurable concurrency
  * - Automatic retries
  * - Aggregated reporting
- * 
+ *
  * @param {Array<string>} urls - URLs to test
  * @param {Object} results - Results object to store findings
  * @param {number} concurrency - Number of concurrent tests (default: 5)
@@ -323,16 +324,16 @@ export async function runPa11yTestBatch(urls, results, concurrency = 5) {
         batch.map(async (url) => {
           try {
             const pa11yResult = await runPa11yWithRetry(url, pa11yOptions);
-            return { 
+            return {
               url,
               issues: pa11yResult.issues,
-              analysis: pa11yResult.analysis
+              analysis: pa11yResult.analysis,
             };
           } catch (error) {
             return { url, error: error.message };
           }
-        })
-      )
+        }),
+      ),
     );
   }
 
@@ -342,13 +343,13 @@ export async function runPa11yTestBatch(urls, results, concurrency = 5) {
 
   // Perform overall analysis
   const overallAnalysis = analyzeAccessibilityResults(results);
-  
+
   global.auditcore.logger.info('Enhanced Pa11y batch tests completed');
   global.auditcore.logger.info(`Total issues found: ${overallAnalysis.totalIssues}`);
   global.auditcore.logger.info(`URLs with issues: ${overallAnalysis.urlsWithIssues}`);
 
   return {
     batchResults,
-    overallAnalysis
+    overallAnalysis,
   };
 }

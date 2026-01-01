@@ -9,7 +9,7 @@ export function analyzeImage(image) {
     compressionLevel: 'Unknown',
     optimizationScore: 100,
     recommendations: [],
-    format: getImageFormat(image.src)
+    format: getImageFormat(image.src),
   };
 
   if (!image.alt) {

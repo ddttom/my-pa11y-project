@@ -141,7 +141,9 @@ export class UrlProcessor {
       this.results.performanceAnalysis.push({ url: testUrl, lastmod, ...performanceMetrics });
 
       global.auditcore.logger.debug(`Calculating SEO score for ${testUrl}`);
-      const seoScore = calculateSeoScore({ ...pageData, testUrl, jsErrors, performanceMetrics });
+      const seoScore = calculateSeoScore({
+        ...pageData, testUrl, jsErrors, performanceMetrics,
+      });
       this.results.seoScores.push({ url: testUrl, lastmod, ...seoScore });
 
       global.auditcore.logger.info(`Successfully processed ${testUrl}`);
@@ -175,7 +177,7 @@ export class UrlProcessor {
    */
   extractDiscoveredUrls(currentUrl, baseUrl, processedUrls) {
     // Find the internal links entry for the current URL
-    const pageLinks = this.results.internalLinks?.find(item => item.url === currentUrl);
+    const pageLinks = this.results.internalLinks?.find((item) => item.url === currentUrl);
 
     if (!pageLinks || !pageLinks.links) {
       return [];
@@ -184,7 +186,7 @@ export class UrlProcessor {
     const newUrls = [];
 
     for (const link of pageLinks.links) {
-      let linkUrl = link.url;
+      const linkUrl = link.url;
 
       // Verify same domain and normalize URL
       try {
@@ -216,7 +218,7 @@ export class UrlProcessor {
           url: normalizedUrl,
           lastmod: new Date().toISOString(),
           changefreq: 'daily',
-          priority: 0.5
+          priority: 0.5,
         });
       } catch (error) {
         global.auditcore.logger.debug(`Invalid URL found: ${linkUrl}`);
@@ -258,7 +260,7 @@ export class UrlProcessor {
   async processUrls(urls, recursive = false) {
     if (!recursive) {
       // Original behavior: process only initial URLs
-      return await this.processUrlsSequentially(urls);
+      return this.processUrlsSequentially(urls);
     }
 
     // Recursive mode: queue-based processing
@@ -271,12 +273,12 @@ export class UrlProcessor {
 
     const urlQueue = [...urls]; // Copy initial URLs
     const processedUrls = new Set(); // Track processed URLs
-    const queuedUrls = new Set(urls.map(u => u.url)); // Track URLs in queue
+    const queuedUrls = new Set(urls.map((u) => u.url)); // Track URLs in queue
     const baseUrl = urls[0]?.url ? new URL(urls[0].url).origin : null;
 
     if (!baseUrl) {
       global.auditcore.logger.error('Could not determine base URL for recursive crawling');
-      return await this.processUrlsSequentially(urls);
+      return this.processUrlsSequentially(urls);
     }
 
     let index = 0;
@@ -305,10 +307,10 @@ export class UrlProcessor {
 
       // Add discovered URLs to queue, checking for duplicates
       if (discoveredUrls.length > 0) {
-        const newUrls = discoveredUrls.filter(urlObj => !queuedUrls.has(urlObj.url));
+        const newUrls = discoveredUrls.filter((u) => !queuedUrls.has(u.url));
         if (newUrls.length > 0) {
           global.auditcore.logger.info(`Found ${newUrls.length} new URLs to process from ${url} (${discoveredUrls.length - newUrls.length} already queued)`);
-          newUrls.forEach(urlObj => queuedUrls.add(urlObj.url));
+          newUrls.forEach((u) => queuedUrls.add(u.url));
           urlQueue.push(...newUrls);
         }
       }

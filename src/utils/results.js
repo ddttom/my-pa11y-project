@@ -7,13 +7,13 @@ import {
   contentThresholds,
   urlThresholds,
   titleThresholds,
-  metaDescriptionThresholds
+  metaDescriptionThresholds,
 } from '../config/options.js';
 
 // Utility function for percentage calculation
 function calculatePercentage(value, total, decimalPlaces = 2) {
   if (total === 0) return '0.00%';
-  return ((value / total) * 100).toFixed(decimalPlaces) + '%';
+  return `${((value / total) * 100).toFixed(decimalPlaces)}%`;
 }
 
 function getSeoScoreComment(score) {
@@ -116,11 +116,11 @@ export async function saveResults(results, outputDir, sitemapUrl) {
 
 async function savePa11yResults(results, outputDir) {
   global.auditcore.logger.debug('Starting savePa11yResults function');
-  
+
   await saveRawPa11yResult(results, outputDir);
-  
+
   const flattenedResults = flattenPa11yResults(results.pa11y);
-  
+
   if (flattenedResults.length === 0) {
     global.auditcore.logger.info('No Pa11y issues found to save');
     return;
@@ -130,7 +130,7 @@ async function savePa11yResults(results, outputDir) {
     flattenedResults,
     ['pageUrl', 'type', 'code', 'message', 'context', 'selector', 'error'],
   );
-  
+
   await saveFile(path.join(outputDir, 'pa11y_results.csv'), pa11yCsv);
   global.auditcore.logger.info(`Pa11y results saved: ${flattenedResults.length} issues`);
 }
@@ -161,40 +161,38 @@ function flattenPa11yResults(pa11yResults) {
 }
 
 async function saveInternalLinks(results, outputDir) {
-  global.auditcore.logger.debug(`Starting to save internal links`);
-  
+  global.auditcore.logger.debug('Starting to save internal links');
+
   const flattenedLinks = flattenInternalLinks(results.internalLinks);
   global.auditcore.logger.debug(`Flattened ${flattenedLinks.length} internal links`);
 
   const internalLinksCsv = formatCsv(
     flattenedLinks,
-    ['source', 'target', 'anchorText']
+    ['source', 'target', 'anchorText'],
   );
 
   await saveFile(
     path.join(outputDir, 'internal_links.csv'),
-    internalLinksCsv
+    internalLinksCsv,
   );
   global.auditcore.logger.info(`Saved ${flattenedLinks.length} internal links to CSV`);
 }
 
 function flattenInternalLinks(internalLinks) {
-  return internalLinks.flatMap((page) => 
-    (page.links || []).map((link) => ({
-      source: page.url,
-      target: link.url,
-      anchorText: link.text || ''
-    }))
-  );
+  return internalLinks.flatMap((page) => (page.links || []).map((link) => ({
+    source: page.url,
+    target: link.url,
+    anchorText: link.text || '',
+  })));
 }
 
 async function saveImagesWithoutAlt(contentAnalysis, outputDir) {
   const totalImages = contentAnalysis.reduce((sum, page) => sum + (page.images ? page.images.length : 0), 0);
   global.auditcore.logger.info(`Total images scanned: ${totalImages}`);
-  global.auditcore.logger.debug(`Pages scanned: ${contentAnalysis.map(page => page.url).join(', ')}`);
+  global.auditcore.logger.debug(`Pages scanned: ${contentAnalysis.map((page) => page.url).join(', ')}`);
 
   const imagesWithoutAlt = contentAnalysis.flatMap(
-    (page) => page.imagesWithoutAlt || []
+    (page) => page.imagesWithoutAlt || [],
   );
 
   if (imagesWithoutAlt.length > 0) {
@@ -227,7 +225,7 @@ async function saveContentAnalysis(results, outputDir) {
     'Missing Headers', 'Zero H1', 'Images Count', 'Internal Links Count', 'External Links Count',
     'Title', 'Meta Description', 'Has Responsive Meta Tag', 'Scripts Count', 'Stylesheets Count',
     'HTML Lang', 'Canonical URL', 'Forms Count', 'Tables Count', 'Page Size', 'JS Errors Count',
-    'Pa11y Issues Count'
+    'Pa11y Issues Count',
   ];
 
   const contentAnalysisData = results.contentAnalysis.map((page) => ({
@@ -244,7 +242,7 @@ async function saveContentAnalysis(results, outputDir) {
     'Images Count': page.imagesCount,
     'Internal Links Count': page.internalLinksCount,
     'External Links Count': page.externalLinksCount,
-    'Title': page.title,
+    Title: page.title,
     'Meta Description': page.metaDescription,
     'Has Responsive Meta Tag': page.hasResponsiveMetaTag,
     'Scripts Count': page.scriptsCount,
@@ -255,17 +253,17 @@ async function saveContentAnalysis(results, outputDir) {
     'Tables Count': page.tablesCount,
     'Page Size': page.pageSize,
     'JS Errors Count': page.jsErrors,
-    'Pa11y Issues Count': page.pa11yIssuesCount
+    'Pa11y Issues Count': page.pa11yIssuesCount,
   }));
 
   const contentAnalysisCsv = formatCsv(contentAnalysisData, headers);
-  
+
   try {
     await saveFile(
       path.join(outputDir, 'content_analysis.csv'),
-      contentAnalysisCsv
+      contentAnalysisCsv,
     );
-    global.auditcore.logger.info(`Content analysis saved to content_analysis.csv`);
+    global.auditcore.logger.info('Content analysis saved to content_analysis.csv');
   } catch (error) {
     global.auditcore.logger.error(`Error saving content_analysis.csv: ${error.message}`);
   }
@@ -324,8 +322,8 @@ function generateUpdatedReport(results, sitemapUrl) {
 
 function getMissingHeaders(h1Count, h2Count, h3Count, h4Count, h5Count, h6Count) {
   const headers = [h1Count, h2Count, h3Count, h4Count, h5Count, h6Count];
-  let missingHeaders = new Set(); // Use a Set to avoid duplicates
-  
+  const missingHeaders = new Set(); // Use a Set to avoid duplicates
+
   // Check for missing H1 separately
   if (h1Count === 0) {
     missingHeaders.add('H1');
@@ -351,30 +349,30 @@ function analyzeContentData(contentAnalysis) {
     const titleLength = page.title ? page.title.length : 0;
     const metaDescLength = page.metaDescription ? page.metaDescription.length : 0;
     const missingHeaders = getMissingHeaders(page.h1Count, page.h2Count, page.h3Count, page.h4Count, page.h5Count, page.h6Count);
-    
+
     acc.pagesWithMissingHeaders += missingHeaders !== 'None' ? 1 : 0;
     acc.missingHeaders.push(missingHeaders);
-    
+
     acc.titleOverLength += titleLength > titleThresholds.maxLength ? 1 : 0;
     acc.titleUnderLength += titleLength < titleThresholds.minLength && titleLength > 0 ? 1 : 0;
     acc.missingTitles += titleLength === 0 ? 1 : 0;
-    
+
     acc.metaDescOverLength += metaDescLength > metaDescriptionThresholds.maxLength ? 1 : 0;
     acc.metaDescUnderLength += metaDescLength < metaDescriptionThresholds.minLength && metaDescLength > 0 ? 1 : 0;
     acc.missingMetaDesc += metaDescLength === 0 ? 1 : 0;
-    
+
     acc.missingH1 += page.h1Count === 0 ? 1 : 0;
     acc.multipleH1 += page.h1Count > 1 ? 1 : 0;
     acc.zeroH1 += page.h1Count === 0 ? 1 : 0;
-    
+
     acc.totalImages += page.imagesCount || 0;
     acc.imagesWithoutAlt += page.imagesWithoutAlt || 0;
-    
+
     acc.lowContentPages += page.wordCount < contentThresholds.lowWordCount ? 1 : 0;
     acc.totalWordCount += page.wordCount || 0;
-    
+
     acc.pagesWithJsErrors += page.jsErrors > 0 ? 1 : 0;
-    
+
     return acc;
   }, {
     titleOverLength: 0,
@@ -551,7 +549,7 @@ function generateAccessibilityAnalysis(pa11yResults) {
   const totalIssues = pa11yResults.reduce((sum, result) => sum + (result.issues ? result.issues.length : 0), 0);
   const issueTypes = pa11yResults.reduce((types, result) => {
     if (result.issues) {
-      result.issues.forEach(issue => {
+      result.issues.forEach((issue) => {
         types[issue.type] = (types[issue.type] || 0) + 1;
       });
     }
@@ -580,7 +578,7 @@ function generateJavaScriptErrorsAnalysis(analysis, totalUrls) {
 }
 
 function generateSeoScoreAnalysis(seoScores) {
-  const scores = seoScores.map(score => score.score);
+  const scores = seoScores.map((score) => score.score);
   const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
   const lowestScore = Math.min(...scores);
   const highestScore = Math.max(...scores);
@@ -597,9 +595,9 @@ function generateSeoScoreAnalysis(seoScores) {
 function generatePerformanceAnalysis(performanceAnalysis) {
   const calculateAverage = (metric) => {
     const validValues = performanceAnalysis
-      .map(perf => perf[metric])
-      .filter(value => value !== null && value !== undefined);
-      return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : null;
+      .map((perf) => perf[metric])
+      .filter((value) => value !== null && value !== undefined);
+    return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : null;
   };
 
   const avgLoadTime = calculateAverage('loadTime');
@@ -628,13 +626,15 @@ function generateRecommendations(analysis, results) {
 
   return [
     ['Top SEO Recommendations'],
-    ...recommendations.map(rec => [rec]),
+    ...recommendations.map((rec) => [rec]),
     [],
   ];
 }
 
 function categorizeResponseCodes(responseCodeMetrics) {
-  const categories = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 };
+  const categories = {
+    '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0,
+  };
   Object.entries(responseCodeMetrics).forEach(([code, count]) => {
     const codeNum = parseInt(code, 10);
     if (codeNum >= 200 && codeNum < 300) categories['2xx'] += count;
@@ -808,7 +808,7 @@ async function saveDiagnostics(results, outputDir) {
   try {
     const filename = 'results.json';
     const filePath = path.join(outputDir, filename);
-    
+
     const meta = {
       generatedAt: new Date().toISOString(),
       options: {
@@ -816,7 +816,7 @@ async function saveDiagnostics(results, outputDir) {
         output: global.auditcore.options.output,
         limit: global.auditcore.options.limit,
         logLevel: global.auditcore.options.logLevel,
-      }
+      },
     };
 
     const cleanResults = JSON.parse(JSON.stringify(results, (key, value) => {
@@ -827,8 +827,8 @@ async function saveDiagnostics(results, outputDir) {
     }));
 
     const diagnosticsData = {
-      meta: meta,
-      results: cleanResults
+      meta,
+      results: cleanResults,
     };
 
     await fs.writeFile(filePath, JSON.stringify(diagnosticsData, null, 2));
@@ -861,7 +861,7 @@ async function saveRawPa11yResult(results, outputDir) {
     const pa11yResults = results.pa11y.map((result, index) => {
       global.auditcore.logger.debug(`Processing result ${index + 1}/${results.pa11y.length}`);
       global.auditcore.logger.debug(`Result type: ${typeof result}`);
-      
+
       if (!result || typeof result !== 'object') {
         global.auditcore.logger.warn(`Invalid Pa11y result entry at index ${index}:`, result);
         return null;
@@ -934,7 +934,7 @@ function filterRepeatedPa11yIssues(pa11yResults, commonIssues) {
 }
 
 async function saveImageInfo(contentAnalysis, outputDir) {
-  global.auditcore.logger.debug(`Starting saveImageInfo function`);
+  global.auditcore.logger.debug('Starting saveImageInfo function');
   global.auditcore.logger.debug(`Content analysis length: ${contentAnalysis.length}`);
 
   const allImages = [];
@@ -942,24 +942,24 @@ async function saveImageInfo(contentAnalysis, outputDir) {
 
   contentAnalysis.forEach((page, index) => {
     global.auditcore.logger.debug(`Processing page ${index}: ${page.url}`);
-    
+
     if (!page.images || !Array.isArray(page.images)) {
       global.auditcore.logger.warn(`No images array found for page: ${page.url}`);
       return;
     }
-    
+
     global.auditcore.logger.debug(`Found ${page.images.length} images for page: ${page.url}`);
-    
+
     page.images.forEach((img) => {
       const imageInfo = {
         pageUrl: page.url,
         imageSrc: img.src,
         altText: img.alt || '',
         width: img.width || '',
-        height: img.height || ''
+        height: img.height || '',
       };
       allImages.push(imageInfo);
-      
+
       if (!img.alt || img.alt.trim() === '') {
         imagesWithoutAlt.push(imageInfo);
       }
@@ -972,7 +972,7 @@ async function saveImageInfo(contentAnalysis, outputDir) {
   if (allImages.length > 0) {
     const headers = ['Page URL', 'Image Source', 'Alt Text', 'Width', 'Height'];
     const imageInfoCsv = formatCsv(allImages, headers);
-    
+
     try {
       await saveFile(path.join(outputDir, 'image_info.csv'), imageInfoCsv);
       global.auditcore.logger.info(`${allImages.length} images information saved to image_info.csv`);
@@ -985,11 +985,11 @@ async function saveImageInfo(contentAnalysis, outputDir) {
 
   if (imagesWithoutAlt.length > 0) {
     const headers = ['Page URL', 'Image Source', 'Width', 'Height'];
-    const imagesWithoutAltCsv = formatCsv(imagesWithoutAlt.map(img => ({
+    const imagesWithoutAltCsv = formatCsv(imagesWithoutAlt.map((img) => ({
       pageUrl: img.pageUrl,
       imageSrc: img.imageSrc,
       width: img.width,
-      height: img.height
+      height: img.height,
     })), headers);
 
     try {
@@ -1002,9 +1002,9 @@ async function saveImageInfo(contentAnalysis, outputDir) {
     global.auditcore.logger.info('All images have alt text');
   }
 
-  return { 
-    totalImages: allImages.length, 
-    imagesWithoutAlt: imagesWithoutAlt.length 
+  return {
+    totalImages: allImages.length,
+    imagesWithoutAlt: imagesWithoutAlt.length,
   };
 }
 

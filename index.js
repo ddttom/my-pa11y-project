@@ -1,13 +1,13 @@
 /**
  * Main entry point for the SEO and Accessibility Analysis Tool
- * 
+ *
  * This module handles:
  * - Command line argument parsing
  * - Application initialization
  * - Logging configuration
  * - Main execution flow
  * - Error handling and cleanup
- * 
+ *
  * @module index
  */
 
@@ -19,17 +19,14 @@ import { runTestsOnSitemap } from './src/main.js';
 import { loadDotEnv, mergeConfig, validateEnvConfig } from './src/config/env.js';
 import { prepareConfig } from './src/config/validation.js';
 
-let defurl;
-let defcount;
-
 // Default URL for analysis when none is provided
-defurl='https://example.com/sitemap.xml';
+const defurl = 'https://example.com/sitemap.xml';
 // Default count for analysis when none is provided, -1 = infinite
-defcount = -1
+const defcount = -1;
 
 /**
  * Configure command line options using Commander
- * 
+ *
  * Available options:
  * - sitemap: URL of the sitemap to process
  * - output: Output directory for results
@@ -44,22 +41,22 @@ defcount = -1
  */
 program
   .option(
-    '-s, --sitemap <url>', 
-    'URL of the sitemap to process', 
-    defurl
+    '-s, --sitemap <url>',
+    'URL of the sitemap to process',
+    defurl,
   )
   .option('-o, --output <directory>', 'Output directory for results', 'results')
   .option(
     '-l, --limit <number>',
     'Limit the number of URLs to test. Use -1 to test all URLs.',
     (value) => parseInt(value, 10),
-    defcount
+    defcount,
   )
   .option(
     '-c, --count <number>',
     'Number of files to include in analysis. Use -1 for infinite.',
     (value) => parseInt(value, 10),
-    defcount
+    defcount,
   )
   .option('--cache-only', 'Use only cached data, do not fetch new data')
   .option('--no-cache', 'Disable caching, always fetch fresh data')
@@ -68,31 +65,31 @@ program
   .option(
     '--log-level <level>',
     'Set logging level (error, warn, info, debug)',
-    'debug'
+    'debug',
   )
   .option(
     '--include-all-languages',
-    'Include all language variants in sitemap (default: only /en and /us)'
+    'Include all language variants in sitemap (default: only /en and /us)',
   )
   .option(
     '--no-recursive',
-    'Disable recursive crawling (only scan sitemap URLs, not discovered pages)'
+    'Disable recursive crawling (only scan sitemap URLs, not discovered pages)',
   )
   .option(
     '--enable-history',
-    'Enable historical tracking (stores results for comparison over time)'
+    'Enable historical tracking (stores results for comparison over time)',
   )
   .option(
     '--generate-dashboard',
-    'Generate interactive HTML dashboard with charts'
+    'Generate interactive HTML dashboard with charts',
   )
   .option(
     '--generate-executive-summary',
-    'Generate executive summary report'
+    'Generate executive summary report',
   )
   .option(
     '--thresholds <file>',
-    'Path to custom thresholds configuration file (JSON)'
+    'Path to custom thresholds configuration file (JSON)',
   )
   .parse(process.argv);
 
@@ -105,7 +102,7 @@ async function initializeConfig() {
   const envValidation = validateEnvConfig();
   if (!envValidation.valid) {
     console.error('Environment configuration errors:');
-    envValidation.errors.forEach(err => console.error(`  - ${err}`));
+    envValidation.errors.forEach((err) => console.error(`  - ${err}`));
     process.exit(1);
   }
 
@@ -116,7 +113,7 @@ async function initializeConfig() {
   const configResult = prepareConfig(rawOptions);
   if (!configResult.valid) {
     console.error('Configuration validation errors:');
-    configResult.errors.forEach(err => console.error(`  - ${err}`));
+    configResult.errors.forEach((err) => console.error(`  - ${err}`));
     process.exit(1);
   }
 
@@ -228,13 +225,13 @@ function ensureCacheDirectory() {
 
 /**
  * Main execution function
- * 
+ *
  * Handles:
  * - Cache directory initialization
  * - Sitemap analysis execution
  * - Result processing
  * - Error handling
- * 
+ *
  * @async
  * @throws {Error} If any critical operation fails
  */
@@ -242,10 +239,10 @@ async function main() {
   try {
     // Ensure cache directory exists before running tests
     ensureCacheDirectory();
-    
+
     // Execute main analysis process
     const results = await runTestsOnSitemap();
-    
+
     // Handle specific analysis errors
     if (results && results.errors) {
       results.errors.forEach((error) => {
@@ -254,7 +251,7 @@ async function main() {
         }
       });
     }
-    
+
     global.auditcore.logger.info('Script completed successfully');
   } catch (error) {
     global.auditcore.logger.error('Script failed with error:', error);

@@ -1,6 +1,5 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { compareWithPrevious } from '../historicalComparison.js';
 
 /**
  * Generates an executive summary report with high-level insights
@@ -43,7 +42,7 @@ function buildExecutiveSummary(results, comparison) {
     llmSuitability: buildLLMSummary(results, comparison?.llm),
     keyFindings: buildKeyFindings(results),
     recommendations: buildRecommendations(results),
-    comparison: comparison ? buildComparisonSummary(comparison) : null
+    comparison: comparison ? buildComparisonSummary(comparison) : null,
   };
 
   return summary;
@@ -71,7 +70,7 @@ function buildOverview(results) {
   return {
     totalPages: (results.urls || []).length,
     analysisDate: new Date().toISOString().split('T')[0],
-    schemaVersion: results.schemaVersion || '1.0.0'
+    schemaVersion: results.schemaVersion || '1.0.0',
   };
 }
 
@@ -85,10 +84,10 @@ function buildPerformanceSummary(results, comparisonData) {
     return { status: 'No data', score: 0 };
   }
 
-  const avgLoadTime = average(metrics.map(m => m.loadTime || 0));
-  const avgLCP = average(metrics.map(m => m.largestContentfulPaint || 0));
-  const avgFCP = average(metrics.map(m => m.firstContentfulPaint || 0));
-  const avgCLS = average(metrics.map(m => m.cumulativeLayoutShift || 0));
+  const avgLoadTime = average(metrics.map((m) => m.loadTime || 0));
+  const avgLCP = average(metrics.map((m) => m.largestContentfulPaint || 0));
+  const avgFCP = average(metrics.map((m) => m.firstContentfulPaint || 0));
+  const avgCLS = average(metrics.map((m) => m.cumulativeLayoutShift || 0));
 
   // Score based on thresholds
   let score = 0;
@@ -113,13 +112,13 @@ function buildPerformanceSummary(results, comparisonData) {
     averageLoadTime: Math.round(avgLoadTime),
     averageLCP: Math.round(avgLCP),
     averageFCP: Math.round(avgFCP),
-    averageCLS: avgCLS.toFixed(3)
+    averageCLS: avgCLS.toFixed(3),
   };
 
   if (comparisonData) {
     summary.trend = {
       loadTime: comparisonData.loadTime.percentChange,
-      lcp: comparisonData.largestContentfulPaint.percentChange
+      lcp: comparisonData.largestContentfulPaint.percentChange,
     };
   }
 
@@ -137,9 +136,9 @@ function buildAccessibilitySummary(results, comparisonData) {
   let warnings = 0;
   let notices = 0;
 
-  metrics.forEach(m => {
+  metrics.forEach((m) => {
     if (m.issues) {
-      m.issues.forEach(issue => {
+      m.issues.forEach((issue) => {
         totalIssues++;
         if (issue.type === 'error') errors++;
         else if (issue.type === 'warning') warnings++;
@@ -164,13 +163,13 @@ function buildAccessibilitySummary(results, comparisonData) {
     errors,
     warnings,
     notices,
-    averageIssuesPerPage: metrics.length > 0 ? (totalIssues / metrics.length).toFixed(1) : 0
+    averageIssuesPerPage: metrics.length > 0 ? (totalIssues / metrics.length).toFixed(1) : 0,
   };
 
   if (comparisonData) {
     summary.trend = {
       totalIssues: comparisonData.totalIssues.delta,
-      percentChange: comparisonData.totalIssues.percentChange
+      percentChange: comparisonData.totalIssues.percentChange,
     };
   }
 
@@ -187,19 +186,19 @@ function buildSeoSummary(results, comparisonData) {
     return { status: 'No data', score: 0 };
   }
 
-  const avgScore = average(metrics.map(m => m.totalScore || 0));
+  const avgScore = average(metrics.map((m) => m.totalScore || 0));
   const status = avgScore >= 90 ? 'Excellent' : avgScore >= 80 ? 'Very Good' : avgScore >= 70 ? 'Good' : avgScore >= 60 ? 'Fair' : 'Needs Improvement';
 
   const summary = {
     status,
     score: Math.round(avgScore),
-    pagesAnalyzed: metrics.length
+    pagesAnalyzed: metrics.length,
   };
 
   if (comparisonData) {
     summary.trend = {
       score: comparisonData.averageScore.delta,
-      percentChange: comparisonData.averageScore.percentChange
+      percentChange: comparisonData.averageScore.percentChange,
     };
   }
 
@@ -216,20 +215,20 @@ function buildContentSummary(results, comparisonData) {
     return { status: 'No data' };
   }
 
-  const avgWordCount = average(metrics.map(m => m.wordCount || 0));
-  const avgHeadings = average(metrics.map(m => m.headingCount || 0));
-  const pagesWithLowContent = metrics.filter(m => (m.wordCount || 0) < 300).length;
+  const avgWordCount = average(metrics.map((m) => m.wordCount || 0));
+  const avgHeadings = average(metrics.map((m) => m.headingCount || 0));
+  const pagesWithLowContent = metrics.filter((m) => (m.wordCount || 0) < 300).length;
 
   const summary = {
     averageWordCount: Math.round(avgWordCount),
     averageHeadings: avgHeadings.toFixed(1),
     pagesWithLowContent,
-    lowContentPercentage: ((pagesWithLowContent / metrics.length) * 100).toFixed(1)
+    lowContentPercentage: ((pagesWithLowContent / metrics.length) * 100).toFixed(1),
   };
 
   if (comparisonData) {
     summary.trend = {
-      wordCount: comparisonData.wordCount.percentChange
+      wordCount: comparisonData.wordCount.percentChange,
     };
   }
 
@@ -246,8 +245,8 @@ function buildLLMSummary(results, comparisonData) {
     return { status: 'No data', servedScore: 0, renderedScore: 0 };
   }
 
-  const avgServedScore = average(metrics.map(m => m.servedScore || 0));
-  const avgRenderedScore = average(metrics.map(m => m.renderedScore || 0));
+  const avgServedScore = average(metrics.map((m) => m.servedScore || 0));
+  const avgRenderedScore = average(metrics.map((m) => m.renderedScore || 0));
 
   const status = avgServedScore >= 70 ? 'Good' : avgServedScore >= 50 ? 'Fair' : 'Needs Improvement';
 
@@ -255,13 +254,13 @@ function buildLLMSummary(results, comparisonData) {
     status,
     servedScore: Math.round(avgServedScore),
     renderedScore: Math.round(avgRenderedScore),
-    pagesWithLLMsTxt: metrics.filter(m => m.hasLlmsTxt).length
+    pagesWithLLMsTxt: metrics.filter((m) => m.hasLlmsTxt).length,
   };
 
   if (comparisonData) {
     summary.trend = {
       servedScore: comparisonData.servedScore.percentChange,
-      renderedScore: comparisonData.renderedScore.percentChange
+      renderedScore: comparisonData.renderedScore.percentChange,
     };
   }
 
@@ -277,12 +276,12 @@ function buildKeyFindings(results) {
   // Performance findings
   const perfMetrics = results.performanceAnalysis || [];
   if (perfMetrics.length > 0) {
-    const avgLoadTime = average(perfMetrics.map(m => m.loadTime || 0));
+    const avgLoadTime = average(perfMetrics.map((m) => m.loadTime || 0));
     if (avgLoadTime > 3000) {
       findings.push({
         category: 'Performance',
         severity: 'High',
-        finding: `Average load time of ${Math.round(avgLoadTime)}ms exceeds recommended threshold of 3000ms`
+        finding: `Average load time of ${Math.round(avgLoadTime)}ms exceeds recommended threshold of 3000ms`,
       });
     }
   }
@@ -290,51 +289,51 @@ function buildKeyFindings(results) {
   // Accessibility findings
   const a11yMetrics = results.pa11y || [];
   let criticalErrors = 0;
-  a11yMetrics.forEach(m => {
+  a11yMetrics.forEach((m) => {
     if (m.issues) {
-      criticalErrors += m.issues.filter(i => i.type === 'error').length;
+      criticalErrors += m.issues.filter((i) => i.type === 'error').length;
     }
   });
   if (criticalErrors > 0) {
     findings.push({
       category: 'Accessibility',
       severity: 'Critical',
-      finding: `${criticalErrors} critical accessibility errors found across site`
+      finding: `${criticalErrors} critical accessibility errors found across site`,
     });
   }
 
   // SEO findings
   const seoMetrics = results.seoScores || [];
   if (seoMetrics.length > 0) {
-    const avgScore = average(seoMetrics.map(m => m.totalScore || 0));
+    const avgScore = average(seoMetrics.map((m) => m.totalScore || 0));
     if (avgScore < 70) {
       findings.push({
         category: 'SEO',
         severity: 'Medium',
-        finding: `Average SEO score of ${Math.round(avgScore)} is below recommended threshold of 70`
+        finding: `Average SEO score of ${Math.round(avgScore)} is below recommended threshold of 70`,
       });
     }
   }
 
   // Content findings
   const contentMetrics = results.contentAnalysis || [];
-  const lowContentPages = contentMetrics.filter(m => (m.wordCount || 0) < 300).length;
+  const lowContentPages = contentMetrics.filter((m) => (m.wordCount || 0) < 300).length;
   if (lowContentPages > contentMetrics.length * 0.2) {
     findings.push({
       category: 'Content',
       severity: 'Medium',
-      finding: `${lowContentPages} pages (${((lowContentPages / contentMetrics.length) * 100).toFixed(0)}%) have insufficient content (<300 words)`
+      finding: `${lowContentPages} pages (${((lowContentPages / contentMetrics.length) * 100).toFixed(0)}%) have insufficient content (<300 words)`,
     });
   }
 
   // LLM findings
   const llmMetrics = results.llmMetrics || [];
-  const pagesWithoutLLMsTxt = llmMetrics.filter(m => !m.hasLlmsTxt).length;
+  const pagesWithoutLLMsTxt = llmMetrics.filter((m) => !m.hasLlmsTxt).length;
   if (pagesWithoutLLMsTxt === llmMetrics.length && llmMetrics.length > 0) {
     findings.push({
       category: 'LLM Suitability',
       severity: 'Low',
-      finding: 'No llms.txt file detected - consider adding for better AI agent compatibility'
+      finding: 'No llms.txt file detected - consider adding for better AI agent compatibility',
     });
   }
 
@@ -350,12 +349,12 @@ function buildRecommendations(results) {
   // Performance recommendations
   const perfMetrics = results.performanceAnalysis || [];
   if (perfMetrics.length > 0) {
-    const avgLCP = average(perfMetrics.map(m => m.largestContentfulPaint || 0));
+    const avgLCP = average(perfMetrics.map((m) => m.largestContentfulPaint || 0));
     if (avgLCP > 2500) {
       recommendations.push({
         category: 'Performance',
         priority: 'High',
-        recommendation: 'Optimize Largest Contentful Paint by optimizing images and reducing render-blocking resources'
+        recommendation: 'Optimize Largest Contentful Paint by optimizing images and reducing render-blocking resources',
       });
     }
   }
@@ -363,8 +362,8 @@ function buildRecommendations(results) {
   // Accessibility recommendations
   const a11yMetrics = results.pa11y || [];
   let hasErrors = false;
-  a11yMetrics.forEach(m => {
-    if (m.issues && m.issues.some(i => i.type === 'error')) {
+  a11yMetrics.forEach((m) => {
+    if (m.issues && m.issues.some((i) => i.type === 'error')) {
       hasErrors = true;
     }
   });
@@ -372,40 +371,40 @@ function buildRecommendations(results) {
     recommendations.push({
       category: 'Accessibility',
       priority: 'Critical',
-      recommendation: 'Address critical WCAG errors immediately to ensure site accessibility for all users'
+      recommendation: 'Address critical WCAG errors immediately to ensure site accessibility for all users',
     });
   }
 
   // SEO recommendations
   const seoMetrics = results.seoScores || [];
-  const pagesWithoutMeta = seoMetrics.filter(m => !m.metaDescription || m.metaDescription.length === 0).length;
+  const pagesWithoutMeta = seoMetrics.filter((m) => !m.metaDescription || m.metaDescription.length === 0).length;
   if (pagesWithoutMeta > 0) {
     recommendations.push({
       category: 'SEO',
       priority: 'Medium',
-      recommendation: `Add meta descriptions to ${pagesWithoutMeta} pages to improve search engine visibility`
+      recommendation: `Add meta descriptions to ${pagesWithoutMeta} pages to improve search engine visibility`,
     });
   }
 
   // Content recommendations
   const contentMetrics = results.contentAnalysis || [];
-  const lowContentPages = contentMetrics.filter(m => (m.wordCount || 0) < 300).length;
+  const lowContentPages = contentMetrics.filter((m) => (m.wordCount || 0) < 300).length;
   if (lowContentPages > 0) {
     recommendations.push({
       category: 'Content',
       priority: 'Medium',
-      recommendation: `Expand content on ${lowContentPages} pages to improve SEO and user experience`
+      recommendation: `Expand content on ${lowContentPages} pages to improve SEO and user experience`,
     });
   }
 
   // LLM recommendations
   const llmMetrics = results.llmMetrics || [];
-  const avgServedScore = average(llmMetrics.map(m => m.servedScore || 0));
+  const avgServedScore = average(llmMetrics.map((m) => m.servedScore || 0));
   if (avgServedScore < 50) {
     recommendations.push({
       category: 'LLM Suitability',
       priority: 'Low',
-      recommendation: 'Improve semantic HTML structure and add structured data for better AI agent compatibility'
+      recommendation: 'Improve semantic HTML structure and add structured data for better AI agent compatibility',
     });
   }
 
@@ -449,7 +448,7 @@ function buildComparisonSummary(comparison) {
   return {
     improvements,
     regressions,
-    urlCountChange: comparison.urlCount.delta
+    urlCountChange: comparison.urlCount.delta,
   };
 }
 
@@ -457,24 +456,24 @@ function buildComparisonSummary(comparison) {
  * Generate markdown format of the summary
  */
 function generateMarkdownSummary(summary) {
-  let md = `# Executive Summary\n\n`;
+  let md = '# Executive Summary\n\n';
   md += `**Site:** ${summary.site}\n`;
   md += `**Generated:** ${new Date(summary.generatedAt).toLocaleString()}\n`;
   md += `**Pages Analyzed:** ${summary.overview.totalPages}\n\n`;
 
-  md += `---\n\n`;
+  md += '---\n\n';
 
   // Overview
-  md += `## Overall Status\n\n`;
-  md += `| Category | Status | Score |\n`;
-  md += `|----------|--------|-------|\n`;
+  md += '## Overall Status\n\n';
+  md += '| Category | Status | Score |\n';
+  md += '|----------|--------|-------|\n';
   md += `| Performance | ${summary.performance.status} | ${summary.performance.score}/100 |\n`;
   md += `| Accessibility | ${summary.accessibility.status} | ${summary.accessibility.score}/100 |\n`;
   md += `| SEO | ${summary.seo.status} | ${summary.seo.score}/100 |\n`;
   md += `| LLM Suitability | ${summary.llmSuitability.status} | ${summary.llmSuitability.servedScore}/100 |\n\n`;
 
   // Performance details
-  md += `## Performance\n\n`;
+  md += '## Performance\n\n';
   md += `- **Status:** ${summary.performance.status}\n`;
   md += `- **Average Load Time:** ${summary.performance.averageLoadTime}ms\n`;
   md += `- **Average LCP:** ${summary.performance.averageLCP}ms\n`;
@@ -483,10 +482,10 @@ function generateMarkdownSummary(summary) {
   if (summary.performance.trend) {
     md += `- **Trend:** ${summary.performance.trend.loadTime > 0 ? '📈' : '📉'} ${summary.performance.trend.loadTime.toFixed(1)}% change in load time\n`;
   }
-  md += `\n`;
+  md += '\n';
 
   // Accessibility details
-  md += `## Accessibility\n\n`;
+  md += '## Accessibility\n\n';
   md += `- **Status:** ${summary.accessibility.status}\n`;
   md += `- **Total Issues:** ${summary.accessibility.totalIssues}\n`;
   md += `- **Errors:** ${summary.accessibility.errors}\n`;
@@ -496,30 +495,30 @@ function generateMarkdownSummary(summary) {
   if (summary.accessibility.trend) {
     md += `- **Trend:** ${summary.accessibility.trend.totalIssues < 0 ? '✅' : '⚠️'} ${summary.accessibility.trend.totalIssues} issues (${summary.accessibility.trend.percentChange.toFixed(1)}%)\n`;
   }
-  md += `\n`;
+  md += '\n';
 
   // SEO details
-  md += `## SEO\n\n`;
+  md += '## SEO\n\n';
   md += `- **Status:** ${summary.seo.status}\n`;
   md += `- **Average Score:** ${summary.seo.score}/100\n`;
   md += `- **Pages Analyzed:** ${summary.seo.pagesAnalyzed}\n`;
   if (summary.seo.trend) {
     md += `- **Trend:** ${summary.seo.trend.score > 0 ? '📈' : '📉'} ${summary.seo.trend.score.toFixed(1)} points (${summary.seo.trend.percentChange.toFixed(1)}%)\n`;
   }
-  md += `\n`;
+  md += '\n';
 
   // Content details
-  md += `## Content Quality\n\n`;
+  md += '## Content Quality\n\n';
   md += `- **Average Word Count:** ${summary.content.averageWordCount}\n`;
   md += `- **Average Headings:** ${summary.content.averageHeadings}\n`;
   md += `- **Pages with Low Content:** ${summary.content.pagesWithLowContent} (${summary.content.lowContentPercentage}%)\n`;
   if (summary.content.trend) {
     md += `- **Trend:** ${summary.content.trend.wordCount > 0 ? '📈' : '📉'} ${summary.content.trend.wordCount.toFixed(1)}% change in word count\n`;
   }
-  md += `\n`;
+  md += '\n';
 
   // LLM Suitability details
-  md += `## LLM Agent Suitability\n\n`;
+  md += '## LLM Agent Suitability\n\n';
   md += `- **Status:** ${summary.llmSuitability.status}\n`;
   md += `- **Served Score:** ${summary.llmSuitability.servedScore}/100\n`;
   md += `- **Rendered Score:** ${summary.llmSuitability.renderedScore}/100\n`;
@@ -527,51 +526,51 @@ function generateMarkdownSummary(summary) {
   if (summary.llmSuitability.trend) {
     md += `- **Trend (Served):** ${summary.llmSuitability.trend.servedScore > 0 ? '📈' : '📉'} ${summary.llmSuitability.trend.servedScore.toFixed(1)}%\n`;
   }
-  md += `\n`;
+  md += '\n';
 
   // Key findings
   if (summary.keyFindings.length > 0) {
-    md += `## Key Findings\n\n`;
+    md += '## Key Findings\n\n';
     summary.keyFindings.forEach((finding, i) => {
       const icon = finding.severity === 'Critical' ? '🔴' : finding.severity === 'High' ? '🟠' : finding.severity === 'Medium' ? '🟡' : '🔵';
       md += `${i + 1}. ${icon} **${finding.category}** (${finding.severity}): ${finding.finding}\n`;
     });
-    md += `\n`;
+    md += '\n';
   }
 
   // Recommendations
   if (summary.recommendations.length > 0) {
-    md += `## Recommendations\n\n`;
+    md += '## Recommendations\n\n';
     summary.recommendations.forEach((rec, i) => {
       const icon = rec.priority === 'Critical' ? '🔴' : rec.priority === 'High' ? '🟠' : rec.priority === 'Medium' ? '🟡' : '🔵';
       md += `${i + 1}. ${icon} **${rec.category}** (${rec.priority}): ${rec.recommendation}\n`;
     });
-    md += `\n`;
+    md += '\n';
   }
 
   // Comparison summary
   if (summary.comparison) {
-    md += `## Comparison with Previous Run\n\n`;
+    md += '## Comparison with Previous Run\n\n';
     if (summary.comparison.improvements.length > 0) {
-      md += `### ✅ Improvements\n\n`;
-      summary.comparison.improvements.forEach(imp => {
+      md += '### ✅ Improvements\n\n';
+      summary.comparison.improvements.forEach((imp) => {
         md += `- ${imp}\n`;
       });
-      md += `\n`;
+      md += '\n';
     }
     if (summary.comparison.regressions.length > 0) {
-      md += `### ⚠️ Regressions\n\n`;
-      summary.comparison.regressions.forEach(reg => {
+      md += '### ⚠️ Regressions\n\n';
+      summary.comparison.regressions.forEach((reg) => {
         md += `- ${reg}\n`;
       });
-      md += `\n`;
+      md += '\n';
     }
     if (summary.comparison.urlCountChange !== 0) {
       md += `**URL Count Change:** ${summary.comparison.urlCountChange > 0 ? '+' : ''}${summary.comparison.urlCountChange} pages\n\n`;
     }
   }
 
-  md += `---\n\n`;
+  md += '---\n\n';
   md += `*Generated by Web Audit Suite v${summary.overview.schemaVersion}*\n`;
 
   return md;

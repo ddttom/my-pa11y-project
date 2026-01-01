@@ -16,11 +16,11 @@ const HEADING_MAX_LENGTH = 70;
 export function updateTitleMetrics($, results) {
   try {
     global.auditcore.logger.debug('Starting updateTitleMetrics');
-    
+
     if (!$ || typeof $ !== 'function') {
       throw new Error('Invalid Cheerio instance');
     }
-    
+
     if (!results || typeof results !== 'object') {
       throw new Error('Invalid results object');
     }
@@ -42,7 +42,7 @@ export function updateTitleMetrics($, results) {
         length: titleLength,
         tooLong: titleLength > TITLE_MAX_LENGTH ? 1 : 0,
         tooShort: titleLength < TITLE_MIN_LENGTH ? 1 : 0,
-        pixelWidth: estimatePixelWidth(title)
+        pixelWidth: estimatePixelWidth(title),
       };
 
       if (titleLength > TITLE_MAX_LENGTH) {
@@ -64,8 +64,6 @@ export function updateTitleMetrics($, results) {
   }
 }
 
-
-
 /**
  * Updates meta description metrics based on the page's meta description.
  * @param {Object} $ - The Cheerio instance.
@@ -78,7 +76,7 @@ export function updateMetaDescriptionMetrics($, results) {
     if (!$ || typeof $ !== 'function') {
       throw new Error('Invalid Cheerio instance');
     }
-    
+
     if (!results || !results.metaDescriptionMetrics) {
       throw new Error('Invalid results object');
     }
@@ -128,7 +126,7 @@ export function updateHeadingMetrics($, results) {
     if (!$ || typeof $ !== 'function') {
       throw new Error('Invalid Cheerio instance');
     }
-    
+
     if (!results || !results.h1Metrics || !results.h2Metrics) {
       throw new Error('Invalid results object');
     }

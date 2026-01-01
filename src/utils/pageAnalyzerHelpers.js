@@ -1,8 +1,8 @@
 // pageAnalyzerHelpers.js
 
 // import { getInternalLinks } from './linkAnalyzer.js';
-import { updateInternalLinks } from './technicalMetrics.js';
 import cheerio from 'cheerio';
+import { updateInternalLinks } from './technicalMetrics.js';
 
 async function retryOperation(operation, retryAttempts, retryDelay) {
   for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {

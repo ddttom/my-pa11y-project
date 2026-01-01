@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 // pageAnalyzer.js
 
 import cheerio from 'cheerio';
@@ -31,9 +32,9 @@ async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageDa
     global.auditcore.logger.error('Attempting to process undefined URL');
     return { error: 'Undefined URL' };
   }
-  
+
   global.auditcore.logger.info(`Processing URL: ${url}`);
-  
+
   try {
     const analysisResult = await analyzePageContent({
       testUrl: url,
@@ -43,9 +44,9 @@ async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageDa
       results,
       headers,
       pageData,
-      config
+      config,
     });
-    
+
     global.auditcore.logger.info(`Analysis completed for ${url}`);
     return analysisResult;
   } catch (error) {
@@ -61,7 +62,7 @@ function extractImageInfo($) {
       src: $el.attr('src'),
       alt: $el.attr('alt') || '',
       width: $el.attr('width'),
-      height: $el.attr('height')
+      height: $el.attr('height'),
     };
   }).get();
 
@@ -75,7 +76,7 @@ function validateInput(testUrl, html, baseUrl) {
   if (typeof html !== 'string' || !html) {
     throw new Error('Invalid html');
   }
-  
+
   try {
     // Try to create URL objects to validate URLs
     const testUrlObj = new URL(testUrl);
@@ -84,10 +85,10 @@ function validateInput(testUrl, html, baseUrl) {
       baseUrl = testUrlObj.origin;
     }
     const baseUrlObj = new URL(baseUrl);
-    
+
     return {
       testUrl: testUrlObj.href,
-      baseUrl: baseUrlObj.href
+      baseUrl: baseUrlObj.href,
     };
   } catch (error) {
     throw new Error(`Invalid URL format: ${error.message}`);
@@ -114,7 +115,7 @@ async function analyzePageContent({
 
     // Validate and normalize URLs first
     const { testUrl: validTestUrl, baseUrl: validBaseUrl } = validateInput(testUrl, html, baseUrl);
-    
+
     const $ = cheerio.load(html);
     global.auditcore.logger.debug(`Cheerio loaded for ${validTestUrl}`);
 
@@ -122,7 +123,7 @@ async function analyzePageContent({
     for (let i = 1; i <= 6; i++) {
       pageData[`h${i}Count`] = $(`h${i}`).length;
     }
-    
+
     // Extract image information
     const images = extractImageInfo($);
     pageData.images = images;
@@ -188,9 +189,9 @@ async function runPa11yAnalysis(testUrl, html, config) {
     }
     global.auditcore.logger.debug(`Pa11y result: ${JSON.stringify(result)}`);
     global.auditcore.logger.info(`[END] runPa11yAnalysis completed successfully for ${testUrl}`);
-    
+
     global.auditcore.logger.info(`Pa11y found ${result.issues ? result.issues.length : 0} issues for ${testUrl}`);
-    
+
     return result;
   } catch (error) {
     global.auditcore.logger.error(`[ERROR] Error in runPa11yAnalysis for ${testUrl}:`, error);
@@ -246,7 +247,7 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     await updateLLMMetrics($, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
-    metricsToCheck.forEach(metric => {
+    metricsToCheck.forEach((metric) => {
       if (!results[metric][testUrl] || Object.keys(results[metric][testUrl]).length === 0) {
         global.auditcore.logger.warn(`${metric} not populated for ${testUrl}`);
       } else {
@@ -263,7 +264,7 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
 
 function updateResults(results, testUrl, pa11yResult, internalLinks) {
   global.auditcore.logger.info(`[START] Updating results for ${testUrl}`);
-  
+
   results.urlMetrics = results.urlMetrics || {};
   results.urlMetrics[testUrl] = results.urlMetrics[testUrl] || {};
   results.urlMetrics[testUrl].internalLinks = internalLinks ? internalLinks.length : 0;

@@ -22,6 +22,18 @@ module.exports = {
     'no-underscore-dangle': 'off',
     'linebreak-style': 'off',
     'no-process-exit': 'off',
+    'no-use-before-define': ['error', { functions: false, classes: true, variables: true }],
+    'no-plusplus': 'off',
+    'no-continue': 'off',
+    'no-restricted-syntax': [
+      'error',
+      'ForInStatement',
+      'LabeledStatement',
+      'WithStatement',
+    ],
+    'import/prefer-default-export': 'off',
+    'no-await-in-loop': 'off',
+    'no-nested-ternary': 'off',
   },
   ignorePatterns: [
     '.claude/**/*.md',

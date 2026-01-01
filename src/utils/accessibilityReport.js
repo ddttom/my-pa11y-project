@@ -13,7 +13,7 @@ import { generateWCAGComplianceSummary } from './reportUtils/accessibilityAnalys
  * @returns {String} - Formatted timestamp string
  */
 function formatTimestamp(date) {
-  const pad = num => num.toString().padStart(2, '0');
+  const pad = (num) => num.toString().padStart(2, '0');
   return [
     date.getFullYear(),
     pad(date.getMonth() + 1),
@@ -21,7 +21,7 @@ function formatTimestamp(date) {
     '_',
     pad(date.getHours()),
     pad(date.getMinutes()),
-    pad(date.getSeconds())
+    pad(date.getSeconds()),
   ].join('');
 }
 
@@ -35,8 +35,8 @@ function generateWCAGMarkdownContent(results, sectionName = 'Initial Accessibili
   const issueMap = new Map();
 
   // Process all issues and group by URL and issue code
-  results.pa11y.forEach(result => {
-    result.issues?.forEach(issue => {
+  results.pa11y.forEach((result) => {
+    result.issues?.forEach((issue) => {
       const key = `${result.url}|${issue.code}`;
       if (!issueMap.has(key)) {
         issueMap.set(key, {
@@ -50,7 +50,7 @@ function generateWCAGMarkdownContent(results, sectionName = 'Initial Accessibili
           guidelineDescription: issue.guidelineDescription || 'N/A',
           remediation: issue.remediation || 'N/A',
           requiresManualCheck: issue.requiresManualCheck ? 'Yes' : 'No',
-          count: 0
+          count: 0,
         });
       }
       issueMap.get(key).count++;
@@ -58,13 +58,13 @@ function generateWCAGMarkdownContent(results, sectionName = 'Initial Accessibili
   });
 
   // Generate markdown content dynamically
-  let content = `# Accessibility Report - WCAG Issues by Path\n\n`;
+  let content = '# Accessibility Report - WCAG Issues by Path\n\n';
   content += `## Section: ${sectionName}\n\n`;
 
   // Group by URL
   const urlMap = new Map();
-  issueMap.forEach(issue => {
-    const url = issue.url;
+  issueMap.forEach((issue) => {
+    const { url } = issue;
     if (!urlMap.has(url)) {
       urlMap.set(url, []);
     }
@@ -74,7 +74,7 @@ function generateWCAGMarkdownContent(results, sectionName = 'Initial Accessibili
   // Add issues for each URL
   urlMap.forEach((issues, url) => {
     content += `### Path: ${url}\n`;
-    issues.forEach(issue => {
+    issues.forEach((issue) => {
       content += `- **Issue Code**: ${issue.code}\n`;
       content += `  - **Description**: ${issue.message}\n`;
       content += `  - **Context**: ${issue.context}\n`;
@@ -95,7 +95,7 @@ function generateWCAGMarkdownContent(results, sectionName = 'Initial Accessibili
  * Generates accessibility report CSV content with enhanced WCAG 2.1 compliance
  * @param {Object} results - Analysis results object
  * @returns {String} - CSV content string
- * 
+ *
  * Features:
  * - Summary of accessibility issues by severity
  * - WCAG compliance percentages
@@ -117,16 +117,16 @@ function generateAccessibilityReportContent(results) {
     'WCAG 2.1 Compliance',
     'Required Manual Checks',
     'Remediation Suggestions',
-    'Accessibility Score'
+    'Accessibility Score',
   ].join(',');
 
-  const rows = results.pa11y.map(result => {
+  const rows = results.pa11y.map((result) => {
     const analysis = result.analysis || {
       bySeverity: {},
       byWCAGLevel: {},
       byGuideline: {},
       requiredManualChecks: [],
-      remediationSuggestions: []
+      remediationSuggestions: [],
     };
 
     // Calculate accessibility score
@@ -138,9 +138,9 @@ function generateAccessibilityReportContent(results) {
 
     // Calculate WCAG 2.1 compliance percentage
     const totalGuidelines = Object.keys(analysis.byGuideline).length;
-    const compliantGuidelines = Object.values(analysis.byGuideline).filter(count => count === 0).length;
-    const compliancePercentage = totalGuidelines > 0 ? 
-      ((compliantGuidelines / totalGuidelines) * 100).toFixed(2) : '100.00';
+    const compliantGuidelines = Object.values(analysis.byGuideline).filter((count) => count === 0).length;
+    const compliancePercentage = totalGuidelines > 0
+      ? ((compliantGuidelines / totalGuidelines) * 100).toFixed(2) : '100.00';
 
     return [
       result.url,
@@ -155,7 +155,7 @@ function generateAccessibilityReportContent(results) {
       compliancePercentage,
       analysis.requiredManualChecks.length,
       analysis.remediationSuggestions.length,
-      score.toFixed(2)
+      score.toFixed(2),
     ].join(',');
   });
 
@@ -172,10 +172,10 @@ export async function generateAccessibilityReport(results, outputDir) {
   try {
     const timestamp = formatTimestamp(new Date());
     const reportPath = path.join(outputDir, `accessibility_report_${timestamp}.csv`);
-    
+
     const content = generateAccessibilityReportContent(results);
     await writeFile(reportPath, content);
-    
+
     global.auditcore.logger.info(`Accessibility report generated at: ${reportPath}`);
     return reportPath;
   } catch (error) {
@@ -197,7 +197,7 @@ export async function generateWCAGMarkdownReport(results, outputDir, sectionName
     const reportPath = path.join(outputDir, `wcag_report_${timestamp}.md`);
     const content = generateWCAGMarkdownContent(results, sectionName);
     await writeFile(reportPath, content);
-    
+
     global.auditcore.logger.info(`WCAG markdown report generated at: ${reportPath}`);
     return reportPath;
   } catch (error) {
@@ -211,7 +211,7 @@ export async function generateWCAGMarkdownReport(results, outputDir, sectionName
  * @param {Object} results - Analysis results object
  * @param {String} outputDir - Directory to save report
  * @returns {Promise<String>} - Path to generated report
- * 
+ *
  * Features:
  * - Detailed issue information
  * - WCAG guideline mapping
@@ -222,7 +222,7 @@ export async function generateDetailedAccessibilityReport(results, outputDir) {
   try {
     const timestamp = formatTimestamp(new Date());
     const reportPath = path.join(outputDir, `detailed_accessibility_report_${timestamp}.csv`);
-    
+
     const headers = [
       'URL',
       'Issue Code',
@@ -233,27 +233,25 @@ export async function generateDetailedAccessibilityReport(results, outputDir) {
       'WCAG 2.1 Guideline',
       'Guideline Description',
       'Remediation',
-      'Manual Check Required'
+      'Manual Check Required',
     ].join(',');
 
-    const rows = results.pa11y.flatMap(result => 
-      result.issues?.map(issue => [
-        result.url,
-        issue.code,
-        issue.message,
-        issue.context,
-        issue.severity,
-        issue.wcagLevel,
-        issue.guideline || 'N/A',
-        issue.guidelineDescription || 'N/A',
-        issue.remediation || 'N/A',
-        issue.requiresManualCheck ? 'Yes' : 'No'
-      ].join(',')) || []
-    );
+    const rows = results.pa11y.flatMap((result) => result.issues?.map((issue) => [
+      result.url,
+      issue.code,
+      issue.message,
+      issue.context,
+      issue.severity,
+      issue.wcagLevel,
+      issue.guideline || 'N/A',
+      issue.guidelineDescription || 'N/A',
+      issue.remediation || 'N/A',
+      issue.requiresManualCheck ? 'Yes' : 'No',
+    ].join(',')) || []);
 
     const content = [headers, ...rows].join('\n');
     await writeFile(reportPath, content);
-    
+
     global.auditcore.logger.info(`Detailed accessibility report generated at: ${reportPath}`);
     return reportPath;
   } catch (error) {
@@ -267,7 +265,7 @@ export async function generateDetailedAccessibilityReport(results, outputDir) {
  * @param {Object} results - Analysis results object
  * @param {String} outputDir - Directory to save report
  * @returns {Promise<String>} - Path to generated report
- * 
+ *
  * Features:
  * - Guideline compliance status
  * - Issues per guideline
@@ -278,28 +276,28 @@ export async function generateWCAGComplianceReport(results, outputDir) {
   try {
     const timestamp = formatTimestamp(new Date());
     const reportPath = path.join(outputDir, `wcag_compliance_report_${timestamp}.csv`);
-    
+
     const summary = generateWCAGComplianceSummary(results);
-    
+
     const headers = [
       'Guideline',
       'Description',
       'Issues Found',
       'Compliance Status',
-      'Required Manual Checks'
+      'Required Manual Checks',
     ].join(',');
 
-    const rows = summary.guidelineDetails.map(detail => [
+    const rows = summary.guidelineDetails.map((detail) => [
       detail.guideline,
       detail.description,
       detail.issues,
       detail.compliant ? 'Compliant' : 'Non-Compliant',
-      detail.requiredChecks.join('; ')
+      detail.requiredChecks.join('; '),
     ].join(','));
 
     const content = [headers, ...rows].join('\n');
     await writeFile(reportPath, content);
-    
+
     global.auditcore.logger.info(`WCAG compliance report generated at: ${reportPath}`);
     return reportPath;
   } catch (error) {

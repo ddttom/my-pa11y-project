@@ -8,7 +8,7 @@ export function analyzeLinkQuality(link) {
     qualityScore: 100,
     recommendations: [],
     linkDepth: calculateLinkDepth(link?.url),
-    contentType: determineContentType(link)
+    contentType: determineContentType(link),
   };
 
   if (!link?.text || link.text.toLowerCase().includes('click here')) {
@@ -31,7 +31,7 @@ export function analyzeLinkQuality(link) {
  */
 function determineContentType(link) {
   if (!link?.url) return 'link unknown';
-  
+
   // If content type is explicitly provided, use that
   if (link.contentType) {
     return link.contentType;
@@ -47,7 +47,7 @@ function determineContentType(link) {
     const url = new URL(link.url);
     const path = url.pathname.toLowerCase();
     const extension = path.split('.').pop();
-    
+
     const knownTypes = {
       html: 'text/html',
       htm: 'text/html',
@@ -61,7 +61,7 @@ function determineContentType(link) {
       png: 'image/png',
       gif: 'image/gif',
       webp: 'image/webp',
-      svg: 'image/svg+xml'
+      svg: 'image/svg+xml',
     };
 
     return knownTypes[extension] || 'text/html';

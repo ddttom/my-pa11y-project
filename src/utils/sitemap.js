@@ -30,13 +30,13 @@ const gunzipAsync = promisify(gunzip);
 
 /**
  * Main function for extracting URLs from sitemap or HTML page
- * 
+ *
  * Handles:
  * - Sitemap XML parsing
  * - HTML link extraction
  * - Gzip content decoding
  * - Puppeteer fallback for blocked requests
- * 
+ *
  * @param {string} url - URL to process (sitemap or HTML page)
  * @param {number} limit - Maximum number of URLs to return (-1 for all)
  * @returns {Promise<Array>} Array of processed URLs containing:
@@ -52,10 +52,10 @@ const gunzipAsync = promisify(gunzip);
 export async function getUrlsFromSitemap(url, limit = -1) {
   try {
     global.auditcore.logger.info(`Fetching URL: ${url}`);
-    
+
     // First check if URL is a sitemap
     const isSitemap = url.toLowerCase().endsWith('sitemap.xml');
-    
+
     let content;
     try {
       const response = await executeNetworkOperation(
@@ -63,25 +63,25 @@ export async function getUrlsFromSitemap(url, limit = -1) {
           const res = await fetch(url, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
               'Accept-Language': 'en-US,en;q=0.5',
-              'Accept-Encoding': 'gzip, deflate, br'
-            }
+              'Accept-Encoding': 'gzip, deflate, br',
+            },
           });
-          
+
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
           }
-          
+
           const buffer = await res.arrayBuffer();
           return {
             data: Buffer.from(buffer),
-            headers: Object.fromEntries(res.headers.entries())
+            headers: Object.fromEntries(res.headers.entries()),
           };
         },
-        'URL fetch'
+        'URL fetch',
       );
-      
+
       const contentType = response.headers['content-type'];
       content = response.data;
 
@@ -109,7 +109,7 @@ export async function getUrlsFromSitemap(url, limit = -1) {
     } else {
       global.auditcore.logger.info('Processing as HTML page');
       urls = await processHtmlContent(content, url, limit);
-      
+
       if (urls.length === 0) {
         global.auditcore.logger.info('No URLs found with JSDOM, falling back to Puppeteer');
         urls = await processWithPuppeteer(url, limit);
@@ -129,22 +129,22 @@ export async function getUrlsFromSitemap(url, limit = -1) {
 
 /**
  * Fallback to Puppeteer for blocked requests
- * 
+ *
  * Implements advanced Puppeteer-based URL extraction with:
  * - Request interception and filtering
  * - Network activity monitoring
  * - Shadow DOM support
  * - Screenshot capture for debugging
- * 
+ *
  * @param {string} baseUrl - URL to process
  * @param {number} limit - Maximum number of URLs to return
  * @returns {Promise<Array>} Array of processed URLs
  * @throws {Error} If Puppeteer processing fails
  */
 async function processWithPuppeteer(baseUrl, limit) {
-  return await executePuppeteerOperation(async (page) => {
+  return executePuppeteerOperation(async (page) => {
     global.auditcore.logger.info(`Processing ${baseUrl} with Puppeteer`);
-    
+
     try {
       // Create results directory if it doesn't exist
       await fs.mkdir(global.auditcore.options.output, { recursive: true });
@@ -153,7 +153,7 @@ async function processWithPuppeteer(baseUrl, limit) {
       await page.setRequestInterception(true);
       const pendingRequests = new Set();
       const finishedRequests = new Set();
-      
+
       const requestHandler = (request) => {
         // Skip font requests to prevent hanging
         if (request.resourceType() === 'font') {
@@ -183,7 +183,7 @@ async function processWithPuppeteer(baseUrl, limit) {
       // Navigate to the page and wait for network activity
       await page.goto(baseUrl, {
         waitUntil: 'networkidle2',
-        timeout: 60000
+        timeout: 60000,
       });
 
       // Take a screenshot for debugging
@@ -195,12 +195,12 @@ async function processWithPuppeteer(baseUrl, limit) {
       const maxWaitTime = 10000; // 10 seconds
       const startTime = Date.now();
       while (pendingRequests.size > 0 && Date.now() - startTime < maxWaitTime) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => { setTimeout(resolve, 1000); });
         global.auditcore.logger.debug(`Waiting for ${pendingRequests.size} pending requests...`);
-        
+
         // Log details of pending requests
         if (pendingRequests.size > 0) {
-          const pendingUrls = Array.from(pendingRequests).map(req => req.url());
+          const pendingUrls = Array.from(pendingRequests).map((req) => req.url());
           global.auditcore.logger.debug(`Pending requests: ${pendingUrls.join(', ')}`);
         }
       }
@@ -223,20 +223,18 @@ async function processWithPuppeteer(baseUrl, limit) {
       page.off('requestfailed', requestFailedHandler);
 
       // Debug page state
-      const pageState = await page.evaluate(() => {
-        return {
-          documentReadyState: document.readyState,
-          bodyExists: !!document.body,
-          bodyContentLength: document.body?.innerHTML?.length || 0,
-          headContentLength: document.head?.innerHTML?.length || 0,
-          windowLocation: window.location.href,
-          windowInnerWidth: window.innerWidth,
-          windowInnerHeight: window.innerHeight,
-          scriptsCount: document.scripts.length,
-          stylesheetsCount: document.styleSheets.length,
-          iframesCount: document.querySelectorAll('iframe').length
-        };
-      });
+      const pageState = await page.evaluate(() => ({
+        documentReadyState: document.readyState,
+        bodyExists: !!document.body,
+        bodyContentLength: document.body?.innerHTML?.length || 0,
+        headContentLength: document.head?.innerHTML?.length || 0,
+        windowLocation: window.location.href,
+        windowInnerWidth: window.innerWidth,
+        windowInnerHeight: window.innerHeight,
+        scriptsCount: document.scripts.length,
+        stylesheetsCount: document.styleSheets.length,
+        iframesCount: document.querySelectorAll('iframe').length,
+      }));
       global.auditcore.logger.debug('Page state:', pageState);
 
       // Get the rendered HTML content using multiple methods
@@ -256,31 +254,32 @@ async function processWithPuppeteer(baseUrl, limit) {
         global.auditcore.logger.error('Error extracting HTML content:', error);
       }
 
-      global.auditcore.logger.debug('Rendered HTML content:', content.substring(0, 1000) + '...');
+      global.auditcore.logger.debug('Rendered HTML content:', `${content.substring(0, 1000)}...`);
 
       // Extract links using Puppeteer's DOM access - only <a> tags with href
-      const links = await page.evaluate((baseUrl, limit) => {
+      const links = await page.evaluate((bUrl, lim) => {
         const results = [];
-        const baseUrlObj = new URL(baseUrl);
-        
+        const baseUrlObj = new URL(bUrl);
+
         // Function to recursively extract links from shadow DOM
         function extractFromShadow(root) {
           // Extract only <a> tags with href
           const elements = root.querySelectorAll('a[href]');
-          elements.forEach(el => {
+          elements.forEach((el) => {
             try {
               // Stop if we've reached the limit
-              if (limit > 0 && results.length >= limit) {
+              if (lim > 0 && results.length >= lim) {
                 return;
               }
 
-              const href = el.href;
+              const { href } = el;
+              // eslint-disable-next-line no-script-url
               if (href && !href.startsWith('javascript:')) {
-                const url = new URL(href, baseUrl);
+                const url = new URL(href, bUrl);
                 if (url.hostname === baseUrlObj.hostname) {
                   results.push({
                     href: url.href,
-                    text: el.textContent?.trim() || el.innerText?.trim() || ''
+                    text: el.textContent?.trim() || el.innerText?.trim() || '',
                   });
                 }
               }
@@ -291,7 +290,7 @@ async function processWithPuppeteer(baseUrl, limit) {
 
           // Check for shadow roots
           const shadowRoots = root.querySelectorAll('*');
-          shadowRoots.forEach(el => {
+          shadowRoots.forEach((el) => {
             if (el.shadowRoot) {
               extractFromShadow(el.shadowRoot);
             }
@@ -300,19 +299,19 @@ async function processWithPuppeteer(baseUrl, limit) {
 
         // Start extraction from document body
         extractFromShadow(document.body);
-        
+
         return results;
       }, baseUrl, limit);
 
       global.auditcore.logger.debug(`Found ${links.length} links using Puppeteer`);
-      
+
       // Process the extracted links
-      const urls = links.map(link => ({
+      const urls = links.map((link) => ({
         url: link.href,
         lastmod: new Date().toISOString(),
         changefreq: 'daily',
         priority: 0.7,
-        text: link.text
+        text: link.text,
       }));
 
       global.auditcore.logger.info(`Found ${urls.length} internal URLs using Puppeteer`);
@@ -326,23 +325,23 @@ async function processWithPuppeteer(baseUrl, limit) {
 
 /**
  * Process URLs from sitemap content
- * 
+ *
  * Handles both sitemap indexes and individual sitemaps
- * 
+ *
  * @param {Object} parsed - Parsed XML content
  * @param {number} limit - Maximum number of URLs to return
  * @returns {Promise<Array>} Array of processed URLs
  */
 async function processSitemapContent(parsed, limit) {
   const urls = [];
-  
+
   global.auditcore.logger.info('Processing sitemap content');
-  
+
   if (parsed.sitemapindex) {
     global.auditcore.logger.info('Found sitemap index');
     const sitemapUrls = parsed.sitemapindex.sitemap.map((sitemap) => sitemap.loc[0]);
     global.auditcore.logger.debug(`Found ${sitemapUrls.length} sitemaps in index`);
-    
+
     for (const sitemapUrl of sitemapUrls) {
       global.auditcore.logger.info(`Processing sub-sitemap: ${sitemapUrl}`);
       const subUrls = await getUrlsFromSitemap(sitemapUrl);
@@ -360,16 +359,16 @@ async function processSitemapContent(parsed, limit) {
   } else {
     global.auditcore.logger.warn('Invalid sitemap format - no urlset or sitemapindex found');
   }
-  
+
   global.auditcore.logger.info(`Total URLs found: ${urls.length}`);
   return limit > 0 ? urls.slice(0, limit) : urls;
 }
 
 /**
  * Process URLs from HTML content
- * 
+ *
  * Extracts internal links from HTML content
- * 
+ *
  * @param {string} content - HTML content to process
  * @param {string} baseUrl - Base URL for relative links
  * @param {number} limit - Maximum number of URLs to return
@@ -382,15 +381,15 @@ async function processHtmlContent(content, baseUrl, limit) {
   }
 
   global.auditcore.logger.info(`Processing HTML content from: ${baseUrl}`);
-  
+
   const dom = new JSDOM(content);
   const { document } = dom.window;
   const urls = [];
   const baseUrlObj = new URL(baseUrl);
-  
+
   const links = document.querySelectorAll('a[href]');
   global.auditcore.logger.debug(`Found ${links.length} total links`);
-  
+
   for (const link of links) {
     try {
       // Stop if we've reached the limit
@@ -401,6 +400,7 @@ async function processHtmlContent(content, baseUrl, limit) {
       const href = link.getAttribute('href');
       global.auditcore.logger.debug(`Checking link href: ${href}`);
 
+      // eslint-disable-next-line no-script-url
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
         global.auditcore.logger.debug(`Skipping invalid href: ${href}`);
         continue;
@@ -409,7 +409,7 @@ async function processHtmlContent(content, baseUrl, limit) {
       const url = new URL(href, baseUrl);
       global.auditcore.logger.debug(`Resolved URL: ${url.href}`);
       global.auditcore.logger.debug(`Comparing hostname: ${url.hostname} vs ${baseUrlObj.hostname}`);
-      
+
       if (url.hostname === baseUrlObj.hostname) {
         global.auditcore.logger.debug(`Found internal URL: ${url.href}`);
         urls.push({
@@ -425,16 +425,16 @@ async function processHtmlContent(content, baseUrl, limit) {
       global.auditcore.logger.debug(`Error processing link: ${error.message}`);
     }
   }
-  
+
   global.auditcore.logger.info(`Found ${urls.length} internal URLs`);
-  global.auditcore.logger.debug('Internal URLs:', urls.map(u => u.url).join('\n'));
-  
+  global.auditcore.logger.debug('Internal URLs:', urls.map((u) => u.url).join('\n'));
+
   return urls;
 }
 
 /**
  * Extract URLs from sitemap urlset
- * 
+ *
  * @param {Object} urlset - Parsed urlset object
  * @returns {Array} Array of extracted URLs containing:
  *   - url: Full URL
@@ -447,25 +447,25 @@ function extractUrlsFromUrlset(urlset) {
     global.auditcore.logger.warn('No URLs found in urlset');
     return [];
   }
-  
+
   global.auditcore.logger.debug(`Processing ${urlset.url.length} URLs from urlset`);
-  
+
   const extractedUrls = urlset.url
     .filter((url) => {
       if (!url?.loc?.[0]) return false;
-      
+
       // Parse URL and check for language variants
       const urlObj = new URL(url.loc[0]);
       const pathParts = urlObj.pathname.split('/').filter(Boolean);
       const hasLanguageVariant = pathParts.length > 0 && pathParts[0].length === 2;
       const isAllowedVariant = ['en', 'us'].includes(pathParts[0]);
-      
+
       // Skip if URL has a language variant and --include-all-languages is not set
       if (hasLanguageVariant && !isAllowedVariant && !global.auditcore.options.includeAllLanguages) {
         global.auditcore.logger.debug(`Skipping URL with language variant: ${url.loc[0]}`);
         return false;
       }
-      
+
       return true;
     })
     .map((url) => ({
@@ -474,7 +474,7 @@ function extractUrlsFromUrlset(urlset) {
       changefreq: url.changefreq?.[0] || null,
       priority: url.priority ? parseFloat(url.priority[0]) : null,
     }));
-    
+
   global.auditcore.logger.debug(`Successfully extracted ${extractedUrls.length} valid URLs`);
   return extractedUrls;
 }

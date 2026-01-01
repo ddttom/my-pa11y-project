@@ -1,7 +1,4 @@
-
-
 // csvFormatter.js
-
 
 /**
  * Formats data into CSV string.
@@ -12,7 +9,7 @@
  * @throws {Error} If input is invalid.
  */
 export function formatCsv(data, headers) {
-  global.auditcore.logger.debug(`Formatting CSV data...`);
+  global.auditcore.logger.debug('Formatting CSV data...');
   global.auditcore.logger.debug(`Data type: ${typeof data}`);
   global.auditcore.logger.debug(`Data length: ${Array.isArray(data) ? data.length : 'N/A'}`);
 
@@ -23,16 +20,13 @@ export function formatCsv(data, headers) {
 
   let csvContent = headers ? `${headers.join(',')}\n` : '';
 
-  csvContent += data.map(row => {
-    return Object.values(row).map(cell => {
-      if (cell === null || cell === undefined) {
-        return '""';
-      }
-      return `"${cell.toString().replace(/"/g, '""')}"`;
-    }).join(',');
-  }).join('\n');
+  csvContent += data.map((row) => Object.values(row).map((cell) => {
+    if (cell === null || cell === undefined) {
+      return '""';
+    }
+    return `"${cell.toString().replace(/"/g, '""')}"`;
+  }).join(',')).join('\n');
 
-  global.auditcore.logger.debug(`CSV formatting completed.`);
+  global.auditcore.logger.debug('CSV formatting completed.');
   return csvContent;
 }
- 

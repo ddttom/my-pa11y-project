@@ -12,9 +12,9 @@ export function getDiscoveredUrls(results) {
 
   // Collect all discovered internal links
   if (results.internalLinks) {
-    results.internalLinks.forEach(page => {
+    results.internalLinks.forEach((page) => {
       if (page.links && Array.isArray(page.links)) {
-        page.links.forEach(link => {
+        page.links.forEach((link) => {
           if (link.url && !originalUrls.has(link.url)) {
             discoveredUrls.add(link.url);
           }
@@ -45,10 +45,10 @@ export async function savePerfectedSitemap(results, outputDir) {
 
     // Add discovered internal links
     if (results.internalLinks) {
-      results.internalLinks.forEach(page => {
+      results.internalLinks.forEach((page) => {
         if (page.url) allUrls.add(page.url);
         if (page.links && Array.isArray(page.links)) {
-          page.links.forEach(link => {
+          page.links.forEach((link) => {
             if (link.url) allUrls.add(link.url);
           });
         }
@@ -56,11 +56,11 @@ export async function savePerfectedSitemap(results, outputDir) {
     }
 
     const sortedUrls = [...allUrls].sort();
-    const discoveredCount = sortedUrls.filter(url => !originalUrls.has(url)).length;
+    const discoveredCount = sortedUrls.filter((url) => !originalUrls.has(url)).length;
 
     global.auditcore.logger.info(`Saving perfected sitemap: ${sortedUrls.length} total URLs (${originalUrls.size} original + ${discoveredCount} discovered)`);
 
-    sortedUrls.forEach(url => {
+    sortedUrls.forEach((url) => {
       xml.push('  <url>');
       xml.push(`    <loc>${url}</loc>`);
       // Mark discovered URLs with comment

@@ -16,7 +16,7 @@ import { createObjectCsvWriter } from 'csv-writer';
 import {
   calculateServedScore,
   calculateRenderedScore,
-  generateFeedback
+  generateFeedback,
 } from '../llmMetrics.js';
 
 /**
@@ -64,8 +64,8 @@ export async function generateGeneralLLMReport(results, outputDir) {
 
       const standardFieldRatio = metrics.formFields?.metrics?.standardNameRatio || 0;
       const autocompleteRatio = metrics.formAutocomplete?.metrics?.autocompleteRatio || 0;
-      const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference ||
-                         metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
+      const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference
+                         || metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
       const hasAiTxt = metrics.robotsTxt?.metrics?.hasAiTxtReference || false;
       const hasAgentVisibility = metrics.dataAttributes?.metrics?.hasAgentVisibilityControl || false;
       const hasRestrictions = metrics.robotsTxt?.metrics?.hasAgentRestrictions || false;
@@ -104,11 +104,10 @@ export async function generateGeneralLLMReport(results, outputDir) {
     const totalEssentialIssues = records.reduce((sum, r) => sum + r.essentialIssuesCount, 0);
 
     global.auditcore.logger.info(
-      `LLM Summary: Avg served: ${Math.round(avgServedScore)}, ` +
-      `Avg rendered: ${Math.round(avgRenderedScore)}, ` +
-      `Total essential issues: ${totalEssentialIssues}`
+      `LLM Summary: Avg served: ${Math.round(avgServedScore)}, `
+      + `Avg rendered: ${Math.round(avgRenderedScore)}, `
+      + `Total essential issues: ${totalEssentialIssues}`,
     );
-
   } catch (error) {
     global.auditcore.logger.error('Error generating general LLM report:', error);
     throw error;
@@ -181,7 +180,7 @@ export async function generateFrontendLLMReport(results, outputDir) {
         metrics.semanticHTML?.metrics?.hasHeader,
         metrics.semanticHTML?.metrics?.hasFooter,
         metrics.semanticHTML?.metrics?.hasArticle,
-        metrics.semanticHTML?.metrics?.hasSection
+        metrics.semanticHTML?.metrics?.hasSection,
       ].filter(Boolean).length;
 
       const captchaMetrics = metrics.captchaProtection?.metrics || {};
@@ -214,7 +213,6 @@ export async function generateFrontendLLMReport(results, outputDir) {
 
     await csvWriter.writeRecords(records);
     global.auditcore.logger.info(`Frontend LLM suitability report generated: ${records.length} pages analyzed`);
-
   } catch (error) {
     global.auditcore.logger.error('Error generating frontend LLM report:', error);
     throw error;
@@ -262,9 +260,9 @@ export async function generateBackendLLMReport(results, outputDir) {
 
     const records = results.llmMetrics.map((metrics) => {
       // Get status code and security metrics
-      const statusCode = results.responseCodeMetrics?.[metrics.url]?.code ||
-                        results.contentAnalysis?.find(c => c.url === metrics.url)?.statusCode ||
-                        200;
+      const statusCode = results.responseCodeMetrics?.[metrics.url]?.code
+                        || results.contentAnalysis?.find((c) => c.url === metrics.url)?.statusCode
+                        || 200;
 
       const securityMetrics = results.securityMetrics?.[metrics.url] || {};
 
@@ -286,8 +284,8 @@ export async function generateBackendLLMReport(results, outputDir) {
       if (metrics.structuredData?.metrics?.hasSchemaOrg) backendScore += 30;
 
       // llms.txt presence (10 points) - ESSENTIAL for LLM agents
-      const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference ||
-                         metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
+      const hasLLMsTxt = metrics.llmsTxt?.metrics?.hasLLMsTxtReference
+                         || metrics.llmsTxt?.metrics?.hasLLMsTxtMeta || false;
       if (hasLLMsTxt) backendScore += 10;
 
       // ai.txt presence (5 points bonus)
@@ -357,15 +355,14 @@ export async function generateBackendLLMReport(results, outputDir) {
 
     // Log summary
     const avgScore = records.reduce((sum, r) => sum + r.backendScore, 0) / records.length;
-    const pagesWithSchemaOrg = records.filter(r => r.hasSchemaOrg === 'Yes').length;
-    const pagesWithHTTPS = records.filter(r => r.hasHTTPS === 'Yes').length;
+    const pagesWithSchemaOrg = records.filter((r) => r.hasSchemaOrg === 'Yes').length;
+    const pagesWithHTTPS = records.filter((r) => r.hasHTTPS === 'Yes').length;
 
     global.auditcore.logger.info(
-      `Backend Summary: Avg score: ${Math.round(avgScore)}, ` +
-      `Schema.org: ${pagesWithSchemaOrg}/${records.length}, ` +
-      `HTTPS: ${pagesWithHTTPS}/${records.length}`
+      `Backend Summary: Avg score: ${Math.round(avgScore)}, `
+      + `Schema.org: ${pagesWithSchemaOrg}/${records.length}, `
+      + `HTTPS: ${pagesWithHTTPS}/${records.length}`,
     );
-
   } catch (error) {
     global.auditcore.logger.error('Error generating backend LLM report:', error);
     throw error;

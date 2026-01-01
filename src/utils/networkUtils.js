@@ -1,6 +1,7 @@
+/* eslint-disable consistent-return */
 /**
  * Network utilities for handling HTTP requests with robust error handling
- * 
+ *
  * This module provides comprehensive network operation capabilities including:
  * - Retry mechanisms with exponential backoff
  * - Puppeteer integration for bypassing restrictions
@@ -17,35 +18,35 @@ puppeteer.use(StealthPlugin());
 
 /**
  * Checks if error is a Cloudflare challenge
- * 
+ *
  * @param {Error} error - Error to check
  * @returns {boolean} True if error is a Cloudflare challenge
  */
 function isCloudflareChallenge(error) {
-  return error.response?.status === 403 && 
-         error.response?.headers['cf-ray'] && 
-         error.response?.data?.includes('Cloudflare');
+  return error.response?.status === 403
+         && error.response?.headers['cf-ray']
+         && error.response?.data?.includes('Cloudflare');
 }
 
 /**
  * Checks if error indicates a blocked request
- * 
+ *
  * @param {Error} error - Error to check
  * @returns {boolean} True if request was blocked
  */
 function isBlockedError(error) {
-  return error.response?.status === 403 || // Forbidden
-         error.response?.status === 429 || // Too Many Requests
-         error.message.includes('blocked') ||
-         error.message.includes('denied') ||
-         error.message.includes('restricted') ||
-         error.message.includes('rate limit') ||
-         error.message.includes('captcha');
+  return error.response?.status === 403 // Forbidden
+         || error.response?.status === 429 // Too Many Requests
+         || error.message.includes('blocked')
+         || error.message.includes('denied')
+         || error.message.includes('restricted')
+         || error.message.includes('rate limit')
+         || error.message.includes('captcha');
 }
 
 /**
  * Checks if error is a network-related error
- * 
+ *
  * @param {Error} error - Error to check
  * @returns {boolean} True if error is network-related
  */
@@ -57,26 +58,26 @@ function isNetworkError(error) {
     'ETIMEDOUT', // Connection timed out
     'EHOSTUNREACH', // Host unreachable
     'ENETUNREACH', // Network unreachable
-    'EAI_AGAIN' // Temporary DNS failure
+    'EAI_AGAIN', // Temporary DNS failure
   ];
 
-  return networkErrorCodes.includes(error.code) ||
-         error.message.includes('net::ERR_INTERNET_DISCONNECTED') ||
-         error.message.includes('net::ERR_NETWORK_CHANGED') ||
-         error.message.includes('net::ERR_CONNECTION_RESET') ||
-         error.message.includes('net::ERR_CONNECTION_REFUSED') ||
-         error.message.includes('net::ERR_CONNECTION_TIMED_OUT');
+  return networkErrorCodes.includes(error.code)
+         || error.message.includes('net::ERR_INTERNET_DISCONNECTED')
+         || error.message.includes('net::ERR_NETWORK_CHANGED')
+         || error.message.includes('net::ERR_CONNECTION_RESET')
+         || error.message.includes('net::ERR_CONNECTION_REFUSED')
+         || error.message.includes('net::ERR_CONNECTION_TIMED_OUT');
 }
 
 /**
  * Executes a Puppeteer operation with enhanced configuration
- * 
+ *
  * Implements:
  * - Stealth mode to avoid detection
  * - Randomized browser fingerprint
  * - Realistic user behavior simulation
  * - Automatic browser cleanup
- * 
+ *
  * @param {Function} operation - Puppeteer operation to execute
  * @param {string} operationName - Name of operation for logging
  * @param {Object} options - Puppeteer launch options
@@ -95,13 +96,13 @@ async function executePuppeteerOperation(operation, operationName, options = {})
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
         '--window-size=1920,1080',
-        '--disable-blink-features=AutomationControlled'
+        '--disable-blink-features=AutomationControlled',
       ],
-      ...options
+      ...options,
     });
 
     const page = await browser.newPage();
-    
+
     // Randomize browser fingerprint
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', {
@@ -120,9 +121,9 @@ async function executePuppeteerOperation(operation, operationName, options = {})
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',
       'Accept-Encoding': 'gzip, deflate, br',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'Referer': 'https://www.google.com/',
-      'Connection': 'keep-alive'
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+      Referer: 'https://www.google.com/',
+      Connection: 'keep-alive',
     });
 
     // Randomize viewport and mouse movements
@@ -131,12 +132,11 @@ async function executePuppeteerOperation(operation, operationName, options = {})
       height: 1080 + Math.floor(Math.random() * 100),
       deviceScaleFactor: 1,
       hasTouch: false,
-      isLandscape: false
+      isLandscape: false,
     });
 
     // Add random delays to mimic human behavior
-    const randomDelay = (min, max) => 
-      new Promise(resolve => setTimeout(resolve, Math.random() * (max - min) + min));
+    const randomDelay = (min, max) => new Promise((resolve) => { setTimeout(resolve, Math.random() * (max - min) + min); });
 
     // Execute the operation with random delays
     await randomDelay(500, 1500);
@@ -156,7 +156,7 @@ async function executePuppeteerOperation(operation, operationName, options = {})
 
 /**
  * Handles Cloudflare challenges using Puppeteer
- * 
+ *
  * @param {Function} operation - Operation to execute
  * @param {string} operationName - Name of operation for logging
  * @returns {Promise<any>} Operation result
@@ -174,8 +174,8 @@ async function handleCloudflareChallenge(operation, operationName) {
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
         '--window-size=1920,1080',
-        '--disable-blink-features=AutomationControlled'
-      ]
+        '--disable-blink-features=AutomationControlled',
+      ],
     });
   } catch (error) {
     global.auditcore.logger.error('Failed to bypass Cloudflare challenge:', error);
@@ -185,13 +185,13 @@ async function handleCloudflareChallenge(operation, operationName) {
 
 /**
  * Executes a network operation with robust error handling
- * 
+ *
  * Implements:
  * - Retry mechanism with exponential backoff
  * - Automatic fallback to Puppeteer for blocked requests
  * - Cloudflare challenge handling
  * - Network error recovery
- * 
+ *
  * @param {Function} operation - Network operation to execute
  * @param {string} operationName - Name of operation for logging
  * @returns {Promise<any>} Operation result
@@ -207,31 +207,33 @@ async function executeNetworkOperation(operation, operationName) {
       return await operation();
     } catch (error) {
       if (isCloudflareChallenge(error)) {
-        return await handleCloudflareChallenge(operation, operationName);
+        return handleCloudflareChallenge(operation, operationName);
       }
-      
+
       if (isBlockedError(error)) {
         retryCount++;
         if (retryCount >= maxRetries) {
           global.auditcore.logger.warn('Falling back to Puppeteer for blocked request');
-          return await executePuppeteerOperation(operation, operationName);
+          return executePuppeteerOperation(operation, operationName);
         }
 
-        const delay = baseDelay * Math.pow(2, retryCount);
+        const delay = baseDelay * 2 ** retryCount;
         global.auditcore.logger.warn(`Blocked during ${operationName}, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // eslint-disable-next-line no-promise-executor-return
+        await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
-      
+
       if (isNetworkError(error)) {
         retryCount++;
         if (retryCount >= maxRetries) {
           throw new Error(`Network operation failed after ${maxRetries} attempts: ${error.message}`);
         }
 
-        const delay = baseDelay * Math.pow(2, retryCount);
+        const delay = baseDelay * 2 ** retryCount;
         global.auditcore.logger.warn(`Network error during ${operationName}, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // eslint-disable-next-line no-promise-executor-return
+        await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
 
@@ -245,5 +247,5 @@ export {
   executePuppeteerOperation,
   isCloudflareChallenge,
   isBlockedError,
-  isNetworkError
+  isNetworkError,
 };

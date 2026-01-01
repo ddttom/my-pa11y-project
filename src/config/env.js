@@ -39,7 +39,7 @@ export function loadEnvConfig() {
   // Max retries
   if (process.env[ENV_VARS.MAX_RETRIES]) {
     const maxRetries = parseInt(process.env[ENV_VARS.MAX_RETRIES], 10);
-    if (!isNaN(maxRetries) && maxRetries >= 0) {
+    if (!Number.isNaN(maxRetries) && maxRetries >= 0) {
       config.maxRetries = maxRetries;
     }
   }
@@ -47,7 +47,7 @@ export function loadEnvConfig() {
   // Timeout
   if (process.env[ENV_VARS.TIMEOUT]) {
     const timeout = parseInt(process.env[ENV_VARS.TIMEOUT], 10);
-    if (!isNaN(timeout) && timeout > 0) {
+    if (!Number.isNaN(timeout) && timeout > 0) {
       config.timeout = timeout;
     }
   }
@@ -128,7 +128,7 @@ export function validateEnvConfig() {
   // Validate max retries if set
   if (process.env[ENV_VARS.MAX_RETRIES]) {
     const maxRetries = parseInt(process.env[ENV_VARS.MAX_RETRIES], 10);
-    if (isNaN(maxRetries) || maxRetries < 0) {
+    if (Number.isNaN(maxRetries) || maxRetries < 0) {
       errors.push(`Invalid ${ENV_VARS.MAX_RETRIES}: must be a non-negative integer`);
     }
   }
@@ -136,7 +136,7 @@ export function validateEnvConfig() {
   // Validate timeout if set
   if (process.env[ENV_VARS.TIMEOUT]) {
     const timeout = parseInt(process.env[ENV_VARS.TIMEOUT], 10);
-    if (isNaN(timeout) || timeout <= 0) {
+    if (Number.isNaN(timeout) || timeout <= 0) {
       errors.push(`Invalid ${ENV_VARS.TIMEOUT}: must be a positive integer`);
     }
   }
@@ -144,6 +144,7 @@ export function validateEnvConfig() {
   // Validate sitemap URL if set
   if (process.env[ENV_VARS.SITEMAP_URL]) {
     try {
+      // eslint-disable-next-line no-new
       new URL(process.env[ENV_VARS.SITEMAP_URL]);
     } catch {
       errors.push(`Invalid ${ENV_VARS.SITEMAP_URL}: must be a valid URL`);
@@ -152,7 +153,7 @@ export function validateEnvConfig() {
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -202,7 +203,7 @@ export async function createEnvExample(rootDir = process.cwd()) {
     // Check if file already exists
     try {
       await fs.access(envExamplePath);
-      return; // File exists, don't overwrite
+      // File exists, don't overwrite
     } catch {
       // File doesn't exist, create it
       const content = generateEnvExample();

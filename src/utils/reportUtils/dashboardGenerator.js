@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
-import { generateTrendData } from '../historicalComparison.js';
+
 import { passFailThresholds } from '../../config/options.js';
 
 /**
@@ -78,10 +78,10 @@ async function generatePerformanceChart(canvas, results) {
 
   if (metrics.length === 0) return null;
 
-  const avgLoadTime = average(metrics.map(m => m.loadTime || 0));
-  const avgLCP = average(metrics.map(m => m.largestContentfulPaint || 0));
-  const avgFCP = average(metrics.map(m => m.firstContentfulPaint || 0));
-  const avgTTI = average(metrics.map(m => m.timeToInteractive || 0));
+  const avgLoadTime = average(metrics.map((m) => m.loadTime || 0));
+  const avgLCP = average(metrics.map((m) => m.largestContentfulPaint || 0));
+  const avgFCP = average(metrics.map((m) => m.firstContentfulPaint || 0));
+  const avgTTI = average(metrics.map((m) => m.timeToInteractive || 0));
 
   const configuration = {
     type: 'bar',
@@ -94,28 +94,28 @@ async function generatePerformanceChart(canvas, results) {
           getStatusColor(avgLoadTime, passFailThresholds.performance.loadTime),
           getStatusColor(avgLCP, passFailThresholds.performance.lcp),
           getStatusColor(avgFCP, passFailThresholds.performance.fcp),
-          getStatusColor(avgTTI, passFailThresholds.performance.tti)
-        ]
-      }]
+          getStatusColor(avgTTI, passFailThresholds.performance.tti),
+        ],
+      }],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'Performance Metrics Overview',
-          font: { size: 16 }
-        }
+          font: { size: 16 },
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
           title: {
             display: true,
-            text: 'Milliseconds'
-          }
-        }
-      }
-    }
+            text: 'Milliseconds',
+          },
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -130,10 +130,11 @@ async function generateAccessibilityChart(canvas, results) {
 
   if (metrics.length === 0) return null;
 
-  let errors = 0, warnings = 0, notices = 0;
-  metrics.forEach(m => {
+  let errors = 0; let warnings = 0; let
+    notices = 0;
+  metrics.forEach((m) => {
     if (m.issues) {
-      m.issues.forEach(issue => {
+      m.issues.forEach((issue) => {
         if (issue.type === 'error') errors++;
         else if (issue.type === 'warning') warnings++;
         else if (issue.type === 'notice') notices++;
@@ -147,21 +148,21 @@ async function generateAccessibilityChart(canvas, results) {
       labels: ['Errors', 'Warnings', 'Notices'],
       datasets: [{
         data: [errors, warnings, notices],
-        backgroundColor: ['#dc3545', '#ffc107', '#17a2b8']
-      }]
+        backgroundColor: ['#dc3545', '#ffc107', '#17a2b8'],
+      }],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'Accessibility Issues Breakdown',
-          font: { size: 16 }
+          font: { size: 16 },
         },
         legend: {
-          position: 'bottom'
-        }
-      }
-    }
+          position: 'bottom',
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -182,10 +183,10 @@ async function generateSeoDistributionChart(canvas, results) {
     '80-89': 0,
     '70-79': 0,
     '60-69': 0,
-    '<60': 0
+    '<60': 0,
   };
 
-  metrics.forEach(m => {
+  metrics.forEach((m) => {
     const score = m.totalScore || 0;
     if (score >= 90) ranges['90-100']++;
     else if (score >= 80) ranges['80-89']++;
@@ -201,33 +202,33 @@ async function generateSeoDistributionChart(canvas, results) {
       datasets: [{
         label: 'Number of Pages',
         data: Object.values(ranges),
-        backgroundColor: ['#28a745', '#5cb85c', '#f0ad4e', '#ec971f', '#d9534f']
-      }]
+        backgroundColor: ['#28a745', '#5cb85c', '#f0ad4e', '#ec971f', '#d9534f'],
+      }],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'SEO Score Distribution',
-          font: { size: 16 }
-        }
+          font: { size: 16 },
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
           title: {
             display: true,
-            text: 'Number of Pages'
-          }
+            text: 'Number of Pages',
+          },
         },
         x: {
           title: {
             display: true,
-            text: 'Score Range'
-          }
-        }
-      }
-    }
+            text: 'Score Range',
+          },
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -242,9 +243,9 @@ async function generateContentChart(canvas, results) {
 
   if (metrics.length === 0) return null;
 
-  const avgWordCount = average(metrics.map(m => m.wordCount || 0));
-  const avgHeadings = average(metrics.map(m => m.headingCount || 0));
-  const avgParagraphs = average(metrics.map(m => m.paragraphCount || 0));
+  const avgWordCount = average(metrics.map((m) => m.wordCount || 0));
+  const avgHeadings = average(metrics.map((m) => m.headingCount || 0));
+  const avgParagraphs = average(metrics.map((m) => m.paragraphCount || 0));
 
   const configuration = {
     type: 'bar',
@@ -253,23 +254,23 @@ async function generateContentChart(canvas, results) {
       datasets: [{
         label: 'Content Metrics',
         data: [avgWordCount, avgHeadings, avgParagraphs],
-        backgroundColor: ['#007bff', '#6610f2', '#6f42c1']
-      }]
+        backgroundColor: ['#007bff', '#6610f2', '#6f42c1'],
+      }],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'Content Quality Metrics',
-          font: { size: 16 }
-        }
+          font: { size: 16 },
+        },
       },
       scales: {
         y: {
-          beginAtZero: true
-        }
-      }
-    }
+          beginAtZero: true,
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -284,8 +285,8 @@ async function generateLLMChart(canvas, results) {
 
   if (metrics.length === 0) return null;
 
-  const avgServedScore = average(metrics.map(m => m.servedScore || 0));
-  const avgRenderedScore = average(metrics.map(m => m.renderedScore || 0));
+  const avgServedScore = average(metrics.map((m) => m.servedScore || 0));
+  const avgRenderedScore = average(metrics.map((m) => m.renderedScore || 0));
 
   const configuration = {
     type: 'bar',
@@ -296,17 +297,17 @@ async function generateLLMChart(canvas, results) {
         data: [avgServedScore, avgRenderedScore],
         backgroundColor: [
           getStatusColor(avgServedScore, passFailThresholds.llm.minServedScore, true),
-          getStatusColor(avgRenderedScore, passFailThresholds.llm.minRenderedScore, true)
-        ]
-      }]
+          getStatusColor(avgRenderedScore, passFailThresholds.llm.minRenderedScore, true),
+        ],
+      }],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'AI Agent Compatibility Scores',
-          font: { size: 16 }
-        }
+          font: { size: 16 },
+        },
       },
       scales: {
         y: {
@@ -314,11 +315,11 @@ async function generateLLMChart(canvas, results) {
           max: 100,
           title: {
             display: true,
-            text: 'Score (0-100)'
-          }
-        }
-      }
-    }
+            text: 'Score (0-100)',
+          },
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -329,7 +330,7 @@ async function generateLLMChart(canvas, results) {
  * Generate performance trend chart
  */
 async function generatePerformanceTrendChart(canvas, trendData) {
-  const labels = trendData.timestamps.map(t => new Date(t).toLocaleDateString());
+  const labels = trendData.timestamps.map((t) => new Date(t).toLocaleDateString());
 
   const configuration = {
     type: 'line',
@@ -340,40 +341,40 @@ async function generatePerformanceTrendChart(canvas, trendData) {
           label: 'Load Time (ms)',
           data: trendData.performance.loadTime,
           borderColor: '#007bff',
-          fill: false
+          fill: false,
         },
         {
           label: 'LCP (ms)',
           data: trendData.performance.lcp,
           borderColor: '#28a745',
-          fill: false
+          fill: false,
         },
         {
           label: 'FCP (ms)',
           data: trendData.performance.fcp,
           borderColor: '#ffc107',
-          fill: false
-        }
-      ]
+          fill: false,
+        },
+      ],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'Performance Metrics Trend',
-          font: { size: 16 }
-        }
+          font: { size: 16 },
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
           title: {
             display: true,
-            text: 'Milliseconds'
-          }
-        }
-      }
-    }
+            text: 'Milliseconds',
+          },
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -384,7 +385,7 @@ async function generatePerformanceTrendChart(canvas, trendData) {
  * Generate accessibility trend chart
  */
 async function generateAccessibilityTrendChart(canvas, trendData) {
-  const labels = trendData.timestamps.map(t => new Date(t).toLocaleDateString());
+  const labels = trendData.timestamps.map((t) => new Date(t).toLocaleDateString());
 
   const configuration = {
     type: 'line',
@@ -395,34 +396,34 @@ async function generateAccessibilityTrendChart(canvas, trendData) {
           label: 'Total Issues',
           data: trendData.accessibility.totalIssues,
           borderColor: '#dc3545',
-          fill: false
+          fill: false,
         },
         {
           label: 'Errors',
           data: trendData.accessibility.errors,
           borderColor: '#bd2130',
-          fill: false
-        }
-      ]
+          fill: false,
+        },
+      ],
     },
     options: {
       plugins: {
         title: {
           display: true,
           text: 'Accessibility Issues Trend',
-          font: { size: 16 }
-        }
+          font: { size: 16 },
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
           title: {
             display: true,
-            text: 'Issue Count'
-          }
-        }
-      }
-    }
+            text: 'Issue Count',
+          },
+        },
+      },
+    },
   };
 
   const buffer = await canvas.renderToBuffer(configuration);
@@ -797,7 +798,7 @@ function buildPassFailTable(results) {
 
   let html = '<table><thead><tr><th>Category</th><th>Metric</th><th>Value</th><th>Status</th></tr></thead><tbody>';
 
-  metrics.forEach(m => {
+  metrics.forEach((m) => {
     const badgeClass = m.status === 'Pass' ? 'badge-pass' : m.status === 'Warn' ? 'badge-warn' : 'badge-fail';
     html += `
       <tr>
@@ -840,12 +841,11 @@ function getStatusColor(value, threshold, isScore = false) {
     if (value >= threshold.pass) return '#28a745';
     if (value >= threshold.warn) return '#ffc107';
     return '#dc3545';
-  } else {
-    // For times/counts, lower is better
-    if (value <= threshold.pass) return '#28a745';
-    if (value <= threshold.warn) return '#ffc107';
-    return '#dc3545';
   }
+  // For times/counts, lower is better
+  if (value <= threshold.pass) return '#28a745';
+  if (value <= threshold.warn) return '#ffc107';
+  return '#dc3545';
 }
 
 function getStatusClass(status) {
@@ -860,8 +860,8 @@ function calculatePerformanceOverview(results) {
   const metrics = results.performanceAnalysis || [];
   if (metrics.length === 0) return { status: 'No data', avgLoadTime: 0, avgLCP: 0 };
 
-  const avgLoadTime = Math.round(average(metrics.map(m => m.loadTime || 0)));
-  const avgLCP = Math.round(average(metrics.map(m => m.largestContentfulPaint || 0)));
+  const avgLoadTime = Math.round(average(metrics.map((m) => m.loadTime || 0)));
+  const avgLCP = Math.round(average(metrics.map((m) => m.largestContentfulPaint || 0)));
 
   let status = 'Excellent';
   if (avgLoadTime > 3000 || avgLCP > 2500) status = 'Fair';
@@ -872,11 +872,12 @@ function calculatePerformanceOverview(results) {
 
 function calculateAccessibilityOverview(results) {
   const metrics = results.pa11y || [];
-  let totalIssues = 0, errors = 0;
+  let totalIssues = 0; let
+    errors = 0;
 
-  metrics.forEach(m => {
+  metrics.forEach((m) => {
     if (m.issues) {
-      m.issues.forEach(issue => {
+      m.issues.forEach((issue) => {
         totalIssues++;
         if (issue.type === 'error') errors++;
       });
@@ -895,7 +896,7 @@ function calculateSeoOverview(results) {
   const metrics = results.seoScores || [];
   if (metrics.length === 0) return { status: 'No data', avgScore: 0, pageCount: 0 };
 
-  const avgScore = Math.round(average(metrics.map(m => m.totalScore || 0)));
+  const avgScore = Math.round(average(metrics.map((m) => m.totalScore || 0)));
   let status = 'Excellent';
   if (avgScore < 80) status = 'Good';
   if (avgScore < 70) status = 'Fair';
@@ -908,8 +909,8 @@ function calculateLLMOverview(results) {
   const metrics = results.llmMetrics || [];
   if (metrics.length === 0) return { status: 'No data', servedScore: 0, renderedScore: 0 };
 
-  const servedScore = Math.round(average(metrics.map(m => m.servedScore || 0)));
-  const renderedScore = Math.round(average(metrics.map(m => m.renderedScore || 0)));
+  const servedScore = Math.round(average(metrics.map((m) => m.servedScore || 0)));
+  const renderedScore = Math.round(average(metrics.map((m) => m.renderedScore || 0)));
 
   let status = 'Good';
   if (servedScore < 50) status = 'Poor';
@@ -927,62 +928,62 @@ function calculatePassFailMetrics(results) {
 
   // Performance metrics
   if (perf.length > 0) {
-    const avgLoadTime = average(perf.map(m => m.loadTime || 0));
+    const avgLoadTime = average(perf.map((m) => m.loadTime || 0));
     metrics.push({
       category: 'Performance',
       metric: 'Avg Load Time',
       value: `${Math.round(avgLoadTime)}ms`,
-      status: avgLoadTime <= passFailThresholds.performance.loadTime.pass ? 'Pass' :
-              avgLoadTime <= passFailThresholds.performance.loadTime.warn ? 'Warn' : 'Fail'
+      status: avgLoadTime <= passFailThresholds.performance.loadTime.pass ? 'Pass'
+        : avgLoadTime <= passFailThresholds.performance.loadTime.warn ? 'Warn' : 'Fail',
     });
 
-    const avgLCP = average(perf.map(m => m.largestContentfulPaint || 0));
+    const avgLCP = average(perf.map((m) => m.largestContentfulPaint || 0));
     metrics.push({
       category: 'Performance',
       metric: 'Avg LCP',
       value: `${Math.round(avgLCP)}ms`,
-      status: avgLCP <= passFailThresholds.performance.lcp.pass ? 'Pass' :
-              avgLCP <= passFailThresholds.performance.lcp.warn ? 'Warn' : 'Fail'
+      status: avgLCP <= passFailThresholds.performance.lcp.pass ? 'Pass'
+        : avgLCP <= passFailThresholds.performance.lcp.warn ? 'Warn' : 'Fail',
     });
   }
 
   // Accessibility metrics
   if (a11y.length > 0) {
     let errors = 0;
-    a11y.forEach(m => {
-      if (m.issues) errors += m.issues.filter(i => i.type === 'error').length;
+    a11y.forEach((m) => {
+      if (m.issues) errors += m.issues.filter((i) => i.type === 'error').length;
     });
 
     metrics.push({
       category: 'Accessibility',
       metric: 'Total Errors',
       value: errors,
-      status: errors <= passFailThresholds.accessibility.maxErrors.pass ? 'Pass' :
-              errors <= passFailThresholds.accessibility.maxErrors.warn ? 'Warn' : 'Fail'
+      status: errors <= passFailThresholds.accessibility.maxErrors.pass ? 'Pass'
+        : errors <= passFailThresholds.accessibility.maxErrors.warn ? 'Warn' : 'Fail',
     });
   }
 
   // SEO metrics
   if (seo.length > 0) {
-    const avgScore = average(seo.map(m => m.totalScore || 0));
+    const avgScore = average(seo.map((m) => m.totalScore || 0));
     metrics.push({
       category: 'SEO',
       metric: 'Avg Score',
       value: `${Math.round(avgScore)}/100`,
-      status: avgScore >= passFailThresholds.seo.minScore.pass ? 'Pass' :
-              avgScore >= passFailThresholds.seo.minScore.warn ? 'Warn' : 'Fail'
+      status: avgScore >= passFailThresholds.seo.minScore.pass ? 'Pass'
+        : avgScore >= passFailThresholds.seo.minScore.warn ? 'Warn' : 'Fail',
     });
   }
 
   // LLM metrics
   if (llm.length > 0) {
-    const avgServed = average(llm.map(m => m.servedScore || 0));
+    const avgServed = average(llm.map((m) => m.servedScore || 0));
     metrics.push({
       category: 'LLM',
       metric: 'Served Score',
       value: `${Math.round(avgServed)}/100`,
-      status: avgServed >= passFailThresholds.llm.minServedScore.pass ? 'Pass' :
-              avgServed >= passFailThresholds.llm.minServedScore.warn ? 'Warn' : 'Fail'
+      status: avgServed >= passFailThresholds.llm.minServedScore.pass ? 'Pass'
+        : avgServed >= passFailThresholds.llm.minServedScore.warn ? 'Warn' : 'Fail',
     });
   }
 

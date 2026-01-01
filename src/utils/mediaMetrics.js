@@ -81,7 +81,7 @@ export function updateLinkMetrics($, baseUrl, results) {
     if (internalLinkElements.length === 0) {
       safeIncrement(results.linkMetrics, 'pagesWithoutInternalOutlinks');
     }
-    
+
     if (externalLinks.length > MAX_EXTERNAL_LINKS) {
       safeIncrement(results.linkMetrics, 'pagesWithHighExternalOutlinks');
     }

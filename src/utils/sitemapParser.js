@@ -142,4 +142,3 @@ function processUrlset(urlset) {
   global.auditcore.logger.info(`Extracted ${urls.length} URLs from sitemap`);
   return urls;
 }
-

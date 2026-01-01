@@ -66,7 +66,6 @@ export const performanceOptions = {
   waitUntil: 'networkidle0',
 };
 
-
 // config.js
 
 export const seoScoreThresholds = {
@@ -74,7 +73,7 @@ export const seoScoreThresholds = {
   veryGood: 80,
   good: 70,
   fair: 60,
-  needsImprovement: 50
+  needsImprovement: 50,
 };
 
 export const performanceThresholds = {
@@ -85,25 +84,25 @@ export const performanceThresholds = {
 };
 
 export const contentThresholds = {
-  lowWordCount: 300
+  lowWordCount: 300,
 };
 
 export const linkThresholds = {
-  highExternalLinks: 100
+  highExternalLinks: 100,
 };
 
 export const urlThresholds = {
-  maxLength: 115
+  maxLength: 115,
 };
 
 export const titleThresholds = {
   minLength: 30,
-  maxLength: 60
+  maxLength: 60,
 };
 
 export const metaDescriptionThresholds = {
   minLength: 70,
-  maxLength: 155
+  maxLength: 155,
 };
 
 /**
@@ -112,32 +111,32 @@ export const metaDescriptionThresholds = {
  */
 export const passFailThresholds = {
   performance: {
-    loadTime: { pass: 3000, warn: 5000 },          // milliseconds
-    lcp: { pass: 2500, warn: 4000 },               // milliseconds
-    fcp: { pass: 1800, warn: 3000 },               // milliseconds
-    cls: { pass: 0.1, warn: 0.25 },                // score
-    tti: { pass: 3800, warn: 7300 }                // milliseconds
+    loadTime: { pass: 3000, warn: 5000 }, // milliseconds
+    lcp: { pass: 2500, warn: 4000 }, // milliseconds
+    fcp: { pass: 1800, warn: 3000 }, // milliseconds
+    cls: { pass: 0.1, warn: 0.25 }, // score
+    tti: { pass: 3800, warn: 7300 }, // milliseconds
   },
   accessibility: {
-    maxErrors: { pass: 0, warn: 5 },               // count
-    maxWarnings: { pass: 10, warn: 30 },           // count
-    maxTotalIssues: { pass: 20, warn: 50 }         // count
+    maxErrors: { pass: 0, warn: 5 }, // count
+    maxWarnings: { pass: 10, warn: 30 }, // count
+    maxTotalIssues: { pass: 20, warn: 50 }, // count
   },
   seo: {
-    minScore: { pass: 80, warn: 60 },              // score 0-100
-    minTitleLength: { pass: 30, warn: 20 },        // characters
-    maxTitleLength: { pass: 60, warn: 70 },        // characters
-    minMetaDescLength: { pass: 70, warn: 50 },     // characters
-    maxMetaDescLength: { pass: 155, warn: 170 }    // characters
+    minScore: { pass: 80, warn: 60 }, // score 0-100
+    minTitleLength: { pass: 30, warn: 20 }, // characters
+    maxTitleLength: { pass: 60, warn: 70 }, // characters
+    minMetaDescLength: { pass: 70, warn: 50 }, // characters
+    maxMetaDescLength: { pass: 155, warn: 170 }, // characters
   },
   content: {
-    minWordCount: { pass: 300, warn: 150 },        // words
-    minHeadings: { pass: 3, warn: 1 }              // count
+    minWordCount: { pass: 300, warn: 150 }, // words
+    minHeadings: { pass: 3, warn: 1 }, // count
   },
   llm: {
-    minServedScore: { pass: 70, warn: 50 },        // score 0-100
-    minRenderedScore: { pass: 60, warn: 40 }       // score 0-100
-  }
+    minServedScore: { pass: 70, warn: 50 }, // score 0-100
+    minRenderedScore: { pass: 60, warn: 40 }, // score 0-100
+  },
 };
 
 /**
@@ -148,6 +147,6 @@ export const passFailThresholds = {
 export function loadCustomThresholds(customThresholds = {}) {
   return {
     ...passFailThresholds,
-    ...customThresholds
+    ...customThresholds,
   };
 }

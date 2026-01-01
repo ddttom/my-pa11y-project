@@ -3,18 +3,18 @@
  * Includes WCAG compliance checking, issue categorization, and reporting
  */
 
-import { 
+import {
   createEmptyAnalysis,
   mapIssueToGuideline,
   getGuidelineDescription,
-  getRequiredManualChecks
+  getRequiredManualChecks,
 } from './formatUtils.js';
 
 /**
  * Analyzes Pa11y accessibility test results with enhanced WCAG 2.1 compliance
  * @param {Object} page - Page object containing Pa11y results
  * @returns {Object} - Analysis object with categorized results
- * 
+ *
  * Features:
  * - WCAG 2.1 compliance checking
  * - Issue severity categorization
@@ -24,7 +24,7 @@ import {
  */
 export function analyzePa11yResults(page) {
   const analysis = createEmptyAnalysis();
-  
+
   // Exit early if page or issues are missing
   if (!page || !page.issues) {
     global.auditcore.logger.debug('No Pa11y issues found for page');
@@ -36,12 +36,12 @@ export function analyzePa11yResults(page) {
   // Ensure issues is an array
   const issues = Array.isArray(page.issues) ? page.issues : [];
 
-  issues.forEach(issue => {
+  issues.forEach((issue) => {
     analysis.totalIssues++;
-    
+
     // Count by severity
     analysis.bySeverity[issue.severity] = (analysis.bySeverity[issue.severity] || 0) + 1;
-    
+
     // Count by WCAG level
     const wcagMatch = issue.code?.match(/WCAG2([A]{1,3})/);
     if (wcagMatch) {
@@ -53,10 +53,10 @@ export function analyzePa11yResults(page) {
     const guideline = mapIssueToGuideline(issue);
     if (guideline) {
       analysis.byGuideline[guideline] = (analysis.byGuideline[guideline] || 0) + 1;
-      
+
       // Add required manual checks for this guideline
       const manualChecks = getRequiredManualChecks(guideline);
-      manualChecks.forEach(check => {
+      manualChecks.forEach((check) => {
         if (!analysis.requiredManualChecks.includes(check)) {
           analysis.requiredManualChecks.push(check);
         }
@@ -84,14 +84,14 @@ export function analyzePa11yResults(page) {
       Critical: 5,
       Serious: 3,
       Moderate: 2,
-      Minor: 1
+      Minor: 1,
     };
     analysis.score -= (severityWeights[issue.severity] || 1) * 2;
   });
 
   // Add manual checks that need to be performed
   analysis.manualChecks = analysis.requiredManualChecks
-    .filter(check => !analysis.remediationSuggestions.includes(check));
+    .filter((check) => !analysis.remediationSuggestions.includes(check));
 
   analysis.score = Math.max(0, analysis.score);
   return analysis;
@@ -101,7 +101,7 @@ export function analyzePa11yResults(page) {
  * Generates WCAG 2.1 compliance summary
  * @param {Object} analysis - Analysis object from analyzePa11yResults
  * @returns {Object} - WCAG compliance summary
- * 
+ *
  * Features:
  * - Guideline compliance status
  * - Detailed guideline information
@@ -113,7 +113,7 @@ export function generateWCAGComplianceSummary(analysis) {
     totalGuidelines: Object.keys(analysis.byGuideline).length,
     compliantGuidelines: 0,
     nonCompliantGuidelines: 0,
-    guidelineDetails: []
+    guidelineDetails: [],
   };
 
   Object.entries(analysis.byGuideline).forEach(([guideline, count]) => {
@@ -129,7 +129,7 @@ export function generateWCAGComplianceSummary(analysis) {
       description: getGuidelineDescription(guideline),
       issues: count,
       compliant: isCompliant,
-      requiredChecks: getRequiredManualChecks(guideline)
+      requiredChecks: getRequiredManualChecks(guideline),
     });
   });
 

@@ -1,10 +1,7 @@
-import { writeToInvalidUrlFile } from './urlUtils.js';
+import cheerio from 'cheerio';
+import { writeToInvalidUrlFile, fixUrl } from './urlUtils.js';
 
 // linkAnalyzer.js
-
-import cheerio from 'cheerio';
-
-import { fixUrl } from './urlUtils.js';
 
 /**
  * Extracts internal links from HTML content.
@@ -24,7 +21,7 @@ export function getInternalLinks(html, pageUrl, baseUrl) {
     const links = new Set();
     const baseUrlObj = new URL(baseUrl);
     const pageUrlObj = new URL(pageUrl);
-    
+
     $('a').each((i, element) => {
       const href = $(element).attr('href');
       if (href) {

@@ -410,17 +410,11 @@ function scoreStructuredData(structuredData) {
  */
 function scoreSocialMediaTags({ openGraphTags, twitterTags }) {
   try {
-    if (typeof openGraphTags !== 'object' || openGraphTags === null) {
-      global.auditcore.logger.warn('openGraphTags is not an object, defaulting to empty object');
-      openGraphTags = {};
-    }
-    if (typeof twitterTags !== 'object' || twitterTags === null) {
-      global.auditcore.logger.warn('twitterTags is not an object, defaulting to empty object');
-      twitterTags = {};
-    }
-    
-    const hasOpenGraph = Object.keys(openGraphTags).length > 0;
-    const hasTwitterCard = Object.keys(twitterTags).length > 0;
+    const effectiveOpenGraphTags = (typeof openGraphTags === 'object' && openGraphTags !== null) ? openGraphTags : {};
+    const effectiveTwitterTags = (typeof twitterTags === 'object' && twitterTags !== null) ? twitterTags : {};
+
+    const hasOpenGraph = Object.keys(effectiveOpenGraphTags).length > 0;
+    const hasTwitterCard = Object.keys(effectiveTwitterTags).length > 0;
     const score = (hasOpenGraph || hasTwitterCard) ? 1 : 0;
     global.auditcore.logger.debug(`Social media tags score: ${score.toFixed(2)}. Has Open Graph: ${hasOpenGraph}, Has Twitter Card: ${hasTwitterCard}`);
     return score;

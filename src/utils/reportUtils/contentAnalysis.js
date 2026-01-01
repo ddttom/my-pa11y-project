@@ -6,9 +6,9 @@ export function analyzeHeadingStructure(headings) {
     global.auditcore.logger.debug('Invalid headings data for analysis');
     return 0;
   }
-  
+
   let score = 100;
-  
+
   // Check for H1
   if (!headings.h1Count) {
     score -= 30;
@@ -33,17 +33,17 @@ export function analyzeHeadingStructure(headings) {
  */
 export function calculateFreshnessScore(lastmod) {
   if (!lastmod) return 0;
-  
+
   const now = new Date();
   const modDate = new Date(lastmod);
   const daysSinceUpdate = (now - modDate) / (1000 * 60 * 60 * 24);
 
-  if (daysSinceUpdate <= 7) return 100;   // Last week
-  if (daysSinceUpdate <= 30) return 90;   // Last month
-  if (daysSinceUpdate <= 90) return 75;   // Last quarter
-  if (daysSinceUpdate <= 180) return 60;  // Last 6 months
-  if (daysSinceUpdate <= 365) return 40;  // Last year
-  
+  if (daysSinceUpdate <= 7) return 100; // Last week
+  if (daysSinceUpdate <= 30) return 90; // Last month
+  if (daysSinceUpdate <= 90) return 75; // Last quarter
+  if (daysSinceUpdate <= 180) return 60; // Last 6 months
+  if (daysSinceUpdate <= 365) return 40; // Last year
+
   return Math.max(0, 30 - (daysSinceUpdate - 365) / 100);
 }
 
@@ -52,7 +52,7 @@ export function calculateFreshnessScore(lastmod) {
  */
 export function calculateMediaRichness(content) {
   if (!content) return 0;
-  
+
   let score = 0;
 
   // Images
@@ -78,22 +78,22 @@ export function calculateMediaRichness(content) {
  */
 export function extractTopKeywords(content) {
   if (!content) return [];
-  
+
   // Split content into words and filter out common words
   const stopWords = new Set(['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have']);
   const words = content.toLowerCase()
     .split(/\W+/)
-    .filter(word => word.length > 3 && !stopWords.has(word));
+    .filter((word) => word.length > 3 && !stopWords.has(word));
 
   // Count word frequency
   const frequency = {};
-  words.forEach(word => {
+  words.forEach((word) => {
     frequency[word] = (frequency[word] || 0) + 1;
   });
 
   // Sort by frequency and return top 5
   return Object.entries(frequency)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
     .map(([word]) => word);
 }
@@ -111,27 +111,27 @@ export function analyzeContentQuality(page) {
       grammarScore: 0,
       mediaRichnessScore: 0,
       topKeywords: [],
-      overallScore: 0
+      overallScore: 0,
     };
   }
 
   global.auditcore.logger.debug(`Analyzing content quality for page: ${page.url}`);
-  
+
   const headingStructureScore = analyzeHeadingStructure({
     h1Count: page.h1Count,
     h2Count: page.h2Count,
     h3Count: page.h3Count,
     h4Count: page.h4Count,
     h5Count: page.h5Count,
-    h6Count: page.h6Count
+    h6Count: page.h6Count,
   });
   const freshnessScore = calculateFreshnessScore(page.lastmod);
   const uniquenessScore = 100; // Would require content comparison
-  const grammarScore = 100;    // Would require NLP analysis
+  const grammarScore = 100; // Would require NLP analysis
   const mediaRichnessScore = calculateMediaRichness({
     images: page.images,
     videos: page.videos,
-    interactiveElements: page.interactiveElements
+    interactiveElements: page.interactiveElements,
   });
 
   // Calculate overall score with updated weights
@@ -140,15 +140,15 @@ export function analyzeContentQuality(page) {
     freshness: 0.25,
     uniqueness: 0.15,
     grammar: 0.15,
-    media: 0.15
+    media: 0.15,
   };
 
   const overallScore = (
-    headingStructureScore * weights.headings +
-    freshnessScore * weights.freshness +
-    uniquenessScore * weights.uniqueness +
-    grammarScore * weights.grammar +
-    mediaRichnessScore * weights.media
+    headingStructureScore * weights.headings
+    + freshnessScore * weights.freshness
+    + uniquenessScore * weights.uniqueness
+    + grammarScore * weights.grammar
+    + mediaRichnessScore * weights.media
   );
 
   return {
@@ -158,6 +158,6 @@ export function analyzeContentQuality(page) {
     grammarScore,
     mediaRichnessScore,
     topKeywords: extractTopKeywords(page.content),
-    overallScore
+    overallScore,
   };
 }

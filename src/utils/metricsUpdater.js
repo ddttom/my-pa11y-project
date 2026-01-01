@@ -2,7 +2,6 @@
 
 import { estimatePixelWidth } from './metricsCommon.js';
 
-
 export function updateContentAnalysis(contentAnalysis, results) {
   if (!results.contentAnalysis) {
     results.contentAnalysis = [];
@@ -27,7 +26,7 @@ export function updateTitleMetrics($, results, url) {
     length: title.length,
     tooLong: title.length > 60 ? 1 : 0,
     tooShort: title.length < 30 ? 1 : 0,
-    pixelWidth: estimatePixelWidth(title)
+    pixelWidth: estimatePixelWidth(title),
   };
 }
 
@@ -38,39 +37,39 @@ export function updateMetaDescriptionMetrics($, results, url) {
     length: metaDescription.length,
     tooLong: metaDescription.length > 155 ? 1 : 0,
     tooShort: metaDescription.length < 70 ? 1 : 0,
-    pixelWidth: estimatePixelWidth(metaDescription)
+    pixelWidth: estimatePixelWidth(metaDescription),
   };
 }
 
 export function updateHeadingMetrics($, results, url) {
   const h1 = $('h1').first().text().trim();
   const h2Count = $('h2').length;
-  
+
   results.h1Metrics = results.h1Metrics || {};
   results.h1Metrics[url] = {
     length: h1.length,
     missing: h1.length === 0 ? 1 : 0,
     tooLong: h1.length > 70 ? 1 : 0,
-    multiple: $('h1').length > 1 ? 1 : 0
+    multiple: $('h1').length > 1 ? 1 : 0,
   };
 
   results.h2Metrics = results.h2Metrics || {};
   results.h2Metrics[url] = {
     count: h2Count,
     missing: h2Count === 0 ? 1 : 0,
-    tooMany: h2Count > 15 ? 1 : 0 // Arbitrary threshold, adjust as needed
+    tooMany: h2Count > 15 ? 1 : 0, // Arbitrary threshold, adjust as needed
   };
 }
 
 export function updateImageMetrics($, results, url) {
   const images = $('img');
   const imagesWithAlt = images.filter((i, el) => $(el).attr('alt')?.trim().length > 0);
-  
+
   results.imageMetrics = results.imageMetrics || {};
   results.imageMetrics[url] = {
     total: images.length,
     missingAlt: images.length - imagesWithAlt.length,
-    altTooLong: imagesWithAlt.filter((i, el) => $(el).attr('alt').length > 100).length
+    altTooLong: imagesWithAlt.filter((i, el) => $(el).attr('alt').length > 100).length,
   };
 
   global.auditcore.logger.debug(`Image metrics for ${url}: ${JSON.stringify(results.imageMetrics[url])}`);
@@ -79,13 +78,13 @@ export function updateImageMetrics($, results, url) {
 export function updateLinkMetrics($, baseUrl, results, url) {
   const internalLinks = $(`a[href^="/"], a[href^="${baseUrl}"]`);
   const externalLinks = $('a').not(internalLinks);
-  
+
   results.linkMetrics = results.linkMetrics || {};
   results.linkMetrics[url] = {
     internalCount: internalLinks.length,
     externalCount: externalLinks.length,
     noFollowCount: $('a[rel*="nofollow"]').length,
-    emptyLinkText: $('a').filter((i, el) => $(el).text().trim().length === 0).length
+    emptyLinkText: $('a').filter((i, el) => $(el).text().trim().length === 0).length,
   };
 }
 
@@ -96,17 +95,17 @@ export function updateSecurityMetrics(url, headers, results) {
     hasHsts: headers['strict-transport-security'] ? 1 : 0,
     hasCsp: headers['content-security-policy'] ? 1 : 0,
     hasXFrameOptions: headers['x-frame-options'] ? 1 : 0,
-    hasXContentTypeOptions: headers['x-content-type-options'] ? 1 : 0
+    hasXContentTypeOptions: headers['x-content-type-options'] ? 1 : 0,
   };
 }
 
 export function updateHreflangMetrics($, results, url) {
   const hreflangTags = $('link[rel="alternate"][hreflang]');
-  
+
   results.hreflangMetrics = results.hreflangMetrics || {};
   results.hreflangMetrics[url] = {
     count: hreflangTags.length,
-    hasXDefault: hreflangTags.filter((i, el) => $(el).attr('hreflang') === 'x-default').length > 0 ? 1 : 0
+    hasXDefault: hreflangTags.filter((i, el) => $(el).attr('hreflang') === 'x-default').length > 0 ? 1 : 0,
   };
 }
 
@@ -118,17 +117,17 @@ export async function updateCanonicalMetrics($, testUrl, results) {
 }
 export async function updateContentMetrics($, results, testUrl) {
   global.auditcore.logger.debug(`[START] Updating content metrics for ${testUrl}`);
-  
+
   try {
     const content = $('body').text();
     const wordCount = content.trim().split(/\s+/).length;
 
     results.contentMetrics = results.contentMetrics || {};
     results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
-    
+
     results.contentMetrics[testUrl] = {
       wordCount,
-      hasLongParagraphs: $('p').toArray().some(p => $(p).text().split(/\s+/).length > 300),
+      hasLongParagraphs: $('p').toArray().some((p) => $(p).text().split(/\s+/).length > 300),
     };
 
     global.auditcore.logger.debug(`Content metrics updated for ${testUrl}: ${JSON.stringify(results.contentMetrics[testUrl])}`);
@@ -152,7 +151,7 @@ export function updateSpecificUrlMetrics($, results, testUrl) {
         pageUrl: testUrl,
         foundUrl: value,
         elementType: tagName,
-        attribute: attributeName
+        attribute: attributeName,
       });
     }
   };
@@ -165,7 +164,7 @@ export function updateSpecificUrlMetrics($, results, testUrl) {
 
   // Check tags with src attribute
   const srcTags = ['script', 'img', 'iframe', 'source', 'track', 'video', 'audio', 'embed', 'input'];
-  srcTags.forEach(tag => {
+  srcTags.forEach((tag) => {
     $(tag).each((i, el) => checkAttribute(el, 'src', tag));
   });
 
@@ -200,7 +199,7 @@ export function updateExternalResourcesMetrics(pageData, results, testUrl) {
     }
 
     // Aggregate resources
-    externalResources.forEach(resource => {
+    externalResources.forEach((resource) => {
       const { url, type } = resource;
 
       if (!url) return;
@@ -208,10 +207,10 @@ export function updateExternalResourcesMetrics(pageData, results, testUrl) {
       // Initialize entry for this resource URL if it doesn't exist
       if (!results.externalResourcesAggregation[url]) {
         results.externalResourcesAggregation[url] = {
-          url: url,
-          type: type,
+          url,
+          type,
           count: 0,
-          pages: []
+          pages: [],
         };
       }
 
@@ -243,7 +242,7 @@ export function updateUrlMetrics(url, baseUrl, html, statusCode, results) {
     uppercase: 0,
     underscores: 0,
     containsSpace: 0,
-    overLength: 0
+    overLength: 0,
   };
 
   results.urlMetrics.total += 1;
@@ -315,10 +314,10 @@ export function updateLlmReadabilityMetrics(pageData, results, testUrl) {
 
   // Calculate overall LLM readability score (weighted average)
   const overallScore = Math.round(
-    (structuralScore * 0.25) +
-    (organizationScore * 0.25) +
-    (metadataScore * 0.25) +
-    (extractabilityScore * 0.25)
+    (structuralScore * 0.25)
+    + (organizationScore * 0.25)
+    + (metadataScore * 0.25)
+    + (extractabilityScore * 0.25),
   );
 
   results.llmReadabilityAggregation[testUrl] = {
@@ -342,7 +341,7 @@ export function updateLlmReadabilityMetrics(pageData, results, testUrl) {
     listCount: llm.lists?.total || 0,
     tableCount: llm.tables || 0,
     codeBlockCount: llm.codeBlocks || 0,
-    totalElements: llm.totalElements || 0
+    totalElements: llm.totalElements || 0,
   };
 }
 
@@ -436,8 +435,8 @@ function calculateExtractabilityScore(llm, pageData) {
 
 function calculateSemanticHtmlUsage(llm) {
   const semantic = llm.semanticElements || {};
-  const total = semantic.article + semantic.section + semantic.nav +
-                semantic.header + semantic.footer + semantic.main + semantic.aside;
+  const total = semantic.article + semantic.section + semantic.nav
+                + semantic.header + semantic.footer + semantic.main + semantic.aside;
   if (total >= 5) return 'Excellent';
   if (total >= 3) return 'Good';
   if (total >= 1) return 'Fair';
@@ -483,9 +482,9 @@ export function updateHttpStatusMetrics(pageData, results, testUrl) {
   if (statusCode !== 200) {
     results.httpStatusAggregation[testUrl] = {
       url: testUrl,
-      statusCode: statusCode,
+      statusCode,
       statusText: getStatusText(statusCode),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     global.auditcore.logger.debug(`Non-200 status code detected: ${testUrl} returned ${statusCode}`);
@@ -520,7 +519,7 @@ function getStatusText(code) {
     501: 'Not Implemented',
     502: 'Bad Gateway',
     503: 'Service Unavailable',
-    504: 'Gateway Timeout'
+    504: 'Gateway Timeout',
   };
 
   return statusTexts[code] || `HTTP ${code}`;

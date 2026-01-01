@@ -1,13 +1,13 @@
 // Core report generation utilities for various analysis types
 // Handles CSV report creation for SEO, performance, accessibility, and other metrics
 
+import { createObjectCsvWriter } from 'csv-writer';
+import path from 'path';
 import { analyzePa11yResults } from './accessibilityAnalysis.js';
 import { createEmptyAnalysis, calculateLinkDepth, getImageFormat } from './formatUtils.js';
 import { analyzeImage } from './imageAnalysis.js';
 import { analyzeLinkQuality, getLinkType, isInNavigation } from './linkAnalysis.js';
 import { analyzeContentQuality } from './contentAnalysis.js';
-import { createObjectCsvWriter } from 'csv-writer';
-import path from 'path';
 
 /**
  * Helper function to check if URL should be included based on language variants
@@ -20,17 +20,17 @@ function shouldIncludeUrl(url) {
     const pathParts = urlObj.pathname.split('/').filter(Boolean);
     const hasLanguageVariant = pathParts.length > 0 && pathParts[0].length === 2;
     const isAllowedVariant = ['en', 'us'].includes(pathParts[0]);
-    
+
     // Include all URLs if --include-all-languages is set
     if (global.auditcore.options.includeAllLanguages) {
       return true;
     }
-    
+
     // Skip URLs with language variants unless they're allowed
     if (hasLanguageVariant && !isAllowedVariant) {
       return false;
     }
-    
+
     return true;
   } catch (error) {
     global.auditcore.logger.debug(`Error checking URL ${url}:`, error);
@@ -65,13 +65,13 @@ export async function generateSeoReport(results, outputDir) {
       { id: 'descriptionLength', title: 'Description Length' },
       { id: 'hasStructuredData', title: 'Has Structured Data' },
       { id: 'hasSocialTags', title: 'Has Social Tags' },
-      { id: 'lastModified', title: 'Last Modified' }
-    ]
+      { id: 'lastModified', title: 'Last Modified' },
+    ],
   });
 
   const reportData = results.contentAnalysis
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.map(page => ({
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.map((page) => ({
       url: page.url || '',
       title: page.title || '',
       description: page.metaDescription || '',
@@ -86,7 +86,7 @@ export async function generateSeoReport(results, outputDir) {
       descriptionLength: page.metaDescription?.length || 0,
       hasStructuredData: page.structuredData?.length > 0 ? 'Yes' : 'No',
       hasSocialTags: (page.openGraphTags?.length > 0 || page.twitterTags?.length > 0) ? 'Yes' : 'No',
-      lastModified: page.lastmod || 'Unknown'
+      lastModified: page.lastmod || 'Unknown',
     })) || [];
 
   await csvWriter.writeRecords(reportData);
@@ -113,13 +113,13 @@ export async function generatePerformanceReport(results, outputDir) {
       { id: 'largestContentfulPaint', title: 'Largest Contentful Paint (ms)' },
       { id: 'timeToInteractive', title: 'Time to Interactive (ms)' },
       { id: 'totalBlockingTime', title: 'Total Blocking Time (ms)' },
-      { id: 'cumulativeLayoutShift', title: 'Cumulative Layout Shift' }
-    ]
+      { id: 'cumulativeLayoutShift', title: 'Cumulative Layout Shift' },
+    ],
   });
 
   const reportData = results.performanceAnalysis
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.map(page => ({
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.map((page) => ({
       url: page.url || '',
       loadTime: Math.round(page.loadTime || 0),
       firstPaint: Math.round(page.firstPaint || 0),
@@ -127,7 +127,7 @@ export async function generatePerformanceReport(results, outputDir) {
       largestContentfulPaint: Math.round(page.largestContentfulPaint || 0),
       timeToInteractive: Math.round(page.timeToInteractive || 0),
       totalBlockingTime: Math.round(page.totalBlockingTime || 0),
-      cumulativeLayoutShift: page.cumulativeLayoutShift?.toFixed(3) || 0
+      cumulativeLayoutShift: page.cumulativeLayoutShift?.toFixed(3) || 0,
     })) || [];
 
   await csvWriter.writeRecords(reportData);
@@ -156,13 +156,13 @@ export async function generateSeoScores(results, outputDir) {
       { id: 'linksScore', title: 'Links Score' },
       { id: 'imagesScore', title: 'Images Score' },
       { id: 'mobileScore', title: 'Mobile Score' },
-      { id: 'performanceScore', title: 'Performance Score' }
-    ]
+      { id: 'performanceScore', title: 'Performance Score' },
+    ],
   });
 
   const reportData = results.seoScores
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.map(page => ({
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.map((page) => ({
       url: page.url || '',
       overallScore: formatScore(page.score),
       titleScore: formatScore(page.details?.titleOptimization),
@@ -172,7 +172,7 @@ export async function generateSeoScores(results, outputDir) {
       linksScore: formatScore(page.details?.internalLinking),
       imagesScore: formatScore(page.details?.imageOptimization),
       mobileScore: formatScore(page.details?.mobileOptimization),
-      performanceScore: formatScore(page.details?.performanceScore)
+      performanceScore: formatScore(page.details?.performanceScore),
     })) || [];
 
   await csvWriter.writeRecords(reportData);
@@ -206,21 +206,21 @@ export async function generateAccessibilityReport(results, outputDir) {
       { id: 'accessibilityScore', title: 'Accessibility Score' },
       { id: 'ariaLabels', title: 'Missing ARIA Labels' },
       { id: 'contrastRatio', title: 'Contrast Ratio Issues' },
-      { id: 'keyboardNav', title: 'Keyboard Navigation Issues' }
-    ]
+      { id: 'keyboardNav', title: 'Keyboard Navigation Issues' },
+    ],
   });
 
   // Get all URLs from content analysis to ensure we have a complete list
   const allUrls = new Set(results.contentAnalysis
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.map(page => page.url) || []);
-  
-  const reportData = Array.from(allUrls).map(url => {
-    const pa11yResult = results.pa11y?.find(p => p.url === url || p.pageUrl === url);
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.map((page) => page.url) || []);
+
+  const reportData = Array.from(allUrls).map((url) => {
+    const pa11yResult = results.pa11y?.find((p) => p.url === url || p.pageUrl === url);
     const analysis = pa11yResult ? analyzePa11yResults(pa11yResult) : createEmptyAnalysis();
 
     return {
-      url: url,
+      url,
       totalIssues: analysis.totalIssues || 0,
       criticalIssues: analysis.bySeverity.Critical || 0,
       seriousIssues: analysis.bySeverity.Serious || 0,
@@ -232,7 +232,7 @@ export async function generateAccessibilityReport(results, outputDir) {
       accessibilityScore: analysis.score.toFixed(2),
       ariaLabels: analysis.ariaIssues || 0,
       contrastRatio: analysis.contrastIssues || 0,
-      keyboardNav: analysis.keyboardIssues || 0
+      keyboardNav: analysis.keyboardIssues || 0,
     };
   });
 
@@ -264,15 +264,15 @@ export async function generateImageOptimizationReport(results, outputDir) {
       { id: 'lazyLoaded', title: 'Lazy Loaded' },
       { id: 'compressionLevel', title: 'Compression Level' },
       { id: 'optimizationScore', title: 'Optimization Score' },
-      { id: 'recommendations', title: 'Recommendations' }
-    ]
+      { id: 'recommendations', title: 'Recommendations' },
+    ],
   });
 
   const reportData = [];
   results.contentAnalysis
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.forEach(page => {
-      page.images?.forEach(image => {
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.forEach((page) => {
+      page.images?.forEach((image) => {
         const analysis = analyzeImage(image);
         reportData.push({
           pageUrl: page.url,
@@ -286,7 +286,7 @@ export async function generateImageOptimizationReport(results, outputDir) {
           lazyLoaded: image.loading === 'lazy' ? 'Yes' : 'No',
           compressionLevel: analysis.compressionLevel,
           optimizationScore: analysis.optimizationScore.toFixed(2),
-          recommendations: analysis.recommendations.join('; ')
+          recommendations: analysis.recommendations.join('; '),
         });
       });
     });
@@ -318,15 +318,15 @@ export async function generateLinkAnalysisReport(results, outputDir) {
       { id: 'contentType', title: 'Content Type' },
       { id: 'inNavigation', title: 'In Navigation' },
       { id: 'linkDepth', title: 'Link Depth' },
-      { id: 'linkQuality', title: 'Link Quality Score' }
-    ]
+      { id: 'linkQuality', title: 'Link Quality Score' },
+    ],
   });
 
   const reportData = [];
   results.internalLinks
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.forEach(page => {
-      page.links?.forEach(link => {
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.forEach((page) => {
+      page.links?.forEach((link) => {
         const analysis = analyzeLinkQuality(link);
         reportData.push({
           sourceUrl: page.url,
@@ -339,7 +339,7 @@ export async function generateLinkAnalysisReport(results, outputDir) {
           contentType: link.contentType || 'html',
           inNavigation: isInNavigation(link) ? 'Yes' : 'No',
           linkDepth: calculateLinkDepth(link.url),
-          linkQuality: analysis.qualityScore.toFixed(2)
+          linkQuality: analysis.qualityScore.toFixed(2),
         });
       });
     });
@@ -368,13 +368,13 @@ export async function generateContentQualityReport(results, outputDir) {
       { id: 'grammarScore', title: 'Grammar Score' },
       { id: 'mediaRichness', title: 'Media Richness Score' },
       { id: 'topKeywords', title: 'Top Keywords' },
-      { id: 'contentScore', title: 'Overall Content Score' }
-    ]
+      { id: 'contentScore', title: 'Overall Content Score' },
+    ],
   });
 
   const reportData = results.contentAnalysis
-    ?.filter(page => shouldIncludeUrl(page.url))
-    ?.map(page => {
+    ?.filter((page) => shouldIncludeUrl(page.url))
+    ?.map((page) => {
       const analysis = analyzeContentQuality(page);
       return {
         url: page.url,
@@ -384,7 +384,7 @@ export async function generateContentQualityReport(results, outputDir) {
         grammarScore: analysis.grammarScore.toFixed(2),
         mediaRichness: analysis.mediaRichnessScore.toFixed(2),
         topKeywords: analysis.topKeywords.join(', '),
-        contentScore: analysis.overallScore.toFixed(2)
+        contentScore: analysis.overallScore.toFixed(2),
       };
     }) || [];
 
@@ -407,21 +407,21 @@ export async function generateSecurityReport(results, outputDir) {
       { id: 'hsts', title: 'HSTS' },
       { id: 'csp', title: 'CSP' },
       { id: 'xFrameOptions', title: 'X-Frame-Options' },
-      { id: 'xContentTypeOptions', title: 'X-Content-Type-Options' }
-    ]
+      { id: 'xContentTypeOptions', title: 'X-Content-Type-Options' },
+    ],
   });
 
   const reportData = results.securityMetrics
     ? Object.entries(results.securityMetrics)
-        .filter(([url]) => shouldIncludeUrl(url))
-        .map(([url, metrics]) => ({
-          url,
-          https: metrics.https ? 'Yes' : 'No',
-          hsts: metrics.hasHsts ? 'Yes' : 'No',
-          csp: metrics.hasCsp ? 'Yes' : 'No',
-          xFrameOptions: metrics.hasXFrameOptions ? 'Yes' : 'No',
-          xContentTypeOptions: metrics.hasXContentTypeOptions ? 'Yes' : 'No'
-        }))
+      .filter(([url]) => shouldIncludeUrl(url))
+      .map(([url, metrics]) => ({
+        url,
+        https: metrics.https ? 'Yes' : 'No',
+        hsts: metrics.hasHsts ? 'Yes' : 'No',
+        csp: metrics.hasCsp ? 'Yes' : 'No',
+        xFrameOptions: metrics.hasXFrameOptions ? 'Yes' : 'No',
+        xContentTypeOptions: metrics.hasXContentTypeOptions ? 'Yes' : 'No',
+      }))
     : [];
 
   await csvWriter.writeRecords(reportData);
@@ -456,8 +456,8 @@ export async function generateSpecificUrlReport(results, outputDir) {
       { id: 'pageUrl', title: 'Page URL' },
       { id: 'foundUrl', title: 'Found URL' },
       { id: 'elementType', title: 'Element Type' },
-      { id: 'attribute', title: 'Attribute' }
-    ]
+      { id: 'attribute', title: 'Attribute' },
+    ],
   });
 
   await csvWriter.writeRecords(results.specificUrlMetrics);
@@ -484,18 +484,18 @@ export async function generateExternalResourcesReport(results, outputDir) {
     header: [
       { id: 'url', title: 'Resource URL' },
       { id: 'type', title: 'Resource Type' },
-      { id: 'count', title: 'Total Count' }
-    ]
+      { id: 'count', title: 'Total Count' },
+    ],
   });
 
   // Convert aggregation object to array and sort by count (descending)
   const reportData = Object.values(results.externalResourcesAggregation)
-    .map(resource => ({
+    .map((resource) => ({
       url: resource.url || '',
       type: resource.type || 'unknown',
-      count: resource.count || 0
+      count: resource.count || 0,
     }))
-    .sort((a, b) => b.count - a.count);  // Sort by count, highest first
+    .sort((a, b) => b.count - a.count); // Sort by count, highest first
 
   await csvWriter.writeRecords(reportData);
   global.auditcore.logger.info(`All resources report generated with ${reportData.length} unique resources (JS, CSS, images, fonts, etc.)`);
@@ -524,23 +524,23 @@ export async function generateMissingSitemapUrlsReport(results, outputDir) {
     path: path.join(outputDir, 'missing_sitemap_urls.csv'),
     header: [
       { id: 'url', title: 'Discovered URL' },
-      { id: 'foundOnPages', title: 'Found On Pages Count' }
-    ]
+      { id: 'foundOnPages', title: 'Found On Pages Count' },
+    ],
   });
 
   // Count how many pages link to each discovered URL
   const urlCounts = {};
-  results.internalLinks?.forEach(page => {
-    page.links?.forEach(link => {
+  results.internalLinks?.forEach((page) => {
+    page.links?.forEach((link) => {
       if (discoveredUrls.includes(link.url)) {
         urlCounts[link.url] = (urlCounts[link.url] || 0) + 1;
       }
     });
   });
 
-  const reportData = discoveredUrls.map(url => ({
-    url: url,
-    foundOnPages: urlCounts[url] || 0
+  const reportData = discoveredUrls.map((url) => ({
+    url,
+    foundOnPages: urlCounts[url] || 0,
   }));
 
   await csvWriter.writeRecords(reportData);
@@ -558,8 +558,8 @@ export async function generateMissingSitemapUrlsReport(results, outputDir) {
  * // Creates llm_readability_report.csv with LLM processing metrics
  */
 export async function generateLlmReadabilityReport(results, outputDir) {
-  if (!results.llmReadabilityAggregation ||
-      Object.keys(results.llmReadabilityAggregation).length === 0) {
+  if (!results.llmReadabilityAggregation
+      || Object.keys(results.llmReadabilityAggregation).length === 0) {
     global.auditcore.logger.warn('No LLM readability data available for report generation');
     return;
   }
@@ -583,12 +583,12 @@ export async function generateLlmReadabilityReport(results, outputDir) {
       { id: 'listCount', title: 'List Count' },
       { id: 'tableCount', title: 'Table Count' },
       { id: 'codeBlockCount', title: 'Code Block Count' },
-      { id: 'totalElements', title: 'Total DOM Elements' }
-    ]
+      { id: 'totalElements', title: 'Total DOM Elements' },
+    ],
   });
 
   const reportData = Object.values(results.llmReadabilityAggregation)
-    .map(item => ({
+    .map((item) => ({
       url: item.url,
       overallScore: item.overallScore,
       structuralScore: item.structuralScore,
@@ -605,7 +605,7 @@ export async function generateLlmReadabilityReport(results, outputDir) {
       listCount: item.listCount,
       tableCount: item.tableCount,
       codeBlockCount: item.codeBlockCount,
-      totalElements: item.totalElements
+      totalElements: item.totalElements,
     }))
     .sort((a, b) => b.overallScore - a.overallScore); // Sort by overall score descending
 
@@ -615,11 +615,11 @@ export async function generateLlmReadabilityReport(results, outputDir) {
 
   // Console summary
   const avgScore = reportData.reduce((sum, item) => sum + item.overallScore, 0) / reportData.length;
-  console.log(`\n📊 LLM Readability Analysis:`);
+  console.log('\n📊 LLM Readability Analysis:');
   console.log(`   Average Score: ${avgScore.toFixed(1)}/100`);
-  console.log(`   Pages with Good Readability (>70): ${reportData.filter(p => p.overallScore > 70).length}`);
-  console.log(`   Pages Needing Improvement (<50): ${reportData.filter(p => p.overallScore < 50).length}`);
-  console.log(`   Report: llm_readability_report.csv`);
+  console.log(`   Pages with Good Readability (>70): ${reportData.filter((p) => p.overallScore > 70).length}`);
+  console.log(`   Pages Needing Improvement (<50): ${reportData.filter((p) => p.overallScore < 50).length}`);
+  console.log('   Report: llm_readability_report.csv');
 }
 
 /**
@@ -629,8 +629,8 @@ export async function generateLlmReadabilityReport(results, outputDir) {
  * @param {string} outputDir - Output directory path
  */
 export async function generateHttpStatusReport(results, outputDir) {
-  if (!results.httpStatusAggregation ||
-      Object.keys(results.httpStatusAggregation).length === 0) {
+  if (!results.httpStatusAggregation
+      || Object.keys(results.httpStatusAggregation).length === 0) {
     global.auditcore.logger.info('All pages returned 200 OK status. No non-200 status report needed.');
     return;
   }
@@ -641,16 +641,16 @@ export async function generateHttpStatusReport(results, outputDir) {
       { id: 'url', title: 'URL' },
       { id: 'statusCode', title: 'Status Code' },
       { id: 'statusText', title: 'Status Text' },
-      { id: 'timestamp', title: 'Timestamp' }
-    ]
+      { id: 'timestamp', title: 'Timestamp' },
+    ],
   });
 
   const reportData = Object.values(results.httpStatusAggregation)
-    .map(item => ({
+    .map((item) => ({
       url: item.url,
       statusCode: item.statusCode,
       statusText: item.statusText,
-      timestamp: item.timestamp
+      timestamp: item.timestamp,
     }))
     .sort((a, b) => b.statusCode - a.statusCode); // Sort by status code descending
 
@@ -662,11 +662,11 @@ export async function generateHttpStatusReport(results, outputDir) {
     return acc;
   }, {});
 
-  console.log(`\n📊 HTTP Status Code Analysis:`);
+  console.log('\n📊 HTTP Status Code Analysis:');
   console.log(`   Total Non-200 Responses: ${reportData.length}`);
   Object.entries(statusCodeCounts).forEach(([code, count]) => {
-    const text = reportData.find(r => r.statusCode === parseInt(code))?.statusText;
+    const text = reportData.find((r) => r.statusCode === parseInt(code, 10))?.statusText;
     console.log(`   ${code} (${text}): ${count} page(s)`);
   });
-  console.log(`   Report: http_status_report.csv`);
+  console.log('   Report: http_status_report.csv');
 }

@@ -1,7 +1,4 @@
-
 // urlMetrics.js
-
-
 
 /**
  * Updates URL metrics based on the test URL.
@@ -31,7 +28,7 @@ export function updateUrlMetrics(url, baseUrl, html, statusCode, results) {
     uppercase: 0,
     underscores: 0,
     containsSpace: 0,
-    overLength: 0
+    overLength: 0,
   };
 
   // Increment total URLs count
@@ -49,10 +46,10 @@ export function updateUrlMetrics(url, baseUrl, html, statusCode, results) {
   } else {
     results.urlMetrics.external++;
   }
-// Check for non-ASCII characters
-if (/[^\p{ASCII}]/u.test(url)) {
-  results.urlMetrics.nonAscii++;
-}
+  // Check for non-ASCII characters
+  if (/[^\p{ASCII}]/u.test(url)) {
+    results.urlMetrics.nonAscii++;
+  }
   // Check for uppercase characters
   if (/[A-Z]/.test(url)) {
     results.urlMetrics.uppercase++;
@@ -85,4 +82,3 @@ export function updateResponseCodeMetrics(statusCode, results) {
   results.responseCodeMetrics = results.responseCodeMetrics || {};
   results.responseCodeMetrics[statusCode] = (results.responseCodeMetrics[statusCode] || 0) + 1;
 }
-

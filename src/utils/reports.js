@@ -8,12 +8,12 @@ import {
   generateImageOptimizationReport,
   generateLinkAnalysisReport,
   generateContentQualityReport,
-  generateSecurityReport
+  generateSecurityReport,
 } from './reportUtils/reportGenerators.js';
 import {
   generateGeneralLLMReport,
   generateFrontendLLMReport,
-  generateBackendLLMReport
+  generateBackendLLMReport,
 } from './reportUtils/llmReports.js';
 import { generateExecutiveSummary } from './reportUtils/executiveSummary.js';
 import { generateDashboard } from './reportUtils/dashboardGenerator.js';
@@ -44,7 +44,7 @@ export async function generateReports(results, urls, outputDir) {
     await generateBackendLLMReport(results, outputDir);
 
     // Check if enhanced features are enabled
-    const options = global.auditcore.options;
+    const { options } = global.auditcore;
     let comparison = null;
     let trendData = null;
 
@@ -93,7 +93,7 @@ export async function generateReports(results, urls, outputDir) {
     // Save complete results as JSON
     await fs.writeFile(
       path.join(outputDir, 'results.json'),
-      JSON.stringify(results, null, 2)
+      JSON.stringify(results, null, 2),
     );
 
     global.auditcore.logger.info('All reports generated successfully');
@@ -114,5 +114,5 @@ export {
   generateSecurityReport,
   generateGeneralLLMReport,
   generateFrontendLLMReport,
-  generateBackendLLMReport
+  generateBackendLLMReport,
 };

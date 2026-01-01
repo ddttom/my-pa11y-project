@@ -45,12 +45,12 @@ async function getCachedData(url) {
     const cachedData = await fs.readFile(cachePath, 'utf8');
     global.auditcore.logger.debug(`Cache hit for ${url}`);
     const parsedData = JSON.parse(cachedData);
-    
+
     // Ensure cached data has a status code
     if (!parsedData.statusCode) {
       parsedData.statusCode = 200;
     }
-    
+
     // Validate URLs in cached data
     if (parsedData.pageData && parsedData.pageData.testUrl) {
       if (!isValidUrl(parsedData.pageData.testUrl)) {
@@ -58,7 +58,7 @@ async function getCachedData(url) {
         return null;
       }
     }
-    
+
     return parsedData;
   } catch (error) {
     if (error.code !== 'ENOENT') {
@@ -74,10 +74,9 @@ async function setCachedData(url, data) {
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
   global.auditcore.logger.debug(`Attempting to write cache to: ${cachePath}`);
-  
+
   try {
-    const jsonString = JSON.stringify(data, (key, value) => 
-      (typeof value === 'string' ? value.normalize('NFC') : value), 2);
+    const jsonString = JSON.stringify(data, (key, value) => (typeof value === 'string' ? value.normalize('NFC') : value), 2);
     await fs.writeFile(cachePath, jsonString, 'utf8');
     global.auditcore.logger.debug(`Cache written for ${url}`);
   } catch (error) {
@@ -114,12 +113,12 @@ async function fetchDataWithoutPuppeteer(url) {
     const internalLinks = links.filter((i, el) => {
       const href = $(el).attr('href');
       return (
-        href.startsWith('/') || // Relative paths
-        href.startsWith('./') || // Relative paths
-        href.startsWith('../') || // Relative paths
-        href.startsWith('#') || // Anchors
-        href.startsWith(window.location.origin) || // Same domain
-        href.startsWith(window.location.hostname) // Same domain without protocol
+        href.startsWith('/') // Relative paths
+        || href.startsWith('./') // Relative paths
+        || href.startsWith('../') // Relative paths
+        || href.startsWith('#') // Anchors
+        || href.startsWith(window.location.origin) // Same domain
+        || href.startsWith(window.location.hostname) // Same domain without protocol
       );
     }).length;
 
@@ -202,7 +201,7 @@ async function getOrRenderData(url, options = {}) {
   const { noPuppeteer = false, cacheOnly = false, cache = true } = options;
   // If cache is false (from --no-cache), then noCache should be true
   const noCache = options.noCache || !cache;
-  
+
   global.auditcore.logger.debug(`getOrRenderData called for ${url} with options: ${JSON.stringify(options)}`);
 
   if (!noCache) {
@@ -288,29 +287,30 @@ async function renderAndCacheData(url) {
       const internalLinks = Array.from(links).filter((el) => {
         const href = el.getAttribute('href');
         return (
-          href.startsWith('/') || // Relative paths
-          href.startsWith('./') || // Relative paths
-          href.startsWith('../') || // Relative paths
-          href.startsWith('#') || // Anchors
-          href.startsWith(window.location.origin) || // Same domain
-          href.startsWith(window.location.hostname) // Same domain without protocol
+          href.startsWith('/') // Relative paths
+          || href.startsWith('./') // Relative paths
+          || href.startsWith('../') // Relative paths
+          || href.startsWith('#') // Anchors
+          || href.startsWith(window.location.origin) // Same domain
+          || href.startsWith(window.location.hostname) // Same domain without protocol
         );
       }).length;
 
       // All resources extraction (internal + external)
 
       // Helper function to determine if URL is valid resource
-      const isValidResourceUrl = (url) => {
-        if (!url || url.startsWith('#') || url.startsWith('javascript:') || url.startsWith('data:')) {
+      const isValidResourceUrl = (resourceUrl) => {
+        // eslint-disable-next-line no-script-url
+        if (!resourceUrl || resourceUrl.startsWith('#') || resourceUrl.startsWith('javascript:') || resourceUrl.startsWith('data:')) {
           return false;
         }
         return true;
       };
 
       // Helper to get absolute URL
-      const getAbsoluteUrl = (url) => {
+      const getAbsoluteUrl = (relativeUrl) => {
         try {
-          return new URL(url, window.location.href).href;
+          return new URL(relativeUrl, window.location.href).href;
         } catch (e) {
           return null;
         }
@@ -319,50 +319,50 @@ async function renderAndCacheData(url) {
       const allResources = [];
 
       // 1. JavaScript files (<script src="">)
-      document.querySelectorAll('script[src]').forEach(el => {
+      document.querySelectorAll('script[src]').forEach((el) => {
         const src = el.getAttribute('src');
         if (isValidResourceUrl(src)) {
           allResources.push({
             url: getAbsoluteUrl(src),
-            type: 'javascript'
+            type: 'javascript',
           });
         }
       });
 
       // 2. CSS files (<link rel="stylesheet">)
-      document.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
+      document.querySelectorAll('link[rel="stylesheet"]').forEach((el) => {
         const href = el.getAttribute('href');
         if (isValidResourceUrl(href)) {
           allResources.push({
             url: getAbsoluteUrl(href),
-            type: 'css'
+            type: 'css',
           });
         }
       });
 
       // 3. Images - all formats
       // <img> tags
-      document.querySelectorAll('img[src]').forEach(el => {
+      document.querySelectorAll('img[src]').forEach((el) => {
         const src = el.getAttribute('src');
         if (isValidResourceUrl(src)) {
           allResources.push({
             url: getAbsoluteUrl(src),
-            type: 'image'
+            type: 'image',
           });
         }
       });
 
       // <picture><source> tags
-      document.querySelectorAll('picture source[srcset]').forEach(el => {
+      document.querySelectorAll('picture source[srcset]').forEach((el) => {
         const srcset = el.getAttribute('srcset');
         if (srcset) {
           // Parse srcset which can be: "url1 1x, url2 2x" or "url1 100w, url2 200w"
-          srcset.split(',').forEach(entry => {
-            const url = entry.trim().split(/\s+/)[0];
-            if (isValidResourceUrl(url)) {
+          srcset.split(',').forEach((entry) => {
+            const resourceUrl = entry.trim().split(/\s+/)[0];
+            if (isValidResourceUrl(resourceUrl)) {
               allResources.push({
-                url: getAbsoluteUrl(url),
-                type: 'image'
+                url: getAbsoluteUrl(resourceUrl),
+                type: 'image',
               });
             }
           });
@@ -370,14 +370,14 @@ async function renderAndCacheData(url) {
       });
 
       // SVG images in <object> and <embed>
-      document.querySelectorAll('object[data], embed[src]').forEach(el => {
+      document.querySelectorAll('object[data], embed[src]').forEach((el) => {
         const src = el.getAttribute('data') || el.getAttribute('src');
         if (src && isValidResourceUrl(src)) {
-          const url = getAbsoluteUrl(src);
-          if (url && (url.endsWith('.svg') || el.type === 'image/svg+xml')) {
+          const absUrl = getAbsoluteUrl(src);
+          if (absUrl && (absUrl.endsWith('.svg') || el.type === 'image/svg+xml')) {
             allResources.push({
-              url: url,
-              type: 'image'
+              url: absUrl,
+              type: 'image',
             });
           }
         }
@@ -385,18 +385,18 @@ async function renderAndCacheData(url) {
 
       // 4. Fonts (from CSS)
       try {
-        Array.from(document.styleSheets).forEach(sheet => {
+        Array.from(document.styleSheets).forEach((sheet) => {
           try {
-            Array.from(sheet.cssRules || []).forEach(rule => {
+            Array.from(sheet.cssRules || []).forEach((rule) => {
               if (rule.cssText && rule.cssText.includes('@font-face')) {
                 const urlMatches = rule.cssText.match(/url\(['"]?([^'"()]+)['"]?\)/g);
                 if (urlMatches) {
-                  urlMatches.forEach(match => {
-                    const url = match.replace(/url\(['"]?|['"]?\)/g, '');
-                    if (isValidResourceUrl(url)) {
+                  urlMatches.forEach((match) => {
+                    const resourceUrl = match.replace(/url\(['"]?|['"]?\)/g, '');
+                    if (isValidResourceUrl(resourceUrl)) {
                       allResources.push({
-                        url: getAbsoluteUrl(url),
-                        type: 'font'
+                        url: getAbsoluteUrl(resourceUrl),
+                        type: 'font',
                       });
                     }
                   });
@@ -412,26 +412,26 @@ async function renderAndCacheData(url) {
       }
 
       // 5. Videos
-      document.querySelectorAll('video source[src], video[src]').forEach(el => {
+      document.querySelectorAll('video source[src], video[src]').forEach((el) => {
         const src = el.getAttribute('src');
         if (isValidResourceUrl(src)) {
           allResources.push({
             url: getAbsoluteUrl(src),
-            type: 'video'
+            type: 'video',
           });
         }
       });
 
       // <video><source srcset>
-      document.querySelectorAll('video source[srcset]').forEach(el => {
+      document.querySelectorAll('video source[srcset]').forEach((el) => {
         const srcset = el.getAttribute('srcset');
         if (srcset) {
-          srcset.split(',').forEach(entry => {
-            const url = entry.trim().split(/\s+/)[0];
-            if (isValidResourceUrl(url)) {
+          srcset.split(',').forEach((entry) => {
+            const resourceUrl = entry.trim().split(/\s+/)[0];
+            if (isValidResourceUrl(resourceUrl)) {
               allResources.push({
-                url: getAbsoluteUrl(url),
-                type: 'video'
+                url: getAbsoluteUrl(resourceUrl),
+                type: 'video',
               });
             }
           });
@@ -439,38 +439,38 @@ async function renderAndCacheData(url) {
       });
 
       // 6. Iframes
-      document.querySelectorAll('iframe[src]').forEach(el => {
+      document.querySelectorAll('iframe[src]').forEach((el) => {
         const src = el.getAttribute('src');
         if (isValidResourceUrl(src)) {
           allResources.push({
             url: getAbsoluteUrl(src),
-            type: 'iframe'
+            type: 'iframe',
           });
         }
       });
 
       // 7. Audio
-      document.querySelectorAll('audio source[src], audio[src]').forEach(el => {
+      document.querySelectorAll('audio source[src], audio[src]').forEach((el) => {
         const src = el.getAttribute('src');
         if (isValidResourceUrl(src)) {
           allResources.push({
             url: getAbsoluteUrl(src),
-            type: 'audio'
+            type: 'audio',
           });
         }
       });
 
       // 8. Background images from inline styles
-      document.querySelectorAll('[style*="background"]').forEach(el => {
+      document.querySelectorAll('[style*="background"]').forEach((el) => {
         const style = el.getAttribute('style');
         const urlMatches = style.match(/url\(['"]?([^'"()]+)['"]?\)/g);
         if (urlMatches) {
-          urlMatches.forEach(match => {
-            const url = match.replace(/url\(['"]?|['"]?\)/g, '');
-            if (isValidResourceUrl(url)) {
+          urlMatches.forEach((match) => {
+            const resourceUrl = match.replace(/url\(['"]?|['"]?\)/g, '');
+            if (isValidResourceUrl(resourceUrl)) {
               allResources.push({
-                url: getAbsoluteUrl(url),
-                type: 'image'
+                url: getAbsoluteUrl(resourceUrl),
+                type: 'image',
               });
             }
           });
@@ -478,7 +478,7 @@ async function renderAndCacheData(url) {
       });
 
       // 9. Preload/Prefetch resources
-      document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="dns-prefetch"], link[rel="preconnect"]').forEach(el => {
+      document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="dns-prefetch"], link[rel="preconnect"]').forEach((el) => {
         const href = el.getAttribute('href');
         if (href && isValidResourceUrl(href)) {
           const asType = el.getAttribute('as') || 'other';
@@ -492,7 +492,7 @@ async function renderAndCacheData(url) {
 
           allResources.push({
             url: getAbsoluteUrl(href),
-            type: type
+            type,
           });
         }
       });
@@ -507,7 +507,7 @@ async function renderAndCacheData(url) {
           header: document.querySelectorAll('header').length,
           footer: document.querySelectorAll('footer').length,
           aside: document.querySelectorAll('aside').length,
-          main: document.querySelectorAll('main').length
+          main: document.querySelectorAll('main').length,
         },
 
         // Heading structure
@@ -517,7 +517,7 @@ async function renderAndCacheData(url) {
           h3: document.querySelectorAll('h3').length,
           h4: document.querySelectorAll('h4').length,
           h5: document.querySelectorAll('h5').length,
-          h6: document.querySelectorAll('h6').length
+          h6: document.querySelectorAll('h6').length,
         },
 
         // Content structure
@@ -525,7 +525,7 @@ async function renderAndCacheData(url) {
         lists: {
           ul: document.querySelectorAll('ul').length,
           ol: document.querySelectorAll('ol').length,
-          total: document.querySelectorAll('ul, ol').length
+          total: document.querySelectorAll('ul, ol').length,
         },
         tables: document.querySelectorAll('table').length,
 
@@ -546,7 +546,7 @@ async function renderAndCacheData(url) {
           description: document.querySelector('meta[property="og:description"]')?.content || '',
           image: document.querySelector('meta[property="og:image"]')?.content || '',
           url: document.querySelector('meta[property="og:url"]')?.content || '',
-          type: document.querySelector('meta[property="og:type"]')?.content || ''
+          type: document.querySelector('meta[property="og:type"]')?.content || '',
         },
 
         // Text content analysis
@@ -562,9 +562,7 @@ async function renderAndCacheData(url) {
 
         // Content extractability indicators
         totalElements: document.querySelectorAll('*').length,
-        textNodes: Array.from(document.body?.childNodes || []).filter(node =>
-          node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0
-        ).length
+        textNodes: Array.from(document.body?.childNodes || []).filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0).length,
       };
 
       return {
@@ -598,8 +596,8 @@ async function renderAndCacheData(url) {
         formsCount: document.forms.length,
         tablesCount: document.querySelectorAll('table').length,
         pageSize: document.documentElement.outerHTML.length,
-        allResources: allResources,
-        llmReadability: llmReadability,
+        allResources,
+        llmReadability,
       };
     });
 
@@ -705,17 +703,17 @@ function analyzeContentFreshness(data) {
       daysSinceLastModified: null,
       lastCrawledDate: new Date().toISOString(),
       daysSinceLastCrawled: 0,
-      freshnessStatus: 'Unknown'
+      freshnessStatus: 'Unknown',
     };
   }
 
   const now = new Date();
-  
+
   // Safely get lastModified date
   const lastModified = (data.pageData && data.pageData.lastModified)
     ? new Date(data.pageData.lastModified)
     : null;
-    
+
   // Safely get lastCrawled date
   const lastCrawled = data.lastCrawled
     ? new Date(data.lastCrawled)
@@ -728,7 +726,7 @@ function analyzeContentFreshness(data) {
       : null,
     lastCrawledDate: lastCrawled.toISOString(),
     daysSinceLastCrawled: Math.floor(
-      (now - lastCrawled) / (1000 * 60 * 60 * 24)
+      (now - lastCrawled) / (1000 * 60 * 60 * 24),
     ),
     freshnessStatus: 'Unknown',
   };
@@ -764,5 +762,5 @@ export {
   setCachedData,
   getOrRenderData,
   renderAndCacheData,
-  analyzeContentFreshness
+  analyzeContentFreshness,
 };

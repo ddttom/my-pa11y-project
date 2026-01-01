@@ -17,19 +17,19 @@ export function formatScore(score) {
  * @type {Object}
  */
 const WCAG_2_1_GUIDELINES = {
-  '1.1': 'Text Alternatives',
-  '1.2': 'Time-based Media',
-  '1.3': 'Adaptable',
-  '1.4': 'Distinguishable',
-  '2.1': 'Keyboard Accessible',
-  '2.2': 'Enough Time',
-  '2.3': 'Seizures and Physical Reactions',
-  '2.4': 'Navigable',
-  '2.5': 'Input Modalities',
-  '3.1': 'Readable',
-  '3.2': 'Predictable',
-  '3.3': 'Input Assistance',
-  '4.1': 'Compatible'
+  1.1: 'Text Alternatives',
+  1.2: 'Time-based Media',
+  1.3: 'Adaptable',
+  1.4: 'Distinguishable',
+  2.1: 'Keyboard Accessible',
+  2.2: 'Enough Time',
+  2.3: 'Seizures and Physical Reactions',
+  2.4: 'Navigable',
+  2.5: 'Input Modalities',
+  3.1: 'Readable',
+  3.2: 'Predictable',
+  3.3: 'Input Assistance',
+  4.1: 'Compatible',
 };
 
 /**
@@ -50,12 +50,12 @@ export function createEmptyAnalysis() {
       Critical: 0,
       Serious: 0,
       Moderate: 0,
-      Minor: 0
+      Minor: 0,
     },
     byLevel: {
       A: 0,
       AA: 0,
-      AAA: 0
+      AAA: 0,
     },
     byGuideline: Object.keys(WCAG_2_1_GUIDELINES).reduce((acc, key) => {
       acc[key] = 0;
@@ -67,7 +67,7 @@ export function createEmptyAnalysis() {
     manualChecks: [],
     requiredManualChecks: [],
     remediationSuggestions: [],
-    score: 100
+    score: 100,
   };
 }
 
@@ -80,9 +80,7 @@ export function createEmptyAnalysis() {
 export function countSyllables(text) {
   return text.toLowerCase()
     .split(/\s+/)
-    .reduce((total, word) => {
-      return total + (word.match(/[aeiouy]{1,2}/g) || []).length;
-    }, 0);
+    .reduce((total, word) => total + (word.match(/[aeiouy]{1,2}/g) || []).length, 0);
 }
 
 /**
@@ -147,19 +145,19 @@ export function getGuidelineDescription(guideline) {
  */
 export function getRequiredManualChecks(guideline) {
   const manualChecks = {
-    '1.1': ['Verify all non-text content has appropriate text alternatives'],
-    '1.2': ['Check time-based media has captions and transcripts'],
-    '1.3': ['Verify content structure and relationships are programmatically determinable'],
-    '1.4': ['Check color contrast and text resizing'],
-    '2.1': ['Verify all functionality is available via keyboard'],
-    '2.2': ['Check timing is adjustable or can be turned off'],
-    '2.3': ['Verify no content flashes more than 3 times per second'],
-    '2.4': ['Check navigation and focus order'],
-    '2.5': ['Verify pointer gestures have alternative input methods'],
-    '3.1': ['Check language of page and parts'],
-    '3.2': ['Verify consistent navigation and identification'],
-    '3.3': ['Check error prevention and recovery'],
-    '4.1': ['Verify compatibility with assistive technologies']
+    1.1: ['Verify all non-text content has appropriate text alternatives'],
+    1.2: ['Check time-based media has captions and transcripts'],
+    1.3: ['Verify content structure and relationships are programmatically determinable'],
+    1.4: ['Check color contrast and text resizing'],
+    2.1: ['Verify all functionality is available via keyboard'],
+    2.2: ['Check timing is adjustable or can be turned off'],
+    2.3: ['Verify no content flashes more than 3 times per second'],
+    2.4: ['Check navigation and focus order'],
+    2.5: ['Verify pointer gestures have alternative input methods'],
+    3.1: ['Check language of page and parts'],
+    3.2: ['Verify consistent navigation and identification'],
+    3.3: ['Check error prevention and recovery'],
+    4.1: ['Verify compatibility with assistive technologies'],
   };
   return manualChecks[guideline] || [];
 }

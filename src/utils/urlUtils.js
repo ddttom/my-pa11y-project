@@ -9,7 +9,7 @@ import path from 'path';
 export function isValidUrl(url, baseUrl = null) {
   try {
     const urlObj = new URL(url);
-    
+
     // Skip non-HTTP protocols
     if (!urlObj.protocol.startsWith('http')) {
       return false;
@@ -25,7 +25,7 @@ export function isValidUrl(url, baseUrl = null) {
 
     // Skip common file extensions we don't want to process
     const skipExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.css', '.js'];
-    if (skipExtensions.some(ext => urlObj.pathname.toLowerCase().endsWith(ext))) {
+    if (skipExtensions.some((ext) => urlObj.pathname.toLowerCase().endsWith(ext))) {
       return false;
     }
 
@@ -56,12 +56,12 @@ export function isValidUrl(url, baseUrl = null) {
  * @returns {string} The fixed URL.
  */
 export function fixUrl(url) {
-  if (typeof url !== "string") {
-    return "";
+  if (typeof url !== 'string') {
+    return '';
   }
-  if (!url) return "";
+  if (!url) return '';
   // Remove duplicate slashes, but keep the protocol slashes intact
-  return url.replace(/(https?:\/\/)|(\/)+/g, "$1$2");
+  return url.replace(/(https?:\/\/)|(\/)+/g, '$1$2');
 }
 
 /**
@@ -71,8 +71,8 @@ export function fixUrl(url) {
  * @returns {string} The normalized URL.
  */
 export function normalizeUrl(url) {
-  if (typeof url !== "string") {
-    return "";
+  if (typeof url !== 'string') {
+    return '';
   }
   try {
     const parsedUrl = new URL(url);
@@ -100,14 +100,14 @@ export function normalizeUrl(url) {
  */
 export function extractDomain(url) {
   if (!isValidUrl(url)) {
-    return "";
+    return '';
   }
   const { hostname } = new URL(url);
   return hostname;
 }
 
 export async function writeToInvalidUrlFile(invalidUrl) {
-  const invalidUrlsPath = path.join(global.auditcore.options.output,"invalid_urls.json");
+  const invalidUrlsPath = path.join(global.auditcore.options.output, 'invalid_urls.json');
   // Check if the file exists, if not, create it with an empty array
   try {
     await fs.access(invalidUrlsPath);
@@ -119,13 +119,13 @@ export async function writeToInvalidUrlFile(invalidUrl) {
       return;
     }
   }
-  fs.readFile(invalidUrlsPath, "utf8")
+  fs.readFile(invalidUrlsPath, 'utf8')
     .then((data) => {
       const invalidUrls = JSON.parse(data);
       invalidUrls.push(invalidUrl);
       return fs.writeFile(
         invalidUrlsPath,
-        JSON.stringify(invalidUrls, null, 2)
+        JSON.stringify(invalidUrls, null, 2),
       );
     })
     .catch((error) => {
@@ -138,10 +138,10 @@ export function isValidXML(content) {
     // Try to find XML declaration or sitemap namespace
     const hasXMLDeclaration = content.trim().startsWith('<?xml');
     const hasSitemapNamespace = content.includes('xmlns="http://www.sitemaps.org/schemas/sitemap/');
-    
+
     // Check for basic XML structure
     const hasUrlsetTag = content.includes('<urlset') && content.includes('</urlset>');
-    
+
     return (hasXMLDeclaration || hasSitemapNamespace) && hasUrlsetTag;
   } catch (error) {
     return false;

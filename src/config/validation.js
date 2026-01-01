@@ -3,7 +3,7 @@
  * Ensures all configuration values are valid before use
  */
 
-import { LOG_LEVELS, WAIT_UNTIL, ENV_VARS } from './constants.js';
+import { LOG_LEVELS } from './constants.js';
 
 /**
  * Configuration schema definition
@@ -17,12 +17,13 @@ export const configSchema = {
         return 'Sitemap URL must be a non-empty string';
       }
       try {
+        // eslint-disable-next-line no-new
         new URL(value);
         return null;
       } catch {
         return 'Sitemap URL must be a valid URL';
       }
-    }
+    },
   },
   output: {
     type: 'string',
@@ -36,7 +37,7 @@ export const configSchema = {
         return 'Output directory cannot contain ".." (path traversal)';
       }
       return null;
-    }
+    },
   },
   limit: {
     type: 'number',
@@ -50,7 +51,7 @@ export const configSchema = {
         return 'Limit must be -1 (unlimited) or a positive integer';
       }
       return null;
-    }
+    },
   },
   count: {
     type: 'number',
@@ -64,22 +65,22 @@ export const configSchema = {
         return 'Count must be -1 (unlimited) or a positive integer';
       }
       return null;
-    }
+    },
   },
   cacheOnly: {
     type: 'boolean',
     required: false,
-    default: false
+    default: false,
   },
   cache: {
     type: 'boolean',
     required: false,
-    default: true
+    default: true,
   },
   forceDeleteCache: {
     type: 'boolean',
     required: false,
-    default: false
+    default: false,
   },
   logLevel: {
     type: 'string',
@@ -91,32 +92,32 @@ export const configSchema = {
         return `Log level must be one of: ${validLevels.join(', ')}`;
       }
       return null;
-    }
+    },
   },
   includeAllLanguages: {
     type: 'boolean',
     required: false,
-    default: false
+    default: false,
   },
   recursive: {
     type: 'boolean',
     required: false,
-    default: true
+    default: true,
   },
   enableHistory: {
     type: 'boolean',
     required: false,
-    default: false
+    default: false,
   },
   generateDashboard: {
     type: 'boolean',
     required: false,
-    default: false
+    default: false,
   },
   generateExecutiveSummary: {
     type: 'boolean',
     required: false,
-    default: false
+    default: false,
   },
   thresholds: {
     type: 'string',
@@ -126,8 +127,8 @@ export const configSchema = {
         return 'Thresholds file path must be a string';
       }
       return null;
-    }
-  }
+    },
+  },
 };
 
 /**
@@ -141,31 +142,31 @@ export const thresholdSchema = {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0 },
-          warn: { type: 'number', min: 0 }
-        }
+          warn: { type: 'number', min: 0 },
+        },
       },
       lcp: {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0 },
-          warn: { type: 'number', min: 0 }
-        }
+          warn: { type: 'number', min: 0 },
+        },
       },
       fcp: {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0 },
-          warn: { type: 'number', min: 0 }
-        }
+          warn: { type: 'number', min: 0 },
+        },
       },
       cls: {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0, max: 1 },
-          warn: { type: 'number', min: 0, max: 1 }
-        }
-      }
-    }
+          warn: { type: 'number', min: 0, max: 1 },
+        },
+      },
+    },
   },
   accessibility: {
     type: 'object',
@@ -174,17 +175,17 @@ export const thresholdSchema = {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0 },
-          warn: { type: 'number', min: 0 }
-        }
+          warn: { type: 'number', min: 0 },
+        },
       },
       maxWarnings: {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0 },
-          warn: { type: 'number', min: 0 }
-        }
-      }
-    }
+          warn: { type: 'number', min: 0 },
+        },
+      },
+    },
   },
   seo: {
     type: 'object',
@@ -193,10 +194,10 @@ export const thresholdSchema = {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0, max: 100 },
-          warn: { type: 'number', min: 0, max: 100 }
-        }
-      }
-    }
+          warn: { type: 'number', min: 0, max: 100 },
+        },
+      },
+    },
   },
   llm: {
     type: 'object',
@@ -205,18 +206,18 @@ export const thresholdSchema = {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0, max: 100 },
-          warn: { type: 'number', min: 0, max: 100 }
-        }
+          warn: { type: 'number', min: 0, max: 100 },
+        },
       },
       minRenderedScore: {
         type: 'object',
         properties: {
           pass: { type: 'number', min: 0, max: 100 },
-          warn: { type: 'number', min: 0, max: 100 }
-        }
-      }
-    }
-  }
+          warn: { type: 'number', min: 0, max: 100 },
+        },
+      },
+    },
+  },
 };
 
 /**
@@ -243,6 +244,7 @@ export function validateConfig(config, schema = configSchema) {
     }
 
     // Type validation
+    // eslint-disable-next-line valid-typeof
     if (rules.type && typeof value !== rules.type) {
       errors.push(`Field "${key}" must be of type ${rules.type}, got ${typeof value}`);
       continue;
@@ -259,7 +261,7 @@ export function validateConfig(config, schema = configSchema) {
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -297,6 +299,7 @@ export function validateThresholds(thresholds) {
 
         if (levelValue === undefined) continue;
 
+        // eslint-disable-next-line valid-typeof
         if (typeof levelValue !== levelSchema.type) {
           errors.push(`Threshold "${category}.${metric}.${level}" must be a ${levelSchema.type}`);
           continue;
@@ -323,11 +326,8 @@ export function validateThresholds(thresholds) {
           if (metricValue.warn < metricValue.pass) {
             errors.push(`Threshold "${category}.${metric}": warn value should be >= pass value`);
           }
-        } else {
-          // For scores (SEO, LLM), warn should be <= pass (lower score allowed)
-          if (metricValue.warn > metricValue.pass) {
-            errors.push(`Threshold "${category}.${metric}": warn value should be <= pass value for scores`);
-          }
+        } else if (metricValue.warn > metricValue.pass) {
+          errors.push(`Threshold "${category}.${metric}": warn value should be <= pass value for scores`);
         }
       }
     }
@@ -335,7 +335,7 @@ export function validateThresholds(thresholds) {
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -406,7 +406,7 @@ export function prepareConfig(config) {
   return {
     valid: validation.valid,
     config: prepared,
-    errors: validation.errors
+    errors: validation.errors,
   };
 }
 
@@ -426,13 +426,13 @@ export async function loadThresholds(filePath) {
     return {
       valid: validation.valid,
       thresholds,
-      errors: validation.errors
+      errors: validation.errors,
     };
   } catch (error) {
     return {
       valid: false,
       thresholds: null,
-      errors: [`Failed to load thresholds file: ${error.message}`]
+      errors: [`Failed to load thresholds file: ${error.message}`],
     };
   }
 }

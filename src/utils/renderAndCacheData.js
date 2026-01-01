@@ -1,6 +1,6 @@
 /**
  * Page rendering and caching utilities
- * 
+ *
  * This module provides comprehensive page rendering and caching capabilities including:
  * - Puppeteer-based page rendering
  * - Cache management with file-based storage
@@ -9,14 +9,14 @@
  * - SEO scoring integration
  */
 
-import { executeNetworkOperation, executePuppeteerOperation } from './networkUtils.js';
-import { calculateSeoScore } from './seoScoring.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { executeNetworkOperation, executePuppeteerOperation } from './networkUtils.js';
+import { calculateSeoScore } from './seoScoring.js';
 
 /**
  * Renders a page using Puppeteer and collects various data with enhanced error handling
- * 
+ *
  * Implements:
  * - Cache-first strategy with file-based storage
  * - Comprehensive page data collection including:
@@ -26,7 +26,7 @@ import path from 'path';
  *   - SEO metadata
  *   - Performance metrics
  * - Automatic caching of results
- * 
+ *
  * @param {string} url - The URL to render and analyze
  * @returns {Promise<Object>} The rendered and analyzed data containing:
  *   - html: Full page HTML
@@ -44,7 +44,7 @@ import path from 'path';
  */
 async function renderAndCacheData(url) {
   global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
-  
+
   // Try to read from cache first
   try {
     const cachePath = path.join(global.auditcore.options.cacheDir, `${Buffer.from(url).toString('hex')}.json`);
@@ -58,7 +58,7 @@ async function renderAndCacheData(url) {
   }
 
   // If cache miss, render fresh data
-  return await executeNetworkOperation(async () => {
+  return executeNetworkOperation(async () => {
     try {
       // Use Puppeteer with enhanced configuration
       const result = await executePuppeteerOperation(async (page) => {
@@ -78,9 +78,9 @@ async function renderAndCacheData(url) {
           }
         });
 
-        await page.goto(url, { 
+        await page.goto(url, {
           waitUntil: 'networkidle2',
-          timeout: 60000
+          timeout: 60000,
         });
 
         const html = await page.content();
