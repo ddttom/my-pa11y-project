@@ -52,6 +52,17 @@ function buildExecutiveSummary(results, comparison) {
  * Extract site name from results
  */
 function extractSiteName(results) {
+  // Try to get from performanceAnalysis first (current structure)
+  if (results.performanceAnalysis && results.performanceAnalysis.length > 0) {
+    try {
+      const url = new URL(results.performanceAnalysis[0].url);
+      return url.hostname;
+    } catch {
+      // Fall through to next attempt
+    }
+  }
+
+  // Fallback to legacy urls array structure
   if (results.urls && results.urls.length > 0) {
     try {
       const url = new URL(results.urls[0].url);
@@ -60,6 +71,7 @@ function extractSiteName(results) {
       return 'Unknown Site';
     }
   }
+
   return 'Unknown Site';
 }
 
@@ -67,8 +79,11 @@ function extractSiteName(results) {
  * Build overview section
  */
 function buildOverview(results) {
+  // Count total pages from performanceAnalysis (current structure) or legacy urls array
+  const totalPages = (results.performanceAnalysis || results.urls || []).length;
+
   return {
-    totalPages: (results.urls || []).length,
+    totalPages,
     analysisDate: new Date().toISOString().split('T')[0],
     schemaVersion: results.schemaVersion || '1.0.0',
     robotsComplianceEnabled: !global.auditcore?.options?.forceScrape,
@@ -251,12 +266,21 @@ function buildLLMSummary(results, comparisonData) {
 
   const status = avgServedScore >= 70 ? 'Good' : avgServedScore >= 50 ? 'Fair' : 'Needs Improvement';
 
+  // Check if llms.txt file exists globally
+  const llmsAnalysisExists = (results.llmsTxtAnalysis || []).some((a) => a.exists);
+
+  // Count pages with explicit llms.txt references OR the actual llms.txt file
+  const pagesWithExplicitRefs = metrics.filter((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta).length;
+  const hasLlmsTxtFile = metrics.some((m) => m.url.endsWith('/llms.txt'));
+
   const summary = {
     status,
     servedScore: Math.round(avgServedScore),
     renderedScore: Math.round(avgRenderedScore),
-    // Only count pages that explicitly reference llms.txt, not those that just benefit from global
-    pagesWithLLMsTxt: metrics.filter((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta || m.url.endsWith('/llms.txt')).length,
+    // Count explicit references + file (if analyzed)
+    pagesWithLLMsTxt: pagesWithExplicitRefs + (hasLlmsTxtFile ? 1 : 0),
+    // Add flag to indicate if file exists globally (even if not in metrics)
+    hasLLMsTxtFile: llmsAnalysisExists || hasLlmsTxtFile,
   };
 
   if (comparisonData) {
@@ -328,11 +352,16 @@ function buildKeyFindings(results) {
     });
   }
 
-  // LLM findings - check if llms.txt exists anywhere (file or references)
-  const llmMetrics = results.llmMetrics || [];
-  const hasLLMsTxt = llmMetrics.some((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta || m.url.endsWith('/llms.txt'));
+  // LLM findings - check if llms.txt exists
+  // First check if there's a dedicated llms.txt file analysis
+  const llmsAnalysisExists = (results.llmsTxtAnalysis || []).some((a) => a.exists);
 
-  if (!hasLLMsTxt && llmMetrics.length > 0) {
+  // If no dedicated llms.txt, check if pages reference it
+  const llmMetrics = results.llmMetrics || [];
+  const hasLLMsTxtReference = llmMetrics.some((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta || m.url.endsWith('/llms.txt'));
+
+  // Only report missing if neither the file nor references exist
+  if (!llmsAnalysisExists && !hasLLMsTxtReference && llmMetrics.length > 0) {
     findings.push({
       category: 'LLM Suitability',
       severity: 'Low',
@@ -624,7 +653,18 @@ function generateMarkdownSummary(summary, results) {
   md += `- **Status:** ${summary.llmSuitability.status}\n`;
   md += `- **Served Score:** ${summary.llmSuitability.servedScore}/100\n`;
   md += `- **Rendered Score:** ${summary.llmSuitability.renderedScore}/100\n`;
-  md += `- **Pages with llms.txt:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
+
+  // Show llms.txt file status and page references
+  if (summary.llmSuitability.hasLLMsTxtFile) {
+    md += `- **llms.txt File:** ✅ Present\n`;
+    if (summary.llmSuitability.pagesWithLLMsTxt > 0) {
+      md += `- **Pages Referencing llms.txt:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
+    }
+  } else {
+    md += `- **llms.txt File:** ❌ Not Found\n`;
+    md += `- **Pages with llms.txt References:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
+  }
+
   if (summary.llmSuitability.trend) {
     md += `- **Trend (Served):** ${summary.llmSuitability.trend.servedScore > 0 ? '📈' : '📉'} ${summary.llmSuitability.trend.servedScore.toFixed(1)}%\n`;
   }
