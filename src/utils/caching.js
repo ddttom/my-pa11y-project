@@ -44,6 +44,49 @@ async function ensureCacheDir(options = {}) {
   }
 }
 
+/**
+ * Check if cache is stale by comparing source Last-Modified with cache timestamp
+ * @param {string} url - URL to check
+ * @param {string} cacheTimestamp - ISO timestamp when cache was created
+ * @returns {Promise<boolean>} True if cache is stale and should be invalidated
+ */
+async function isCacheStale(url, cacheTimestamp) {
+  try {
+    // Make HEAD request to get Last-Modified header without downloading content
+    const response = await axios.head(url, {
+      timeout: 5000,
+      validateStatus: (status) => status >= 200 && status < 500, // Accept any non-5xx response
+    });
+
+    const lastModified = response.headers['last-modified'];
+    if (!lastModified) {
+      // No Last-Modified header - can't determine staleness, assume fresh
+      global.auditcore.logger.debug(`No Last-Modified header for ${url}, assuming cache is fresh`);
+      return false;
+    }
+
+    const sourceModifiedDate = new Date(lastModified);
+    const cacheDate = new Date(cacheTimestamp);
+
+    // Cache is stale if source was modified after cache was created
+    const isStale = sourceModifiedDate > cacheDate;
+
+    if (isStale) {
+      global.auditcore.logger.info(
+        `Cache stale for ${url}: source modified ${sourceModifiedDate.toISOString()}, cache created ${cacheDate.toISOString()}`
+      );
+    } else {
+      global.auditcore.logger.debug(`Cache fresh for ${url}`);
+    }
+
+    return isStale;
+  } catch (error) {
+    // If HEAD request fails, assume cache is fresh to avoid unnecessary re-fetches
+    global.auditcore.logger.debug(`HEAD request failed for ${url}: ${error.message}, assuming cache is fresh`);
+    return false;
+  }
+}
+
 async function getCachedData(url) {
   const CACHE_DIR = getCacheDir();
   const cacheKey = generateCacheKey(url);
@@ -67,6 +110,17 @@ async function getCachedData(url) {
       }
     }
 
+    // Check if cache is stale by comparing with source Last-Modified
+    if (parsedData.lastCrawled) {
+      const isStale = await isCacheStale(url, parsedData.lastCrawled);
+      if (isStale) {
+        global.auditcore.logger.info(`Cache invalidated for ${url} - source has been modified`);
+        // Delete stale cache files
+        await invalidateCache(url);
+        return null;
+      }
+    }
+
     return parsedData;
   } catch (error) {
     if (error.code !== 'ENOENT') {
@@ -75,6 +129,33 @@ async function getCachedData(url) {
       global.auditcore.logger.info(`Cache miss for ${url}`);
     }
     return null;
+  }
+}
+
+/**
+ * Invalidate (delete) cache files for a given URL
+ * @param {string} url - URL to invalidate cache for
+ */
+async function invalidateCache(url) {
+  const CACHE_DIR = getCacheDir();
+  const cacheKey = generateCacheKey(url);
+
+  const filesToDelete = [
+    path.join(CACHE_DIR, `${cacheKey}.json`),
+    path.join(CACHE_DIR, 'served', `${cacheKey}.html`),
+    path.join(CACHE_DIR, 'rendered', `${cacheKey}.html`),
+    path.join(CACHE_DIR, 'rendered', `${cacheKey}.log`),
+  ];
+
+  for (const filePath of filesToDelete) {
+    try {
+      await fs.unlink(filePath);
+      global.auditcore.logger.debug(`Deleted stale cache file: ${filePath}`);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        global.auditcore.logger.debug(`Could not delete ${filePath}: ${error.message}`);
+      }
+    }
   }
 }
 
