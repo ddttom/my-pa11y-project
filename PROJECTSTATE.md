@@ -234,6 +234,29 @@ Current snapshot of Web Audit Suite implementation status.
 - [src/main.js](src/main.js) (cache path handling)
 - [src/utils/caching.js](src/utils/caching.js) (cache directory creation)
 
+### Cache Staleness Checking ✅
+
+**Status:** Complete and tested (NEW - Jan 3, 2026)
+
+**Features:**
+
+- HTTP HEAD requests to validate cache freshness
+- Compares source `Last-Modified` header with cache `lastCrawled` timestamp
+- Automatic invalidation and deletion of stale cache files
+- Conservative error handling (assumes fresh on failure)
+- Deletes all related cache files: JSON, served HTML, rendered HTML, logs
+- 5-second timeout on HEAD requests
+
+**Implementation:**
+
+- `isCacheStale()` - Performs HEAD request and timestamp comparison
+- `getCachedData()` - Validates cache before returning
+- `invalidateCache()` - Deletes all related cache files when stale
+
+**Files Modified:**
+
+- [src/utils/caching.js](src/utils/caching.js) - Added staleness checking functions
+
 ### Intelligent Cache Clearing ✅
 
 **Status:** Complete and tested (NEW - Jan 3, 2026)
