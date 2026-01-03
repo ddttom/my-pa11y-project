@@ -17,3 +17,7 @@ This is NOT documentation - these are rules learned the hard way when something 
 **Don't auto-fix complex tables with markdownlint** (2025-12-31): Tried running `npm run lint:md:fix` on docs/report-layout.md tables and it made them worse by mixing styles. Manually format complex tables instead.
 
 **Avoid capturing loop variables in async functions** (2026-01-01): Tried incrementing a `completed` counter inside `map()` callbacks within a loop, triggered ESLint no-loop-func error. Always use object references (`{ completed: 0 }`) or capture loop index in const before mapping to avoid unsafe variable references in closures.
+
+**Wrap multi-line filter conditions in parentheses** (2026-01-03): ESLint error when filter callback has multi-line condition without wrapping parentheses. Always wrap the entire condition expression in parentheses: `.filter((item) => (condition1 || condition2))` instead of `.filter((item) => condition1 || condition2)`.
+
+**Remove unused imports immediately** (2026-01-03): Added import statement planning to use it later, but never used it - ESLint caught it. Always remove unused imports immediately or only add them when you're about to use them.
