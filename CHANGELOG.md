@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Cache Staleness Checking**: Automatic validation of cached data freshness (2026-01-03)
+  - HTTP HEAD requests to check if source URLs have been modified
+  - Compares `Last-Modified` header from source with cache's `lastCrawled` timestamp
+  - Automatic invalidation and deletion of stale cache files
+  - Conservative error handling: assumes cache is fresh if HEAD request fails or no `Last-Modified` header
+  - Deletes all related cache files: JSON metadata, served HTML, rendered HTML, console logs
+  - 5-second timeout on HEAD requests to avoid hanging
+  - Implementation:
+    - `isCacheStale()` function performs HEAD request and timestamp comparison
+    - `getCachedData()` validates cache freshness before returning data
+    - `invalidateCache()` deletes all related cache files when staleness detected
+  - Files modified:
+    - `src/utils/caching.js` - Added staleness checking functions (+81 lines)
+
 - **Regression Detection**: Automated quality gate enforcement with baseline comparison
   - **Historical Tracking**: Store timestamped results for trend analysis
     - Results stored in `history/results-<timestamp>.json`
