@@ -624,7 +624,7 @@ function generateMarkdownSummary(summary, results) {
 
   // Calculate headline score by averaging all category scores
   const headlineScore = Math.round(
-    (summary.performance.score + summary.accessibility.score + summary.seo.score + summary.llmSuitability.servedScore) / 4
+    (summary.performance.score + summary.accessibility.score + summary.seo.score + summary.llmSuitability.servedScore) / 4,
   );
   const headlineStatus = headlineScore >= 80 ? 'Excellent' : headlineScore >= 70 ? 'Good' : headlineScore >= 60 ? 'Fair' : headlineScore >= 40 ? 'Needs Improvement' : 'Critical';
   md += `## Overall Score: ${headlineScore}/100 (${headlineStatus})\n\n`;
@@ -693,12 +693,12 @@ function generateMarkdownSummary(summary, results) {
 
   // Show llms.txt file status and page references
   if (summary.llmSuitability.hasLLMsTxtFile) {
-    md += `- **llms.txt File:** ✅ Present\n`;
+    md += '- **llms.txt File:** ✅ Present\n';
     if (summary.llmSuitability.pagesWithLLMsTxt > 0) {
       md += `- **Pages Referencing llms.txt:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
     }
   } else {
-    md += `- **llms.txt File:** ❌ Not Found\n`;
+    md += '- **llms.txt File:** ❌ Not Found\n';
     md += `- **Pages with llms.txt References:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
   }
 
