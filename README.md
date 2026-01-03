@@ -398,6 +398,10 @@ web-audit-suite/
 - Graceful error recovery
 - Enhanced network error handling with retry mechanism
 - Automatic cache directory management
+- Cache staleness checking with HTTP HEAD requests
+  - Automatic validation of cached data freshness
+  - Compares source Last-Modified headers with cache timestamps
+  - Invalidates and re-fetches stale cache automatically
 - URL processing control with count parameter
 - Preserved output directory contents
 - Configurable sampling limits for testing

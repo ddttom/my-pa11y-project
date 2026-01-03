@@ -284,6 +284,15 @@ function shouldSkipLanguageVariant(url)
 - `--force-delete-cache` to clear cache and old reports (preserves `history/` and `baseline.json`)
 - Cache is automatically cleaned when switching output directories
 
+**Cache Staleness Checking**: Automatic validation of cached data freshness:
+
+- Performs HTTP HEAD requests to check if source URLs have been modified
+- Compares `Last-Modified` header from source with cache's `lastCrawled` timestamp
+- If source is newer (stale cache), automatically invalidates and deletes all related cache files
+- Conservative error handling: assumes cache is fresh if HEAD request fails or no `Last-Modified` header
+- Deletes JSON metadata, served HTML, rendered HTML, and console logs when stale detected
+- 5-second timeout on HEAD requests to avoid hanging
+
 **Important**: `--force-delete-cache` preserves historical tracking data and baseline for regression detection. Only the cache directory and old report files are deleted.
 
 ### Resume Capability
