@@ -416,6 +416,17 @@ Current snapshot of Web Audit Suite implementation status.
   - Fixed counting logic to only count pages with explicit references, not all pages when global llms.txt exists
   - Files: [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js)
 
+- **Executive Summary Improvements**
+  - Added headline score by averaging 4 category scores (Performance, Accessibility, SEO, LLM)
+  - Displays prominently at top of executive summary with status (Excellent/Good/Fair/Needs Improvement/Critical)
+  - Fixed markdown table formatting to comply with markdownlint rules (spaces around pipes)
+  - Removed italic emphasis from footer to fix markdown linting errors
+  - Fixed 11 data structure mismatches in executive summary generation:
+    - Site name extraction, page count, SEO scores, LLM scores, llms.txt status
+    - Average headings calculation, meta description check, LLM recommendations, performance scoring
+  - Files: [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js)
+  - Related learning: Added JSON validation pattern to LEARNINGS.md (always verify data structure before coding)
+
 - **Code Quality Improvements**
   - Reduced logging verbosity by removing configuration JSON dumps from debug logs
   - Removed temporary debug code for specific URL search feature (346 lines)
