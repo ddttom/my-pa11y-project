@@ -337,7 +337,7 @@ function buildKeyFindings(results) {
   // SEO findings
   const seoMetrics = results.seoScores || [];
   if (seoMetrics.length > 0) {
-    const avgScore = average(seoMetrics.map((m) => m.totalScore || 0));
+    const avgScore = average(seoMetrics.map((m) => m.score || 0));
     if (avgScore < 70) {
       findings.push({
         category: 'SEO',
