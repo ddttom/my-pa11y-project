@@ -1135,6 +1135,10 @@ The tool also generates cache files for debugging:
 **Site:** [domain]
 **Generated:** [timestamp]
 **Pages Analyzed:** [count]
+**robots.txt Compliance:** [✅/⚠️] [Enabled/Disabled]
+**Cache Staleness:** [✅/⚠️/ℹ️] [capability message]
+
+## Overall Score: [score]/100 ([status])
 
 ## Overall Status
 [Table with Performance, Accessibility, SEO, LLM status and scores]
@@ -1171,12 +1175,17 @@ The tool also generates cache files for debugging:
 
 ### Key Fields
 
+- **Overall Score**: Headline score averaging Performance, Accessibility, SEO, and LLM Suitability scores (0-100)
 - **Overall Status**: Pass/Warn/Fail for each category
 - **Scores**: Numerical scores (0-100 where applicable)
 - **Trends**: Percentage changes from previous run
 - **Findings**: Critical issues requiring attention
 - **Recommendations**: Prioritized action items
 - **robots.txt Compliance**: Shows whether compliance mode was enabled during analysis
+- **Cache Staleness**: Indicates whether the site provides HTTP Last-Modified headers for cache staleness detection
+  - ✅ Site provides headers - cache staleness checking will work
+  - ⚠️ Site does not provide headers - cache staleness checking will not work
+  - ℹ️ Unable to determine (cache not available)
 
 ---
 
@@ -1196,7 +1205,9 @@ The tool also generates cache files for debugging:
     "totalPages": 100,
     "analysisDate": "YYYY-MM-DD",
     "schemaVersion": "2.0.0",
-    "robotsComplianceEnabled": true
+    "robotsComplianceEnabled": true,
+    "cacheStalenessNote": "string",
+    "cacheStalenessCapable": true|false|null
   },
   "performance": {
     "status": "Excellent|Good|Fair|Poor",
@@ -1270,6 +1281,14 @@ The tool also generates cache files for debugging:
   - `true`: Tool respected robots.txt directives (default, ethical mode)
   - `false`: Tool used force-scrape mode (bypassed robots.txt restrictions)
   - This field indicates whether the `--force-scrape` flag was used or `FORCE_SCRAPE=true` was set in .env
+- `cacheStalenessNote`: Human-readable message about cache staleness capability
+  - `"✅ Site provides HTTP Last-Modified header - cache staleness checking will work"`
+  - `"⚠️ No Last-Modified header found in HTTP response - cache staleness checking will not work"`
+  - `"ℹ️ Unable to determine (cache not available)"`
+- `cacheStalenessCapable`: Boolean or null indicating if site supports cache staleness detection
+  - `true`: Site provides HTTP Last-Modified headers, cache staleness checking will work
+  - `false`: Site does not provide Last-Modified headers, cache staleness checking will not work
+  - `null`: Unable to determine (cache files not available during report generation)
 
 **robots.txt Compliance Context:**
 
@@ -1285,6 +1304,39 @@ When `robotsComplianceEnabled` is `false`, the tool:
 - Bypassed all robots.txt restrictions
 - Crawled all URLs regardless of robots.txt rules
 - Used force-scrape mode (should only be used with explicit permission)
+
+**Cache Staleness Capability Context:**
+
+The `cacheStalenessNote` and `cacheStalenessCapable` fields indicate whether the analyzed site provides HTTP `Last-Modified` headers, which are required for automatic cache staleness detection.
+
+Cache staleness checking works by:
+
+1. Making HTTP HEAD requests to source URLs
+2. Comparing the `Last-Modified` header from the source with the cache's `lastCrawled` timestamp
+3. Automatically invalidating and deleting stale cache files when source content has changed
+
+When `cacheStalenessCapable` is `true`:
+
+- Site provides HTTP `Last-Modified` headers in responses
+- Cache staleness checking will work automatically
+- Stale cache files will be detected and refreshed on subsequent runs
+- Users can rely on automatic cache invalidation
+
+When `cacheStalenessCapable` is `false`:
+
+- Site does not provide `Last-Modified` headers
+- Cache staleness checking cannot determine freshness
+- Cache is conservatively assumed to be fresh (to avoid unnecessary re-fetches)
+- Users may need to manually clear cache with `--force-delete-cache` to ensure fresh data
+
+When `cacheStalenessCapable` is `null`:
+
+- Unable to determine capability (cache files not available during report generation)
+- This typically occurs when running `--generate-executive-summary` without cache
+
+**Implementation Details:**
+
+The executive summary checks the first URL's cache file for the presence of a `Last-Modified` header in the cached `headers` object. This provides a representative sample of whether the site supports cache staleness detection. The check uses the same MD5 hash function as the caching system to locate cache files.
 
 ---
 
