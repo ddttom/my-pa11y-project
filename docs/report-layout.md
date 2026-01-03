@@ -52,6 +52,525 @@ The following reports are generated when specific CLI flags are used:
 
 ---
 
+## Primary Results File (`results.json`)
+
+**Purpose**: Single source of truth containing all collected data from analysis phase
+**Type**: JSON
+**Location**: `<output-dir>/results.json`
+**Aggregation Level**: Site-wide
+
+### Overview
+
+The `results.json` file is the **master data store** from which all CSV and markdown reports are generated. This architecture ensures:
+
+- **Single Source of Truth**: All report data originates from this file
+- **Report Regeneration**: Reports can be regenerated without re-crawling
+- **Data Consistency**: All reports reflect the same dataset
+- **Historical Comparison**: File can be archived for trend analysis
+
+**CRITICAL FOR AI ASSISTANTS**: When adding or modifying report generation code, ALWAYS verify field names against this file structure first. See LEARNINGS.md for the 5-step validation pattern.
+
+### Top-Level Structure
+
+The file contains 23 top-level arrays and objects:
+
+```json
+{
+  "schemaVersion": "1.2.0",
+  "canonicalMetrics": [],
+  "contentAnalysis": [],
+  "contentMetrics": {},
+  "failedUrls": [],
+  "h1Metrics": {},
+  "h2Metrics": {},
+  "hreflangMetrics": {},
+  "imageMetrics": {},
+  "internalLinks": [],
+  "linkMetrics": {},
+  "llmMetrics": [],
+  "llmsTxtAnalysis": {},
+  "metaDescriptionMetrics": {},
+  "originalSitemapUrls": [],
+  "pa11y": [],
+  "performanceAnalysis": [],
+  "responseCodeMetrics": {},
+  "robotsTxtAnalysis": {},
+  "securityMetrics": [],
+  "seoScores": [],
+  "titleMetrics": {},
+  "urlMetrics": {}
+}
+```
+
+### Schema Version
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `schemaVersion` | String | Data structure version (e.g., "1.2.0") |
+
+### Array Fields (Per-Page Data)
+
+#### contentAnalysis[]
+
+Comprehensive page content metrics. Each object represents one analyzed page.
+
+**Key Fields**:
+
+| Field | Type | Description | Nullable |
+| ----- | ---- | ----------- | -------- |
+| `url` | String | Fully qualified page URL | No |
+| `wordCount` | Integer | Total words on page | No |
+| `h1Count` | Integer | Number of H1 elements | No |
+| `h2Count` | Integer | Number of H2 elements | No |
+| `h3Count` | Integer | Number of H3 elements | No |
+| `imagesCount` | Integer | Total images on page | No |
+| `images` | Array | Array of image objects (see imageMetrics) | No |
+| `imagesWithoutAlt` | Integer | Images missing alt text | No |
+| `internalLinksCount` | Integer | Same-domain links | No |
+| `externalLinksCount` | Integer | Cross-domain links | No |
+| `title` | String | Page title tag content | Yes |
+| `metaDescription` | String | Meta description content | Yes |
+| `h1` | String | First H1 text content | Yes |
+| `hasResponsiveMetaTag` | Boolean | Viewport meta tag present | No |
+| `scriptsCount` | Integer | Number of script tags | No |
+| `stylesheetsCount` | Integer | Number of stylesheet links | No |
+| `htmlLang` | String | HTML lang attribute value | Yes |
+| `canonicalUrl` | String | Canonical URL if specified | Yes |
+| `formsCount` | Integer | Number of forms on page | No |
+| `tablesCount` | Integer | Number of tables on page | No |
+| `pageSize` | Integer | HTML size in bytes | No |
+| `jsErrors` | Integer | JavaScript errors detected | No |
+| `pa11yIssuesCount` | Integer | Total accessibility issues | No |
+
+**Example**:
+
+```json
+{
+  "url": "https://example.com/",
+  "wordCount": 519,
+  "h1Count": 1,
+  "h2Count": 5,
+  "h3Count": 5,
+  "imagesCount": 14,
+  "images": [],
+  "imagesWithoutAlt": 14,
+  "internalLinksCount": 3,
+  "externalLinksCount": 0,
+  "title": "Example Page Title",
+  "metaDescription": "Example description...",
+  "h1": "Main Heading",
+  "hasResponsiveMetaTag": true,
+  "scriptsCount": 7,
+  "stylesheetsCount": 10,
+  "htmlLang": "en",
+  "canonicalUrl": "https://example.com/",
+  "formsCount": 0,
+  "tablesCount": 0,
+  "pageSize": 23217,
+  "jsErrors": 2,
+  "pa11yIssuesCount": 0
+}
+```
+
+**Used By**: `content_quality.csv`, `seo_report.csv`
+
+#### performanceAnalysis[]
+
+Performance metrics and Core Web Vitals for each page.
+
+**Key Fields**:
+
+| Field | Type | Unit | Description |
+| ----- | ---- | ---- | ----------- |
+| `url` | String | - | Fully qualified page URL |
+| `loadTime` | Integer | ms | Total page load time |
+| `firstContentfulPaint` | Integer | ms | FCP metric |
+| `firstPaint` | Integer | ms | First Paint metric |
+| `domContentLoaded` | Integer | ms | DOMContentLoaded event |
+| `lastmod` | String | ISO 8601 | Last-Modified header value |
+
+**Used By**: `performance_analysis.csv`
+
+#### seoScores[]
+
+Calculated SEO scores with detailed breakdowns.
+
+**Top-Level Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `url` | String | Fully qualified page URL |
+| `score` | Integer | Total SEO score (0-100) |
+| `lastmod` | String | Last-Modified header value |
+| `details` | Object | Nested scoring breakdown |
+
+**Details Object Structure**:
+
+The `details` object contains category-specific scores:
+
+```json
+{
+  "titleOptimization": { "score": 15, "maxScore": 15, "issues": [] },
+  "metaDescriptionOptimization": { "score": 10, "maxScore": 10, "issues": [] },
+  "h1Optimization": { "score": 10, "maxScore": 10, "issues": [] },
+  "contentLength": { "score": 10, "maxScore": 10, "issues": [] },
+  "contentQuality": { "score": 10, "maxScore": 10, "issues": [] },
+  "imageOptimization": { "score": 5, "maxScore": 10, "issues": ["Some images missing alt text"] },
+  "internalLinking": { "score": 5, "maxScore": 5, "issues": [] },
+  "pageSpeed": { "score": 10, "maxScore": 10, "issues": [] },
+  "mobileOptimization": { "score": 5, "maxScore": 5, "issues": [] },
+  "structuredData": { "score": 5, "maxScore": 5, "issues": [] },
+  "socialMediaTags": { "score": 5, "maxScore": 5, "issues": [] },
+  "urlStructure": { "score": 5, "maxScore": 5, "issues": [] },
+  "securityFactors": { "score": 0, "maxScore": 5, "issues": ["Missing HSTS header"] }
+}
+```
+
+Each category has:
+
+- `score`: Points awarded for this category
+- `maxScore`: Maximum possible points
+- `issues`: Array of issues preventing full score
+
+**Used By**: `seo_scores.csv`, `executive_summary.json`
+
+#### llmMetrics[]
+
+LLM agent suitability metrics for both served and rendered HTML states.
+
+**Top-Level Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `url` | String | Fully qualified page URL |
+| `semanticHTML` | Object | Semantic HTML element analysis |
+| `formFields` | Object | Form field naming and structure |
+| `structuredData` | Object | Schema.org structured data |
+| `llmsTxt` | Object | llms.txt file detection |
+| `robotsTxt` | Object | robots.txt compliance |
+| `htmlSource` | Object | HTML source accessibility |
+| `errorHandling` | Object | Error message persistence |
+| `buttonStates` | Object | Button state visibility |
+| `authenticationState` | Object | Auth state attributes |
+| `dataAttributes` | Object | Agent visibility controls |
+| `tableData` | Object | Table data attributes |
+| `apiEndpoints` | Object | API endpoint documentation |
+| `formAutocomplete` | Object | Form autocomplete attributes |
+| `captchaProtection` | Object | CAPTCHA detection |
+
+**Metric Category Structure**:
+
+Each category object has:
+
+```json
+{
+  "importance": "essential_served|essential_rendered|nice_to_have",
+  "metrics": {
+    // Category-specific metrics
+  }
+}
+```
+
+**Example - semanticHTML**:
+
+```json
+{
+  "importance": "essential_served",
+  "metrics": {
+    "hasMain": true,
+    "hasNav": false,
+    "hasHeader": true,
+    "hasFooter": true,
+    "hasArticle": false,
+    "navCount": 0,
+    "articleCount": 0,
+    "divCount": 64
+  }
+}
+```
+
+**Example - formFields**:
+
+```json
+{
+  "importance": "essential_served",
+  "metrics": {
+    "formCount": 0,
+    "totalInputs": 0,
+    "standardNamedFields": 0,
+    "fieldsWithLabels": 0,
+    "standardNameRatio": 1,
+    "labelRatio": 1
+  }
+}
+```
+
+**Example - llmsTxt**:
+
+```json
+{
+  "importance": "essential_served",
+  "metrics": {
+    "hasLLMsTxtReference": false,
+    "hasLLMsTxtMeta": false,
+    "llmsTxtUrl": null
+  }
+}
+```
+
+**Importance Levels**:
+
+- `essential_served`: Critical for ALL agents (CLI, API, browser) - highest weight
+- `essential_rendered`: Critical for browser agents only - medium weight
+- `nice_to_have`: Speculative improvements - lowest weight
+
+**Used By**: `llm_general_suitability.csv`, `llm_frontend_suitability.csv`, `llm_backend_suitability.csv`
+
+#### pa11y[]
+
+WCAG accessibility violations detected by Pa11y.
+
+**Top-Level Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `pageUrl` | String | Fully qualified page URL |
+| `documentTitle` | String | Page title at time of test |
+| `issues` | Array | Array of issue objects |
+
+**Issue Object Structure**:
+
+Each issue in the `issues` array contains:
+
+```json
+{
+  "code": "WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail",
+  "type": "error",
+  "typeCode": 1,
+  "severity": "error",
+  "message": "Description of issue",
+  "context": "<div>HTML context</div>",
+  "selector": "#element > .class",
+  "runner": "htmlcs",
+  "runnerExtras": {},
+  "guideline": "WCAG2AA.Principle1.Guideline1_4.1_4_3",
+  "guidelineDescription": "Guideline text",
+  "remediation": "How to fix the issue",
+  "wcagLevel": "AA",
+  "requiresManualCheck": false
+}
+```
+
+**Issue Severity Levels**:
+
+- `error`: WCAG violations that must be fixed
+- `warning`: Potential issues requiring review
+- `notice`: Best practice suggestions
+
+**Used By**: `accessibility_report.csv`, `wcag_report.md`, `executive_summary.json`
+
+#### internalLinks[]
+
+Individual link records for link analysis.
+
+**Key Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `source` | String | Source page URL |
+| `target` | String | Target URL |
+| `anchorText` | String | Link text content |
+| `isInternal` | Boolean | Whether link is same-domain |
+| `statusCode` | Integer | HTTP response code of target |
+
+**Used By**: `link_analysis.csv`
+
+#### failedUrls[]
+
+URLs that could not be processed during analysis.
+
+**Structure**:
+
+```json
+{
+  "url": "https://example.com/failed",
+  "error": "Error message description",
+  "timestamp": "2026-01-03T19:03:09.868Z"
+}
+```
+
+**Used By**: Error reporting, audit logs
+
+#### originalSitemapUrls[]
+
+Initial URLs discovered from sitemap before filtering.
+
+**Structure**: Array of URL strings
+
+```json
+[
+  "https://example.com/page1",
+  "https://example.com/page2"
+]
+```
+
+**Used By**: `missing_sitemap_urls.csv`, sitemap validation
+
+### Metric Objects (Aggregated Data)
+
+These objects contain site-wide aggregated statistics:
+
+#### contentMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `averageWordCount` | Number | Mean words per page |
+| `averageHeadings` | Number | Mean heading count |
+| `pagesWithLowContent` | Integer | Pages below word threshold |
+
+#### titleMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `totalPages` | Integer | Pages analyzed |
+| `pagesWithTitle` | Integer | Pages with title tags |
+| `averageTitleLength` | Number | Mean title length |
+
+#### h1Metrics, h2Metrics
+
+Similar structure for heading statistics.
+
+#### imageMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `totalImages` | Integer | Total images across site |
+| `imagesWithoutAlt` | Integer | Images missing alt text |
+| `averageImagesPerPage` | Number | Mean images per page |
+
+#### metaDescriptionMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `pagesWithMetaDescription` | Integer | Pages with meta descriptions |
+| `averageDescriptionLength` | Number | Mean description length |
+
+#### responseCodeMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `200` | Integer | Count of successful responses |
+| `404` | Integer | Count of not found errors |
+| `500` | Integer | Count of server errors |
+
+#### linkMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `totalInternalLinks` | Integer | Total same-domain links |
+| `totalExternalLinks` | Integer | Total cross-domain links |
+| `brokenLinks` | Integer | Links returning errors |
+
+#### securityMetrics
+
+Security headers analysis indexed by URL.
+
+**Structure**: Object with URL keys mapping to security header status
+
+```json
+{
+  "https://example.com/": {
+    "https": 1,
+    "hasHsts": 1,
+    "hasCsp": 0,
+    "hasXFrameOptions": 0,
+    "hasXContentTypeOptions": 0
+  }
+}
+```
+
+**Field Descriptions** (for each URL):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `https` | Integer | 1 if HTTPS, 0 if HTTP |
+| `hasHsts` | Integer | 1 if HTTP Strict Transport Security present, 0 if not |
+| `hasCsp` | Integer | 1 if Content Security Policy present, 0 if not |
+| `hasXFrameOptions` | Integer | 1 if X-Frame-Options present, 0 if not |
+| `hasXContentTypeOptions` | Integer | 1 if X-Content-Type-Options present, 0 if not |
+
+**Used By**: `security_report.csv`
+
+#### canonicalMetrics, hreflangMetrics, urlMetrics
+
+Similar aggregated statistics for canonical URLs, hreflang tags, and URL structures.
+
+### File Analysis Arrays
+
+#### robotsTxtAnalysis[]
+
+Analysis of robots.txt file quality and AI agent compatibility.
+
+**Structure**: Array with one object per robots.txt file found
+
+```json
+{
+  "url": "https://example.com/robots.txt",
+  "exists": true,
+  "quality": {
+    "score": 25,
+    "hasUserAgent": true,
+    "hasSpecificAgents": false,
+    "hasSitemap": true
+  },
+  "recommendations": [
+    "Add specific user-agent declarations for AI crawlers"
+  ]
+}
+```
+
+**Used By**: `robots_txt_quality.csv`, `ai_files_summary.md`
+
+#### llmsTxtAnalysis[]
+
+Analysis of llms.txt file quality and structure.
+
+**Structure**: Array with one object per llms.txt file found
+
+```json
+{
+  "url": "https://example.com/llms.txt",
+  "exists": true,
+  "quality": {
+    "score": 58,
+    "hasH1": false,
+    "hasDescription": true,
+    "hasSections": true
+  },
+  "recommendations": [
+    "Add H1 heading as first element (# Site Name)"
+  ]
+}
+```
+
+**Used By**: `llms_txt_quality.csv`, `ai_files_summary.md`
+
+### Usage Notes
+
+1. **Report Generation**: All report generation functions MUST read from this file, never fetch new data
+2. **Field Verification**: Before accessing fields, verify they exist in the actual file structure (see LEARNINGS.md)
+3. **Data Types**: Check sample values to understand actual data types (e.g., numeric strings vs numbers)
+4. **Missing Data**: Handle null/undefined values gracefully - not all fields are guaranteed
+5. **Schema Evolution**: Check `schemaVersion` field when parsing older files
+
+### Related Documentation
+
+- Individual CSV report structures: See sections 1-13 below
+- Executive Summary JSON: See section 15
+- LEARNINGS.md: 5-step validation pattern for preventing data structure mismatches
+
+---
+
 ## 1. SEO Report (`seo_report.csv`)
 
 **Purpose**: Basic SEO metrics for each analyzed page

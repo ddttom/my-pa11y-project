@@ -13,7 +13,8 @@
       "Bash(npm run lint:md:fix:*)",
       "Bash(npx eslint .)",
       "Bash(npx eslint . --fix)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npx markdownlint:*)"
     ],
     "deny": [],
     "ask": []

@@ -41,3 +41,27 @@ This is NOT documentation - these are rules learned the hard way when something 
 This prevents hours of debugging data structure mismatches.
 
 **Check HTTP header date formats when parsing cache data** (2026-01-03): Added cache staleness capability check to executive summary by reading cache files and checking for Last-Modified headers. Made assumption about date format without verifying actual header values. HTTP Last-Modified headers use RFC 7231 format (e.g., "Sun, 28 Dec 2025 18:44:06 GMT") which JavaScript Date constructor can parse, but always verify actual data format before assuming parsing will work. When working with HTTP headers or any external date sources, check actual values first to confirm format matches expectations.
+
+**ALWAYS verify TYPES (array vs object) when documenting JSON structures** (2026-01-03): Made 6+ errors documenting results.json structure by assuming types without checking. Documented `securityMetrics[]` as array when it's an object with URL keys. Documented `robotsTxtAnalysis` and `llmsTxtAnalysis` as objects when they're arrays. Documented field lists for `performanceAnalysis[]`, `seoScores[]`, `llmMetrics[]`, and `pa11y[]` without verifying actual nested structures. CRITICAL RULE: When documenting JSON structures, ALWAYS check BOTH the type (array vs object) AND the actual field structure with sample data. Use `jq 'to_entries | map({key: .key, type: (.value | type)})'` to verify types, then check actual structure with `jq '.<field>[0] | keys'` for arrays or `jq '.<field>'` for objects.
+
+**Pattern for documenting JSON structures:**
+
+1. Use `jq` to get ALL top-level types FIRST
+2. For each field, verify if it's array or object
+3. For arrays: Check first element structure with `[0] | keys`
+4. For objects: Check actual structure and key patterns
+5. Verify nested objects within arrays/objects
+6. Check sample values to understand data types
+7. ONLY THEN document the structure
+
+Examples of errors made:
+
+- Documented `securityMetrics[]` as array when it's `securityMetrics` object with URL keys
+- Documented `robotsTxtAnalysis` as object when it's `robotsTxtAnalysis[]` array
+- Documented `llmsTxtAnalysis` as object when it's `llmsTxtAnalysis[]` array
+- Documented `performanceAnalysis[]` with 7 fields when only 6 exist
+- Documented `seoScores[]` as flat structure when it has nested `details` object
+- Documented `llmMetrics[]` with simplified structure when it has 15 complex category objects
+- Documented `pa11y[]` with 8 fields when issues have 14 fields
+
+This prevents incorrect documentation that causes confusion when developers try to use the data structures.
