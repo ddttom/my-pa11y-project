@@ -14,7 +14,7 @@ This document provides a comprehensive technical reference for all report struct
 The tool generates **18+ reports** in CSV format (plus XML, Markdown, JSON, and HTML files):
 
 | Report File | Primary Key | Record Type | Aggregation Level |
-|-------------|-------------|-------------|-------------------|
+| ----------- | ----------- | ----------- | ----------------- |
 | `seo_report.csv` | URL | Per-page | Page-level |
 | `performance_analysis.csv` | URL | Per-page | Page-level |
 | `accessibility_report.csv` | URL | Per-page | Page-level |
@@ -61,7 +61,7 @@ The following reports are generated when specific CLI flags are used:
 ### Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `URL` | String (URL) | Fully qualified page URL | Valid HTTP/HTTPS URL | No |
 | `Title` | String | Page `<title>` content | Any text, max ~60 chars recommended | Yes |
 | `Description` | String | Meta description content | Any text, max ~160 chars recommended | Yes |
@@ -93,10 +93,10 @@ https://example.com/page,"Example Page Title","This is a meta description",1,5,2
 **Key Field**: `URL`
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Performance Analysis Fields
 
 | Field Name | Data Type | Unit | Description | Threshold (Good) | Nullable |
-|------------|-----------|------|-------------|------------------|----------|
+| ---------- | --------- | ---- | ----------- | ---------------- | -------- |
 | `URL` | String (URL) | - | Fully qualified page URL | - | No |
 | `Load Time (ms)` | Integer | Milliseconds | Total page load time | < 2000ms | No |
 | `First Paint (ms)` | Integer | Milliseconds | Time to first pixel painted | < 1000ms | Yes |
@@ -112,7 +112,7 @@ https://example.com/page,"Example Page Title","This is a meta description",1,5,2
 - **FID (First Input Delay)**: Good < 100ms, Needs Improvement 100-300ms, Poor > 300ms (not directly measured, TTI used as proxy)
 - **CLS (Cumulative Layout Shift)**: Good < 0.1, Needs Improvement 0.1-0.25, Poor > 0.25
 
-### Example Row
+### Performance Analysis Example Row
 
 ```csv
 URL,Load Time (ms),First Paint (ms),First Contentful Paint (ms),Largest Contentful Paint (ms),Time to Interactive (ms),Total Blocking Time (ms),Cumulative Layout Shift
@@ -127,10 +127,10 @@ https://example.com/page,1523,345,456,1234,2345,123,0.05
 **Key Field**: `URL`
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Accessibility Report Fields
 
 | Field Name | Data Type | Description | Calculation | Nullable |
-|------------|-----------|-------------|-------------|----------|
+| ---------- | --------- | ----------- | ----------- | -------- |
 | `URL` | String (URL) | Fully qualified page URL | - | No |
 | `Total Issues` | Integer | Sum of all accessibility issues | Critical + Serious + Moderate + Minor | No |
 | `Critical Issues` | Integer | Issues preventing access | Pa11y error level | No |
@@ -154,7 +154,7 @@ https://example.com/page,1523,345,456,1234,2345,123,0.05
 - **Moderate**: Noticeable problems, may require workarounds
 - **Minor**: Minor improvements, best practice violations
 
-### Example Row
+### Accessibility Report Example Row
 
 ```csv
 URL,Total Issues,Critical Issues,Serious Issues,Moderate Issues,Minor Issues,WCAG A Issues,WCAG AA Issues,WCAG AAA Issues,WCAG 2.1 Compliance Percentage,Missing ARIA Labels,Contrast Ratio Issues,Keyboard Navigation Issues,Required Manual Checks,Remediation Suggestions
@@ -199,7 +199,7 @@ https://example.com/page,12,2,3,5,2,3,4,5,85.5,3,2,1,4,"Add alt text to images,I
 ### Field Descriptions
 
 | Section | Content Type | Description |
-|---------|--------------|-------------|
+| ------- | ------------ | ----------- |
 | Summary Statistics | Aggregated metrics | Site-wide totals and averages |
 | Issue Title | String | Pa11y issue code and human-readable title |
 | Severity | Enum | `Critical`, `Serious`, `Moderate`, `Minor` |
@@ -218,10 +218,10 @@ https://example.com/page,12,2,3,5,2,3,4,5,85.5,3,2,1,4,"Add alt text to images,I
 **Key Field**: `URL`
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Content Quality Fields
 
 | Field Name | Data Type | Range | Description | Good Threshold | Nullable |
-|------------|-----------|-------|-------------|----------------|----------|
+| ---------- | --------- | ----- | ----------- | -------------- | -------- |
 | `URL` | String (URL) | - | Fully qualified page URL | - | No |
 | `Word Count` | Integer | 0 to N | Total words in main content | > 300 | No |
 | `Content Freshness Score` | Float | 0-100 | Recency of content updates | > 70 | No |
@@ -239,7 +239,7 @@ https://example.com/page,12,2,3,5,2,3,4,5,85.5,3,2,1,4,"Add alt text to images,I
 - **Media Richness Score**: (Images + Videos + Audio) presence and quality
 - **Overall Content Score**: Weighted average: (Word Count×0.2 + Freshness×0.2 + Uniqueness×0.25 + Grammar×0.15 + Media×0.2)
 
-### Example Row
+### Content Quality Example Row
 
 ```csv
 URL,Word Count,Content Freshness Score,Content Uniqueness Score,Grammar Score,Media Richness Score,Top Keywords,Overall Content Score
@@ -254,10 +254,10 @@ https://example.com/page,523,85.5,92.3,88.7,75.2,"keyword1,keyword2,keyword3,key
 **Key Field**: `URL`
 **Sort Order**: By score (descending)
 
-### Fields
+### SEO Scores Fields
 
 | Field Name | Data Type | Range | Weight | Description | Nullable |
-|------------|-----------|-------|--------|-------------|----------|
+| ---------- | --------- | ----- | ------ | ----------- | -------- |
 | `URL` | String (URL) | - | - | Fully qualified page URL | No |
 | `Overall Score` | Float | 0-100 | - | Weighted sum of all component scores | No |
 | `Title Score` | Float | 0-100 | 15% | Title tag quality (length, keywords) | No |
@@ -279,13 +279,13 @@ https://example.com/page,523,85.5,92.3,88.7,75.2,"keyword1,keyword2,keyword3,key
 
 ### Overall Score Calculation
 
-```
+```text
 Overall Score = (Title×0.15) + (MetaDesc×0.10) + (Headings×0.15) + (Content×0.20) +
                 (Images×0.10) + (InternalLinks×0.10) + (Mobile×0.05) +
                 (Performance×0.10) + (StructuredData×0.05)
 ```
 
-### Example Row
+### SEO Scores Example Row
 
 ```csv
 URL,Overall Score,Title Score,Meta Description Score,Heading Structure Score,Content Score,Image Optimization Score,Internal Linking Score,Mobile Friendliness Score,Performance Score,Structured Data Score
@@ -300,10 +300,10 @@ https://example.com/page,82.5,90,85,80,75,88,70,95,85,100
 **Key Field**: `URL`
 **Sort Order**: By Overall Score (descending)
 
-### Fields
+### LLM Readability Fields
 
 | Field Name | Data Type | Range | Weight | Description | Nullable |
-|------------|-----------|-------|--------|-------------|----------|
+| ---------- | --------- | ----- | ------ | ----------- | -------- |
 | `URL` | String (URL) | - | - | Fully qualified page URL | No |
 | `Overall LLM Readability Score` | Float | 0-100 | - | Weighted average of component scores | No |
 | `Structural Clarity Score` | Float | 0-100 | 30% | Semantic HTML usage quality | No |
@@ -326,16 +326,16 @@ https://example.com/page,82.5,90,85,80,75,88,70,95,85,100
 
 **Structural Clarity Score**:
 
-```
-Score = (Semantic Elements / Total Elements × 40) +
+```text
+Score =(Semantic Elements / Total Elements × 40) +
         (Heading Hierarchy Quality × 30) +
         (Has Main Content × 30)
 ```
 
 **Content Organization Score**:
 
-```
-Score = (Paragraph Count > 3 × 30) +
+```text
+Score =(Paragraph Count > 3 × 30) +
         (List Count > 0 × 20) +
         (Table Count appropriate × 20) +
         (Content Length appropriate × 30)
@@ -343,29 +343,29 @@ Score = (Paragraph Count > 3 × 30) +
 
 **Metadata Quality Score**:
 
-```
-Score = (Has Structured Data × 50) +
+```text
+Score =(Has Structured Data × 50) +
         (OpenGraph Tags Quality × 30) +
         (Meta Description Quality × 20)
 ```
 
 **Text Extractability Score**:
 
-```
-Score = (Text to Markup Ratio × 60) +
+```text
+Score =(Text to Markup Ratio × 60) +
         ((1 - Hidden Content Ratio) × 40)
 ```
 
 ### Score Interpretation
 
 | Range | Interpretation | Recommendation |
-|-------|---------------|----------------|
+| ----- | -------------- | -------------- |
 | 90-100 | Excellent | Optimal for LLM extraction |
 | 70-89 | Good | Minor improvements possible |
 | 50-69 | Moderate | Significant improvements recommended |
 | 0-49 | Poor | Major structural improvements needed |
 
-### Example Row
+### LLM Readability Example Row
 
 ```csv
 URL,Overall LLM Readability Score,Structural Clarity Score,Content Organization Score,Metadata Quality Score,Text Extractability Score,Semantic HTML Usage,Heading Hierarchy Quality,Has Main Content,Has Structured Data,Text to Markup Ratio,Hidden Content Ratio,Paragraph Count,List Count,Table Count,Code Block Count,Total Elements
@@ -380,10 +380,10 @@ https://example.com/page,85.5,90.0,82.5,88.0,81.0,75.5,85,true,true,0.45,5.2,25,
 **Key Field**: `URL`
 **Sort Order**: By Status Code (descending)
 
-### Fields
+### HTTP Status Report Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `URL` | String (URL) | Fully qualified page URL | Valid HTTP/HTTPS URL | No |
 | `Status Code` | Integer | HTTP response status code | 301, 302, 307, 308, 400, 401, 403, 404, 500, 502, 503, etc. | No |
 | `Status Text` | String | Human-readable status description | "Moved Permanently", "Not Found", etc. | No |
@@ -392,7 +392,7 @@ https://example.com/page,85.5,90.0,82.5,88.0,81.0,75.5,85,true,true,0.45,5.2,25,
 ### Common Status Codes
 
 | Code | Status Text | Category | Description |
-|------|-------------|----------|-------------|
+| ---- | ----------- | -------- | ----------- |
 | 301 | Moved Permanently | Redirect | Permanent redirect to new location |
 | 302 | Found (Temporary Redirect) | Redirect | Temporary redirect |
 | 307 | Temporary Redirect | Redirect | Temporary redirect preserving method |
@@ -426,10 +426,10 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 **Sort Order**: Unsorted (typically one file per site)
 **Reference**: Based on guidance from "The Invisible Users" book
 
-### Fields
+### robots.txt Quality Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `URL` | String (URL) | URL to robots.txt file | `https://example.com/robots.txt` | No |
 | `File Exists` | Boolean | Whether file is accessible | `true`, `false` | No |
 | `Overall Quality` | String (Enum) | Quality assessment | `Excellent`, `Good`, `Fair`, `Poor`, `Missing` | No |
@@ -448,9 +448,9 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 | `Issues` | String | Semicolon-separated issues | `No AI-specific user agents found` | Yes |
 | `Recommendations` | String | Semicolon-separated recommendations | `Add GPTBot, ClaudeBot declarations` | Yes |
 
-### Quality Scoring Breakdown
+### robots.txt Quality Scoring Breakdown
 
-**Total Score: 100 points**
+Maximum possible: **100 points**
 
 - **AI User Agents (30 points)**
   - 30 points: 3+ AI user agents declared
@@ -478,7 +478,7 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 - **Completeness Bonus (10 points)**
   - 10 points: All elements present
 
-### Example Row
+### robots.txt Quality Example Row
 
 ```csv
 URL,File Exists,Overall Quality,Quality Score,Max Score,Has AI User Agents,AI User Agents Found,Has Sitemap,Sitemap Count,Protects Sensitive Paths,Protected Paths,References llms.txt,Has Comments,Total Rules,Structure Quality,Issues,Recommendations
@@ -494,10 +494,10 @@ https://example.com/robots.txt,true,Good,75,100,true,GPTBot; ClaudeBot,true,1,tr
 **Sort Order**: Unsorted (typically one file per site)
 **Reference**: Based on llmstxt.org specification and "The Invisible Users" book
 
-### Fields
+### llms.txt Quality Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `URL` | String (URL) | URL to llms.txt file | `https://example.com/llms.txt` | No |
 | `File Exists` | Boolean | Whether file is accessible | `true`, `false` | No |
 | `Overall Quality` | String (Enum) | Quality assessment | `Excellent`, `Good`, `Fair`, `Poor`, `Very Poor`, `Missing` | No |
@@ -546,9 +546,9 @@ Recommended sections for comprehensive guidance:
 5. **Attribution** - How to credit content
 6. **Error Handling** - Retry logic, fallbacks
 
-### Quality Scoring Breakdown
+### llms.txt Quality Scoring Breakdown
 
-**Total Score: 105 points (bonus possible)**
+Maximum possible: **105 points (bonus possible)**
 
 - **Core Elements (40 points)** - 10 points each
   - Title, Description, Contact, Last Updated
@@ -575,7 +575,7 @@ Recommended sections for comprehensive guidance:
   - Site type declared (+3)
   - 5+ headings (+2)
 
-### Example Row
+### llms.txt Quality Example Row
 
 ```csv
 URL,File Exists,Overall Quality,Quality Score,Max Score,Has Title,Title,Has Description,Has Contact,Contact,Has Last Updated,Last Updated,Has Site Type,Site Type,Core Elements Present,Core Elements Total,Sections Present,Sections Total,Word Count,Line Count,Link Count,Heading Count,Content Length Assessment,Specificity Level,Has Structured Content,Issues,Recommendations
@@ -590,7 +590,7 @@ https://example.com/llms.txt,true,Good,78,100,true,Example Site,true,true,ai@exa
 **Format**: Markdown
 **Aggregation Level**: Site-wide
 
-### Structure
+### AI Files Summary Structure
 
 ```markdown
 # AI Files Quality Summary
@@ -665,7 +665,7 @@ Summary of robots.txt and llms.txt quality for AI agent compatibility.
 ### Key Sections
 
 | Section | Content Type | Description |
-|---------|--------------|-------------|
+| ------- | ------------ | ----------- |
 | Overview | Site-wide summary | Introduction and context |
 | robots.txt Analysis | File quality | Detailed robots.txt assessment |
 | llms.txt Analysis | File quality | Detailed llms.txt assessment |
@@ -682,10 +682,10 @@ Summary of robots.txt and llms.txt quality for AI agent compatibility.
 **Key Fields**: `Page URL` + `Image URL` (composite key)
 **Sort Order**: By Optimization Score (ascending, worst first)
 
-### Fields
+### Image Optimization Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `Page URL` | String (URL) | URL of page containing the image | Valid HTTP/HTTPS URL | No |
 | `Image URL` | String (URL) | Direct URL to image resource | Valid HTTP/HTTPS URL | No |
 | `File Size (KB)` | Float | Image file size in kilobytes | Positive float | Yes |
@@ -702,7 +702,7 @@ Summary of robots.txt and llms.txt quality for AI agent compatibility.
 ### Alt Text Quality Scoring
 
 | Score Range | Quality | Criteria |
-|-------------|---------|----------|
+| ----------- | ------- | -------- |
 | 90-100 | Excellent | 10-125 chars, descriptive, no "image of" prefix |
 | 70-89 | Good | 5-150 chars, somewhat descriptive |
 | 50-69 | Fair | 1-200 chars, generic or too long |
@@ -710,15 +710,15 @@ Summary of robots.txt and llms.txt quality for AI agent compatibility.
 
 ### Optimization Score Calculation
 
-```
-Score = (Alt Text Quality × 0.25) +
+```text
+Score =(Alt Text Quality × 0.25) +
         (File Size Appropriate × 0.25) +
         (Format Modern × 0.20) +
         (Is Responsive × 0.15) +
         (Lazy Loaded × 0.15)
 ```
 
-### Example Row
+### Image Optimization Example Row
 
 ```csv
 Page URL,Image URL,File Size (KB),Dimensions,Format,Alt Text,Alt Text Quality Score,Is Responsive,Lazy Loaded,Compression Level,Optimization Score,Recommendations
@@ -733,10 +733,10 @@ https://example.com/page,https://example.com/img/photo.jpg,245.6,1920x1080,jpg,"
 **Key Fields**: `Source URL` + `Target URL` (composite key)
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Link Analysis Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `Source URL` | String (URL) | Page containing the link | Valid HTTP/HTTPS URL | No |
 | `Target URL` | String (URL) | Link destination | Valid HTTP/HTTPS URL | No |
 | `Link Text` | String | Anchor text content | Any text | Yes |
@@ -756,15 +756,15 @@ https://example.com/page,https://example.com/img/photo.jpg,245.6,1920x1080,jpg,"
 
 ### Link Quality Score Calculation
 
-```
-Score = (Has Link Text × 20) +
+```text
+Score =(Has Link Text × 20) +
         (HTTP Status 200 × 30) +
         (No Redirect Chain × 20) +
         (Link Text Quality × 20) +
         (Link Depth Reasonable × 10)
 ```
 
-### Example Row
+### Link Analysis Example Row
 
 ```csv
 Source URL,Target URL,Link Text,Link Type,Follow Type,HTTP Status,Redirect Chain,Content Type,In Navigation,Link Depth,Link Quality Score
@@ -779,10 +779,10 @@ https://example.com/page,https://example.com/about,About Us,internal,follow,200,
 **Key Field**: `Resource URL`
 **Sort Order**: By Total Count (descending, most-used first)
 
-### Fields
+### All Resources Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `Resource URL` | String (URL) | Direct URL to resource | Valid HTTP/HTTPS URL | No |
 | `Resource Type` | String (Enum) | Category of resource | See Resource Types below | No |
 | `Total Count` | Integer | Number of pages using this resource | 1 to N | No |
@@ -790,7 +790,7 @@ https://example.com/page,https://example.com/about,About Us,internal,follow,200,
 ### Resource Types
 
 | Type | Description | Examples |
-|------|-------------|----------|
+| ---- | ----------- | -------- |
 | `javascript` | JavaScript files | `.js`, `<script src="">` |
 | `css` | Stylesheets | `.css`, `<link rel="stylesheet">` |
 | `image` | Image files | `.jpg`, `.png`, `.gif`, `.svg`, `.webp`, `<img src="">` |
@@ -816,7 +816,7 @@ Resources from ANY domain are included:
 - Track external dependencies and CDN usage
 - Analyze resource loading patterns
 
-### Example Rows
+### All Resources Example Rows
 
 ```csv
 Resource URL,Resource Type,Total Count
@@ -835,10 +835,10 @@ https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900
 **Key Field**: `Discovered URL`
 **Sort Order**: By Reference Count (descending, most-referenced first)
 
-### Fields
+### Missing Sitemap URLs Fields
 
 | Field Name | Data Type | Description | Calculation | Nullable |
-|------------|-----------|-------------|-------------|----------|
+| ---------- | --------- | ----------- | ----------- | -------- |
 | `Discovered URL` | String (URL) | URL found during crawling | Same-domain URLs not in sitemap | No |
 | `Reference Count` | Integer | Number of pages linking to this URL | Count of inbound links | No |
 | `First Discovered On` | String (URL) | Source page that first linked to this URL | First encountered source | No |
@@ -853,14 +853,14 @@ https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900
    - NOT in original sitemap
    - Successfully crawled (not 404)
 
-### Use Cases
+### Missing Sitemap URLs Use Cases
 
 - **SEO Improvement**: Add missing URLs to sitemap for better search engine coverage
 - **Site Architecture**: Identify orphaned or unlisted pages
 - **Content Audit**: Find pages that should be indexed but aren't in sitemap
 - **Quality Control**: Detect pages accidentally excluded from sitemap
 
-### Example Rows
+### Missing Sitemap URLs Example Rows
 
 ```csv
 Discovered URL,Reference Count,First Discovered On
@@ -877,7 +877,7 @@ https://example.com/about/team/member-5,5,https://example.com/about/team
 **Format**: XML (Sitemap Protocol)
 **Sort Order**: Original URLs first, then discovered URLs
 
-### Structure
+### Sitemap Structure
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -906,7 +906,7 @@ https://example.com/about/team/member-5,5,https://example.com/about/team
 ### Elements
 
 | Element | Required | Description | Example |
-|---------|----------|-------------|---------|
+| ------- | -------- | ----------- | ------- |
 | `<loc>` | Yes | Fully qualified URL | `https://example.com/page` |
 | `<lastmod>` | No | Last modification date | `2025-12-07T10:30:00+00:00` |
 | `<changefreq>` | No | Expected update frequency | `daily`, `weekly`, `monthly`, `yearly` |
@@ -953,7 +953,7 @@ WHERE perf."Load Time (ms)" > 3000;
 
 ### Report Dependencies
 
-```
+```text
 Original Sitemap URLs (input)
     ↓
 URL Processing & Crawling
@@ -985,7 +985,7 @@ Output Reports:
 ### Common Data Types
 
 | Type | Format | Example | Validation |
-|------|--------|---------|------------|
+| ---- | ------ | ------- | ---------- |
 | String (URL) | RFC 3986 | `https://example.com/page` | Must be valid HTTP/HTTPS |
 | Integer | Whole number | `42` | No decimals |
 | Float | Decimal number | `85.5` | 1-2 decimal places typical |
@@ -1043,31 +1043,31 @@ with open('seo_report.csv', 'r', encoding='utf-8') as f:
 
 **Find slow pages with poor SEO:**
 
-```
-Filter: Load Time > 3000ms AND Overall SEO Score < 70
+```text
+Filter:Load Time > 3000ms AND Overall SEO Score < 70
 Reports: performance_analysis.csv + seo_scores.csv
 ```
 
 **Find images missing alt text on high-traffic pages:**
 
-```
-Filter: Alt Text = "" AND Optimization Score < 50
+```text
+Filter:Alt Text = "" AND Optimization Score < 50
 Reports: image_optimization.csv
 Join: With seo_report.csv to get page context
 ```
 
 **Identify accessibility issues by severity:**
 
-```
-Filter: Critical Issues > 0
+```text
+Filter:Critical Issues > 0
 Reports: accessibility_report.csv
 Sort: By Critical Issues DESC
 ```
 
 **Find most-used external resources:**
 
-```
-Filter: Resource Type = "javascript" AND Domain ≠ Site Domain
+```text
+Filter:Resource Type = "javascript" AND Domain ≠ Site Domain
 Reports: all_resources_report.csv
 Sort: By Total Count DESC
 ```
@@ -1077,7 +1077,7 @@ Sort: By Total Count DESC
 ## Schema Version History
 
 | Version | Date | Changes |
-|---------|------|---------|
+| ------- | ---- | ------- |
 | 1.0.0 | Initial | All original reports |
 | 1.1.0 | 2025-11 | Added `llm_readability_report.csv` |
 | 1.2.0 | 2025-12 | Added `http_status_report.csv`, moved logs to results folder |
@@ -1104,7 +1104,7 @@ When schema changes:
 The tool also generates cache files for debugging:
 
 | Location | Content | Format |
-|----------|---------|--------|
+| -------- | ------- | ------ |
 | `.cache/rendered/{hash}.html` | Puppeteer-rendered HTML | HTML |
 | `.cache/rendered/{hash}.log` | Browser console output | Plain text |
 | `.cache/served/{hash}.html` | Original served HTML | HTML |
@@ -1115,7 +1115,7 @@ The tool also generates cache files for debugging:
 ### Log Files
 
 | File | Location | Content |
-|------|----------|---------|
+| ---- | -------- | ------- |
 | `error.log` | Output directory | Error-level messages only |
 | `combined.log` | Output directory | All log levels (debug, info, warn, error) |
 
@@ -1127,7 +1127,7 @@ The tool also generates cache files for debugging:
 **Generated**: When `--generate-executive-summary` flag is used
 **Format**: Markdown (human-readable)
 
-### Structure
+### Executive Summary Structure
 
 ```markdown
 # Executive Summary
@@ -1391,7 +1391,7 @@ All charts are generated from `results.json` and rendered as PNG images using Ch
 }
 ```
 
-### Usage
+### Historical Results Usage
 
 - **Comparative Analysis**: Compare metrics between runs
 - **Trend Analysis**: Track changes over time
@@ -1423,7 +1423,7 @@ const comparison = compareResults(previousResult.results, currentResults);
 **Format**: JSON
 **Location**: User-specified via `--thresholds` flag
 
-### Structure
+### Threshold Configuration Structure
 
 ```json
 {
