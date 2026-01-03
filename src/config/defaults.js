@@ -36,10 +36,12 @@ export const RETRY = {
 };
 
 // Cache Configuration
+// Note: DIRECTORY is relative to outputDir, not cwd
 export const CACHE = {
-  DIRECTORY: '.cache',
+  DIRECTORY: '.cache', // Will be {outputDir}/.cache
   RENDERED_DIR: 'rendered',
   SERVED_DIR: 'served',
+  SCREENSHOTS_DIR: 'screenshots', // For future screenshot functionality
   SELF_CLEANING_TTL: 900000, // 15 minutes
 };
 

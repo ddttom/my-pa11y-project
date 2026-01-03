@@ -65,6 +65,17 @@ npm start -- -s https://example.com/sitemap.xml \
 
 # Use custom thresholds
 npm start -- -s https://example.com/sitemap.xml --thresholds ./custom-thresholds.json
+
+# Regression detection with baseline
+npm start -- -s https://example.com/sitemap.xml \
+  --enable-history \
+  --establish-baseline
+
+# Pattern extraction from high-scoring pages
+npm start -- -s https://example.com/sitemap.xml \
+  --extract-patterns \
+  --pattern-score-threshold 75
+
 npm start -- -s https://example.com/sitemap.xml -l 10 -o test-results
 # Review reports in test-results directory
 # When satisfied, run full analysis:
@@ -104,11 +115,15 @@ You can configure the application using a `.env` file or environment variables. 
 - **Limits**: `LIMIT`, `COUNT`
 - **Features (true/false)**:
   - `ENABLE_HISTORY`
+  - `ESTABLISH_BASELINE`
+  - `EXTRACT_PATTERNS`
   - `GENERATE_DASHBOARD`
   - `GENERATE_EXECUTIVE_SUMMARY`
   - `INCLUDE_ALL_LANGUAGES`
   - `NO_RECURSIVE`
   - `FORCE_SCRAPE` (default: `false`)
+- **Pattern Extraction**: `PATTERN_SCORE_THRESHOLD` (default: 70)
+- **Baseline**: `BASELINE_TIMESTAMP` (ISO timestamp)
 - **Cache**: `CACHE_ONLY`, `NO_CACHE`, `FORCE_DELETE_CACHE`
 - **Other**: `NO_PUPPETEER`, `THRESHOLDS_FILE`
 
@@ -118,7 +133,11 @@ Example `.env`:
 SITEMAP_URL=https://example.com/sitemap.xml
 LOG_LEVEL=info
 ENABLE_HISTORY=true
+ESTABLISH_BASELINE=true
+EXTRACT_PATTERNS=true
+PATTERN_SCORE_THRESHOLD=75
 GENERATE_DASHBOARD=true
+GENERATE_EXECUTIVE_SUMMARY=true
 ```
 
 For detailed configuration documentation, see [Configuration Guide](CONFIGURATION.md).
@@ -158,7 +177,7 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
 
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear cache before starting
+- `--force-delete-cache`: Clear cache and old reports (preserves history/ and baseline.json)
 
 ### Enhanced Features
 
@@ -166,6 +185,16 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
   - Stores timestamped results in `history/` directory
   - Enables comparison with previous runs
   - Tracks trends over time
+- `--establish-baseline`: Establish current results as baseline for regression detection
+  - Requires `--enable-history` flag
+  - Creates `baseline.json` as reference point
+  - Future runs will compare against this baseline
+  - Optional: `--baseline-timestamp <timestamp>` to use specific historical result
+- `--extract-patterns`: Extract successful patterns from high-scoring pages
+  - Analyzes pages with scores ≥70/100 (configurable)
+  - Generates `pattern_library.md` with working examples
+  - Six categories: structured data, semantic HTML, forms, errors, state, llms.txt
+  - Optional: `--pattern-score-threshold <number>` to adjust minimum score
 - `--generate-dashboard`: Generate interactive HTML dashboard with charts
   - Visual analytics with embedded charts
   - Performance, accessibility, SEO, content, and LLM metrics
@@ -593,6 +622,21 @@ Generated when corresponding CLI flags are used:
   - Comparison tables showing changes over time
   - Pass/fail summary tables
 
+- `regression_report.md` - Regression analysis report (--enable-history)
+  - Automatic when baseline exists
+  - Critical regressions (>30% degradation)
+  - Warning regressions (>15% degradation)
+  - Info changes (notable differences)
+  - Actionable recommendations with immediate and short-term actions
+  - Performance, accessibility, SEO, and LLM metrics tracking
+
+- `pattern_library.md` - Pattern library report (--extract-patterns)
+  - Successful patterns from high-scoring pages (≥70/100)
+  - Six pattern categories with real-world examples
+  - Priority and effort levels for each pattern
+  - Implementation recommendations
+  - Examples: structured data, semantic HTML, forms, error handling, state management, llms.txt
+
 ### Historical Data
 
 Created when `--enable-history` is used:
@@ -600,6 +644,11 @@ Created when `--enable-history` is used:
 - `history/` directory - Timestamped historical results
   - `results-<timestamp>.json` - Complete results from each run
   - Enables comparative analysis and trend tracking
+
+- `baseline.json` - Established baseline (--establish-baseline)
+  - Reference point for regression detection
+  - Created from current or historical result
+  - Used for future comparisons to detect quality changes
 
 ### Sitemaps
 
@@ -622,15 +671,25 @@ Created when `--enable-history` is used:
 
 The tool maintains a cache to improve performance:
 
-- Cache location: `.cache` directory (automatically created)
-- Cache format: JSON files
+- Cache location: `{outputDir}/.cache/` directory (automatically created)
+- Cache subdirectories: `rendered/`, `served/`, `screenshots/`
+- Cache format: JSON files and HTML snapshots
 - Cache naming: MD5 hash of URLs
 
 ### Cache Control Options
 
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear existing cache
+- `--force-delete-cache`: Clear cache and old reports while preserving historical data
+
+**Important**: The `--force-delete-cache` flag intelligently clears:
+
+- ✅ Cache directory (`.cache/`) - Rendered HTML, served HTML, screenshots
+- ✅ Old report files - CSVs, JSON reports, markdown files, logs
+- ✅ **PRESERVES** `history/` directory - Historical tracking data for trend analysis
+- ✅ **PRESERVES** `baseline.json` - Regression detection baseline
+
+This ensures you can clear stale cache without losing valuable historical tracking or regression baselines needed for CI/CD pipelines and quality monitoring.
 
 ## Network Error Handling
 
@@ -902,6 +961,169 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages -o all-l
    - Add data attributes to tables
    - Add button disabled explanations
    - Add auth state attributes
+
+## Advanced Features
+
+### Regression Detection
+
+Automated quality gate enforcement to prevent quality regressions.
+
+**Setup:**
+
+```bash
+# Step 1: Enable history and establish baseline on main branch
+npm start -- -s https://production.com/sitemap.xml \
+  --enable-history \
+  --establish-baseline
+
+# Step 2: Future runs automatically detect regressions
+npm start -- -s https://production.com/sitemap.xml --enable-history
+```
+
+**Features:**
+
+- **Baseline Establishment**: Mark current or historical results as reference point
+- **Automatic Detection**: Compare all runs against baseline
+- **Severity Classification**:
+  - Critical (🚨): >30% degradation - fails builds in CI/CD
+  - Warning (⚠️): >15% degradation - requires review
+  - Info (ℹ️): Notable changes worth reviewing
+- **Comprehensive Checks**:
+  - Performance: Load time, LCP, FCP, CLS
+  - Accessibility: Error count increases
+  - SEO: Score drops
+  - LLM: Compatibility score decreases
+  - URL Count: Significant changes
+
+**Output:**
+
+The `regression_report.md` file contains:
+
+- Summary of regressions by severity
+- Critical regressions requiring immediate action
+- Warning regressions to review
+- Info changes for awareness
+- Immediate action recommendations
+- Short-term improvement suggestions
+
+**Console Output:**
+
+```bash
+🚨 CRITICAL REGRESSIONS DETECTED: 2 critical issue(s) found
+Review regression_report.md for details
+```
+
+**Use Cases:**
+
+- CI/CD quality gates
+- Prevent production regressions
+- Deployment validation
+- Performance monitoring across releases
+
+### Pattern Extraction
+
+Learn from successful implementations by extracting patterns from high-scoring pages.
+
+**Setup:**
+
+```bash
+# Extract patterns from pages scoring ≥70/100
+npm start -- -s https://example.com/sitemap.xml \
+  --extract-patterns \
+  --pattern-score-threshold 70
+```
+
+**Features:**
+
+- **High-Scoring Analysis**: Identifies pages with excellent AI agent compatibility
+- **Six Pattern Categories**:
+  1. **Structured Data**: JSON-LD, Schema.org implementations
+  2. **Semantic HTML**: Proper use of main, nav, header, article, section
+  3. **Form Patterns**: Standard field naming, autocomplete attributes
+  4. **Error Handling**: Persistent error messages, aria-live
+  5. **State Management**: Validation state, loading state, agent visibility
+  6. **llms.txt**: AI agent guidance file implementations
+- **Real-World Examples**: Up to 5 working examples per category
+- **Priority & Effort Levels**: Critical/High priority, Low/Moderate effort
+- **Actionable Recommendations**: Implementation guidance for each pattern
+
+**Output:**
+
+The `pattern_library.md` file contains:
+
+- Pattern name and description
+- Priority and effort assessment
+- Real-world examples from your site
+- Implementation recommendations
+- Expected impact on scores
+
+**Console Output:**
+
+```bash
+✅ Pattern extraction complete: 15 high-scoring pages analyzed
+Pattern library saved to pattern_library.md
+```
+
+**Use Cases:**
+
+- Learn from successful pages on your own site
+- Identify working patterns in production
+- Guide development of new features
+- Create internal best practices documentation
+- Training and knowledge sharing
+
+### CI/CD Integration
+
+Automate quality checks in your development pipeline.
+
+**Quick Start:**
+
+```bash
+# Copy GitHub Actions workflow template
+cp .github/workflows/audit-ci.yml.template .github/workflows/audit-ci.yml
+
+# Configure secrets in GitHub (Settings → Secrets → Actions)
+AUDIT_SITE_URL: https://staging.example.com
+
+# Update repository reference and commit
+git add .github/workflows/audit-ci.yml
+git commit -m "Add Web Audit Suite CI integration"
+git push
+```
+
+**Features:**
+
+- **Automated Runs**: On push, PR, or manual trigger
+- **Baseline Management**: Automatic caching and restoration
+- **Regression Detection**: Fail builds on critical regressions
+- **PR Comments**: Automatic feedback on pull requests
+- **Artifact Management**: Download reports for review
+- **Multi-Environment**: Separate configs for staging/production
+
+**Supported Platforms:**
+
+- GitHub Actions (full template provided)
+- GitLab CI (example configuration)
+- Jenkins (example Jenkinsfile)
+
+**Documentation:**
+
+See [.github/CI_CD_INTEGRATION.md](../.github/CI_CD_INTEGRATION.md) for complete setup guide including:
+
+- Step-by-step instructions
+- Configuration options
+- Failure thresholds
+- Troubleshooting
+- Best practices
+- Advanced scenarios (scheduled runs, multiple environments, notifications)
+
+**Use Cases:**
+
+- Quality gates for pull requests
+- Automated deployment validation
+- Continuous production monitoring
+- Performance regression prevention
+- Accessibility compliance tracking
 
 ## Support
 

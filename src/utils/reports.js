@@ -22,7 +22,10 @@ import {
 } from './reportUtils/aiFileReports.js';
 import { generateExecutiveSummary } from './reportUtils/executiveSummary.js';
 import { generateDashboard } from './reportUtils/dashboardGenerator.js';
-import { compareWithPrevious, generateTrendData } from './historicalComparison.js';
+import {
+  compareWithPrevious, generateTrendData, detectRegressions, generateRegressionReport,
+} from './historicalComparison.js';
+import { extractPatterns } from './patternExtraction.js';
 
 /**
  * Main function to generate all reports
@@ -57,6 +60,7 @@ export async function generateReports(results, urls, outputDir) {
     const { options } = global.auditcore;
     let comparison = null;
     let trendData = null;
+    let regressionAnalysis = null;
 
     // Generate comparison with previous run if historical tracking is enabled
     if (options.enableHistory) {
@@ -78,6 +82,30 @@ export async function generateReports(results, urls, outputDir) {
       } catch (error) {
         global.auditcore.logger.warn('Could not generate trend data:', error.message);
       }
+
+      // Detect regressions against baseline
+      try {
+        regressionAnalysis = await detectRegressions(results, outputDir);
+        await generateRegressionReport(regressionAnalysis, outputDir);
+
+        if (regressionAnalysis.hasBaseline) {
+          if (regressionAnalysis.hasCriticalRegressions) {
+            global.auditcore.logger.error(
+              `🚨 CRITICAL REGRESSIONS DETECTED: ${regressionAnalysis.regressions.filter((r) => r.severity === 'critical').length} critical issue(s) found`,
+            );
+            global.auditcore.logger.error('Review regression_report.md for details');
+          } else if (regressionAnalysis.hasWarningRegressions) {
+            global.auditcore.logger.warn(
+              `⚠️ Warning regressions detected: ${regressionAnalysis.regressions.filter((r) => r.severity === 'warning').length} issue(s) found`,
+            );
+            global.auditcore.logger.warn('Review regression_report.md for details');
+          } else if (regressionAnalysis.regressions.length === 0) {
+            global.auditcore.logger.info('✅ No regressions detected - all metrics stable or improved');
+          }
+        }
+      } catch (error) {
+        global.auditcore.logger.warn('Could not detect regressions:', error.message);
+      }
     }
 
     // Generate executive summary if enabled
@@ -97,6 +125,29 @@ export async function generateReports(results, urls, outputDir) {
         global.auditcore.logger.info('HTML dashboard generated');
       } catch (error) {
         global.auditcore.logger.error('Error generating dashboard:', error);
+      }
+    }
+
+    // Extract patterns from high-scoring pages if enabled
+    if (options.extractPatterns) {
+      try {
+        const threshold = options.patternScoreThreshold || 70;
+        const extractionResult = await extractPatterns(results, outputDir, {
+          minServedScore: threshold,
+          minRenderedScore: threshold,
+          maxExamples: 5,
+        });
+
+        if (extractionResult.success) {
+          global.auditcore.logger.info(
+            `✅ Pattern extraction complete: ${extractionResult.pagesAnalyzed} high-scoring pages analyzed`,
+          );
+          global.auditcore.logger.info('Pattern library saved to pattern_library.md');
+        } else {
+          global.auditcore.logger.warn(`⚠️ Pattern extraction: ${extractionResult.message}`);
+        }
+      } catch (error) {
+        global.auditcore.logger.error('Error extracting patterns:', error);
       }
     }
 

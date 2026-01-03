@@ -6,7 +6,7 @@ import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHand
 import { executeNetworkOperation, initializeBrowserPool, shutdownBrowserPool } from './utils/networkUtils.js';
 import { getDiscoveredUrls } from './utils/sitemapUtils.js';
 import { RESULTS_SCHEMA_VERSION, areVersionsCompatible } from './utils/schemaVersion.js';
-import { storeHistoricalResult } from './utils/historicalComparison.js';
+import { storeHistoricalResult, establishBaseline } from './utils/historicalComparison.js';
 import { fetchRobotsTxt, extractBaseUrl } from './utils/robotsFetcher.js';
 
 /**
@@ -89,21 +89,50 @@ export async function runTestsOnSitemap() {
   const { cache = true, noCache: explicitNoCache = false, forceDeleteCache = false } = global.auditcore.options;
   const noCache = explicitNoCache || !cache;
 
-  // Delete entire results directory if force delete cache is enabled
+  // Set cache directory relative to output directory for consolidated structure
+  // Cache will be stored in {outputDir}/.cache instead of project root .cache
+  const cacheDir = path.join(outputDir, global.auditcore.options.cacheDir || '.cache');
+  global.auditcore.options.cacheDir = cacheDir;
+
+  // Delete cache and old reports, but preserve history and baseline
   if (forceDeleteCache) {
     try {
-      await fs.rm(outputDir, { recursive: true, force: true });
-      global.auditcore.logger.info('Force delete cache: Deleted results directory');
-      // Recreate the output directory
-      await fs.mkdir(outputDir, { recursive: true });
+      // Delete cache directory
+      try {
+        await fs.rm(cacheDir, { recursive: true, force: true });
+        global.auditcore.logger.info('Force delete cache: Deleted cache directory');
+      } catch (error) {
+        global.auditcore.logger.debug('Cache directory does not exist or already deleted');
+      }
 
-      const cacheDir = global.auditcore.options.cacheDir || '.cache';
-      await fs.rm(cacheDir, { recursive: true, force: true });
-      global.auditcore.logger.info(`Force delete cache: Deleted cache directory (${cacheDir})`);
+      // Delete old reports but keep history/ and baseline.json
+      try {
+        const files = await fs.readdir(outputDir);
+        for (const file of files) {
+          const filePath = path.join(outputDir, file);
+          // Skip history directory, baseline.json, and cache directory
+          if (file === 'history' || file === 'baseline.json' || file === '.cache') {
+            continue;
+          }
+          await fs.rm(filePath, { recursive: true, force: true });
+        }
+        global.auditcore.logger.info('Force delete cache: Deleted old reports (preserved history and baseline)');
+      } catch (error) {
+        global.auditcore.logger.debug('Error deleting old reports:', error.message);
+      }
+
+      // Recreate cache directory
       await fs.mkdir(cacheDir, { recursive: true });
-      global.auditcore.logger.info(`Recreated output directory: ${outputDir}`);
+      global.auditcore.logger.info('Recreated cache directory');
     } catch (error) {
-      global.auditcore.logger.debug('Error clearing results directory:', error.message);
+      global.auditcore.logger.debug('Error clearing cache:', error.message);
+    }
+  } else {
+    // Ensure cache directory exists within output directory
+    try {
+      await fs.mkdir(cacheDir, { recursive: true });
+    } catch (error) {
+      global.auditcore.logger.debug('Cache directory already exists or creation failed:', error.message);
     }
   }
 
@@ -189,6 +218,22 @@ export async function runTestsOnSitemap() {
       () => generateReports(results, results.urls || [], outputDir),
       'report generation',
     );
+
+    // Establish baseline if requested
+    if (global.auditcore.options.establishBaseline) {
+      if (!global.auditcore.options.enableHistory) {
+        global.auditcore.logger.warn('⚠️ --establish-baseline requires --enable-history flag');
+      } else {
+        try {
+          const timestamp = global.auditcore.options.baselineTimestamp || null;
+          await establishBaseline(outputDir, timestamp);
+          global.auditcore.logger.info('✅ Baseline established successfully');
+          global.auditcore.logger.info('Future audits will compare against this baseline to detect regressions');
+        } catch (error) {
+          global.auditcore.logger.error('Failed to establish baseline:', error.message);
+        }
+      }
+    }
 
     if (results.externalResourcesAggregation && Object.keys(results.externalResourcesAggregation).length > 0) {
       const totalResources = Object.keys(results.externalResourcesAggregation).length;

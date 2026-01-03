@@ -54,6 +54,9 @@ export async function generateGeneralLLMReport(results, outputDir) {
         { id: 'niceToHaveIssuesCount', title: 'Nice-to-Have Issues' },
         { id: 'topEssentialIssue', title: 'Top Essential Issue' },
         { id: 'topRecommendation', title: 'Top Recommendation' },
+        { id: 'recommendationPriority', title: 'Priority' },
+        { id: 'recommendationEffort', title: 'Effort' },
+        { id: 'bookReference', title: 'Book Reference' },
       ],
     });
 
@@ -74,6 +77,13 @@ export async function generateGeneralLLMReport(results, outputDir) {
       const hasBotProtection = metrics.captchaProtection?.metrics?.hasBotProtection || false;
       const hasApiDocs = metrics.apiEndpoints?.metrics?.hasApiDocs || false;
 
+      // Get top recommendation with priority/effort/book reference
+      const topRecommendationObj = feedback.recommendationsWithPriority?.[0];
+      const topRecommendation = topRecommendationObj?.text || feedback.recommendations[0] || 'Good practices followed';
+      const recommendationPriority = topRecommendationObj?.priority || 'N/A';
+      const recommendationEffort = topRecommendationObj?.effort || 'N/A';
+      const bookReference = topRecommendationObj?.bookReference || 'N/A';
+
       return {
         url: metrics.url,
         htmlSource: metrics.htmlSource || 'rendered',
@@ -93,12 +103,16 @@ export async function generateGeneralLLMReport(results, outputDir) {
         essentialIssuesCount: feedback.essentialIssues.length,
         niceToHaveIssuesCount: feedback.niceToHaveIssues.length,
         topEssentialIssue: feedback.essentialIssues[0] || 'None',
-        topRecommendation: feedback.recommendations[0] || 'Good practices followed',
+        topRecommendation,
+        recommendationPriority,
+        recommendationEffort,
+        bookReference,
       };
     });
 
     await csvWriter.writeRecords(records);
     global.auditcore.logger.info(`General LLM suitability report generated: ${records.length} pages analyzed`);
+    global.auditcore.logger.info('For detailed guidance, see: docs/llm_general_suitability_guide.md');
 
     // Generate summary statistics
     const avgServedScore = records.reduce((sum, r) => sum + r.servedScore, 0) / records.length;
@@ -154,6 +168,9 @@ export async function generateFrontendLLMReport(results, outputDir) {
         // ISSUES
         { id: 'criticalIssues', title: 'Essential Issues' },
         { id: 'recommendations', title: 'Key Recommendations' },
+        { id: 'recommendationPriority', title: 'Priority' },
+        { id: 'recommendationEffort', title: 'Effort' },
+        { id: 'bookReference', title: 'Book Reference' },
       ],
     });
 
@@ -187,6 +204,12 @@ export async function generateFrontendLLMReport(results, outputDir) {
 
       const captchaMetrics = metrics.captchaProtection?.metrics || {};
 
+      // Get top recommendation with priority/effort/book reference
+      const topRecommendationObj = feedback.recommendationsWithPriority?.[0];
+      const recommendationPriority = topRecommendationObj?.priority || 'N/A';
+      const recommendationEffort = topRecommendationObj?.effort || 'N/A';
+      const bookReference = topRecommendationObj?.bookReference || 'N/A';
+
       return {
         url: metrics.url,
         htmlSource: metrics.htmlSource || 'rendered',
@@ -210,11 +233,15 @@ export async function generateFrontendLLMReport(results, outputDir) {
         // Issues
         criticalIssues: feedback.essentialIssues.length,
         recommendations: feedback.recommendations.slice(0, 2).join('; ') || 'None',
+        recommendationPriority,
+        recommendationEffort,
+        bookReference,
       };
     });
 
     await csvWriter.writeRecords(records);
     global.auditcore.logger.info(`Frontend LLM suitability report generated: ${records.length} pages analyzed`);
+    global.auditcore.logger.info('For detailed guidance, see: docs/llm_general_suitability_guide.md');
   } catch (error) {
     global.auditcore.logger.error('Error generating frontend LLM report:', error);
     throw error;
@@ -257,6 +284,9 @@ export async function generateBackendLLMReport(results, outputDir) {
         { id: 'hasOpenApiSpec', title: 'Has OpenAPI Spec' },
         { id: 'essentialIssues', title: 'Essential Issues' },
         { id: 'recommendations', title: 'Key Recommendations' },
+        { id: 'recommendationPriority', title: 'Priority' },
+        { id: 'recommendationEffort', title: 'Effort' },
+        { id: 'bookReference', title: 'Book Reference' },
       ],
     });
 
@@ -331,6 +361,13 @@ export async function generateBackendLLMReport(results, outputDir) {
       const robotsMetrics = metrics.robotsTxt?.metrics || {};
       const apiMetrics = metrics.apiEndpoints?.metrics || {};
 
+      // Get feedback to extract priority/effort/book reference for recommendations
+      const feedback = generateFeedback(metrics);
+      const topRecommendationObj = feedback.recommendationsWithPriority?.[0];
+      const recommendationPriority = topRecommendationObj?.priority || 'N/A';
+      const recommendationEffort = topRecommendationObj?.effort || 'N/A';
+      const bookReference = topRecommendationObj?.bookReference || 'N/A';
+
       return {
         url: metrics.url,
         backendScore: Math.max(0, Math.min(100, Math.round(backendScore))),
@@ -352,11 +389,15 @@ export async function generateBackendLLMReport(results, outputDir) {
         hasOpenApiSpec: apiMetrics.hasOpenApiSpec ? 'Yes' : 'No',
         essentialIssues: essentialIssues.join('; ') || 'None',
         recommendations: recommendations.join('; ') || 'Good practices followed',
+        recommendationPriority,
+        recommendationEffort,
+        bookReference,
       };
     });
 
     await csvWriter.writeRecords(records);
     global.auditcore.logger.info(`Backend LLM suitability report generated: ${records.length} pages analyzed`);
+    global.auditcore.logger.info('For detailed guidance, see: docs/llm_general_suitability_guide.md');
 
     // Log summary
     const avgScore = records.reduce((sum, r) => sum + r.backendScore, 0) / records.length;

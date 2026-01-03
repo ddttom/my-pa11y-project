@@ -63,11 +63,13 @@ Some issues like line length and table formatting require manual fixes.
 
 - `-s, --sitemap <url>`: URL of sitemap or webpage to process
 - `-o, --output <directory>`: Output directory (default: "results")
+  - All files consolidated here: reports, cache, logs, history
+  - Cache stored in `{outputDir}/.cache/` subdirectory
 - `-c, --count <number>`: Limit URLs to process (-1 for all)
 - `-l, --limit <number>`: Limit URLs to test (-1 for all)
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Force delete existing cache
+- `--force-delete-cache`: Force delete entire output directory (including cache)
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants
 - `--enable-history`: Enable historical tracking for comparative analysis
@@ -168,13 +170,22 @@ web-audit-suite/
 │           ├── contentAnalysis.js
 │           ├── imageAnalysis.js
 │           └── linkAnalysis.js
-├── results/                 # Generated output
+├── results/                 # Generated output (default output directory)
+│   ├── .cache/             # Cache consolidated within output
+│   │   ├── rendered/       # Rendered HTML cache
+│   │   ├── served/         # Served HTML cache
+│   │   ├── screenshots/    # Page screenshots (iPad viewport)
+│   │   └── *.json          # Cached analysis data
+│   ├── history/            # Historical tracking data
 │   ├── results.json        # Single source of truth
 │   ├── *.csv               # Various reports
-│   └── wcag_report.md      # Accessibility report
-├── .cache/                  # Puppeteer cache (auto-created)
+│   ├── wcag_report.md      # Accessibility report
+│   ├── combined.log        # Activity logs
+│   └── error.log           # Error logs
 └── docs/                    # Extension prompts and documentation
 ```
+
+**Key Change**: All output files (cache, reports, logs, screenshots) are now consolidated within the output directory for easier management. The cache is stored in `{outputDir}/.cache/` instead of the project root.
 
 ## Global State
 
@@ -265,11 +276,15 @@ function shouldSkipLanguageVariant(url)
 
 ### Caching Strategy
 
-- `.cache` directory auto-created on startup
-- Puppeteer uses cache for performance
+- Cache directory automatically created at `{outputDir}/.cache/`
+- Consolidated structure keeps all output in one location
+- Subdirectories: `rendered/`, `served/`, and `screenshots/` for HTML and screenshot caching
 - `--cache-only` to use only cached data
 - `--no-cache` to force fresh data
-- `--force-delete-cache` to clear cache
+- `--force-delete-cache` to clear cache and old reports (preserves `history/` and `baseline.json`)
+- Cache is automatically cleaned when switching output directories
+
+**Important**: `--force-delete-cache` preserves historical tracking data and baseline for regression detection. Only the cache directory and old report files are deleted.
 
 ### Resume Capability
 

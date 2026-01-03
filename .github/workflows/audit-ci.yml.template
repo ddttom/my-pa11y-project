@@ -1,0 +1,238 @@
+# Web Audit Suite - CI/CD Integration Template
+#
+# This workflow runs the Web Audit Suite on every push/PR to detect:
+# - Accessibility regressions (WCAG compliance)
+# - Performance degradations
+# - SEO score drops
+# - LLM agent compatibility regressions
+# - Security header changes
+#
+# Setup Instructions:
+# 1. Copy this file to .github/workflows/audit-ci.yml
+# 2. Set required secrets in GitHub repository settings:
+#    - AUDIT_SITE_URL: URL to audit (e.g., https://staging.example.com)
+# 3. Optional: Set baseline establishment on main branch
+# 4. Adjust thresholds below based on your requirements
+
+name: Web Audit Suite CI
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    branches: [main, develop]
+  # Allow manual workflow dispatch
+  workflow_dispatch:
+    inputs:
+      site_url:
+        description: 'URL to audit (overrides default)'
+        required: false
+        type: string
+      establish_baseline:
+        description: 'Establish new baseline'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # Adjust based on site size
+
+    steps:
+      - name: Checkout Web Audit Suite
+        uses: actions/checkout@v4
+        with:
+          repository: your-org/my-pa11y-project # Update with your repo
+          ref: main # Or specify a version tag
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create results directory
+        run: mkdir -p results
+
+      - name: Restore baseline from cache
+        uses: actions/cache@v3
+        with:
+          path: results/baseline.json
+          key: audit-baseline-${{ github.ref_name }}
+          restore-keys: |
+            audit-baseline-main
+
+      - name: Restore historical results
+        uses: actions/cache@v3
+        with:
+          path: results/history
+          key: audit-history-${{ github.ref_name }}-${{ github.run_number }}
+          restore-keys: |
+            audit-history-${{ github.ref_name }}-
+            audit-history-main-
+
+      - name: Run Web Audit Suite
+        id: audit
+        env:
+          SITE_URL: ${{ inputs.site_url || secrets.AUDIT_SITE_URL }}
+        run: |
+          # Determine if we should establish baseline (only on main branch)
+          ESTABLISH_BASELINE=""
+          if [[ "${{ github.ref_name }}" == "main" && "${{ inputs.establish_baseline }}" == "true" ]]; then
+            ESTABLISH_BASELINE="--establish-baseline"
+          fi
+
+          # Run audit with historical tracking and regression detection
+          npm start -- \
+            -s "$SITE_URL" \
+            -o results \
+            -c 50 \
+            --enable-history \
+            --generate-dashboard \
+            --generate-executive-summary \
+            --extract-patterns \
+            $ESTABLISH_BASELINE \
+            2>&1 | tee audit.log
+
+          # Capture exit code
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Check for critical regressions in log output
+          if grep -q "🚨 CRITICAL REGRESSIONS DETECTED" audit.log; then
+            echo "has_critical_regressions=true" >> $GITHUB_OUTPUT
+            echo "::error::Critical regressions detected. See regression_report.md for details."
+          else
+            echo "has_critical_regressions=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Extract summary metrics from log
+          if grep -q "LLM Summary" audit.log; then
+            LLM_SUMMARY=$(grep "LLM Summary" audit.log | tail -1)
+            echo "llm_summary=$LLM_SUMMARY" >> $GITHUB_OUTPUT
+          fi
+
+          exit $EXIT_CODE
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-reports-${{ github.run_number }}
+          path: |
+            results/*.csv
+            results/*.md
+            results/*.json
+            results/*.html
+          retention-days: 30
+
+      - name: Upload regression report
+        if: always() && steps.audit.outputs.has_critical_regressions == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report-${{ github.run_number }}
+          path: results/regression_report.md
+          retention-days: 90 # Keep regression reports longer
+
+      - name: Parse audit results
+        id: parse_results
+        if: always()
+        run: |
+          # Parse executive summary JSON for key metrics
+          if [ -f "results/executive_summary.json" ]; then
+            SUMMARY=$(cat results/executive_summary.json)
+
+            # Extract key metrics using jq (install if needed)
+            sudo apt-get update && sudo apt-get install -y jq
+
+            AVG_PERF=$(echo "$SUMMARY" | jq -r '.overview.performance.avgLoadTime // "N/A"')
+            AVG_A11Y=$(echo "$SUMMARY" | jq -r '.overview.accessibility.avgScore // "N/A"')
+            AVG_SEO=$(echo "$SUMMARY" | jq -r '.overview.seo.avgScore // "N/A"')
+            AVG_LLM_SERVED=$(echo "$SUMMARY" | jq -r '.overview.llmSuitability.avgServedScore // "N/A"')
+            AVG_LLM_RENDERED=$(echo "$SUMMARY" | jq -r '.overview.llmSuitability.avgRenderedScore // "N/A"')
+
+            echo "avg_performance=$AVG_PERF" >> $GITHUB_OUTPUT
+            echo "avg_accessibility=$AVG_A11Y" >> $GITHUB_OUTPUT
+            echo "avg_seo=$AVG_SEO" >> $GITHUB_OUTPUT
+            echo "avg_llm_served=$AVG_LLM_SERVED" >> $GITHUB_OUTPUT
+            echo "avg_llm_rendered=$AVG_LLM_RENDERED" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read regression report if it exists
+            let regressionSection = '';
+            try {
+              const regressionReport = fs.readFileSync('results/regression_report.md', 'utf8');
+              // Extract summary section
+              const summaryMatch = regressionReport.match(/## Summary([\s\S]*?)##/);
+              if (summaryMatch) {
+                regressionSection = `\n### Regression Analysis\n${summaryMatch[1].trim()}\n`;
+              }
+            } catch (error) {
+              console.log('No regression report found');
+            }
+
+            // Build comment body
+            const hasCritical = '${{ steps.audit.outputs.has_critical_regressions }}' === 'true';
+            const status = hasCritical ? '🚨 **CRITICAL REGRESSIONS**' : '✅ **No Critical Issues**';
+
+            const body = `## 🤖 Web Audit Suite Report
+
+            ${status}
+
+            ### Summary Metrics
+            - **Performance**: ${{ steps.parse_results.outputs.avg_performance }}ms avg load time
+            - **Accessibility**: ${{ steps.parse_results.outputs.avg_accessibility }}/100 avg score
+            - **SEO**: ${{ steps.parse_results.outputs.avg_seo }}/100 avg score
+            - **LLM Served**: ${{ steps.parse_results.outputs.avg_llm_served }}/100 (all agents)
+            - **LLM Rendered**: ${{ steps.parse_results.outputs.avg_llm_rendered }}/100 (browser agents)
+
+            ${regressionSection}
+
+            ### Full Reports
+            - [Download Audit Reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [View Executive Summary](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ${hasCritical ? '⚠️ **Action Required**: Critical regressions detected. Review regression_report.md before merging.' : ''}
+
+            ---
+            *Generated by [Web Audit Suite](https://github.com/ddttom/my-pa11y-project)*
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail on critical regressions
+        if: steps.audit.outputs.has_critical_regressions == 'true'
+        run: |
+          echo "::error::Critical regressions detected. Failing build."
+          echo "Review regression_report.md for details."
+          exit 1
+
+      - name: Save baseline (main branch only)
+        if: github.ref_name == 'main' && success()
+        uses: actions/cache/save@v3
+        with:
+          path: results/baseline.json
+          key: audit-baseline-${{ github.ref_name }}-${{ github.run_number }}
+
+      - name: Save historical results
+        if: always()
+        uses: actions/cache/save@v3
+        with:
+          path: results/history
+          key: audit-history-${{ github.ref_name }}-${{ github.run_number }}

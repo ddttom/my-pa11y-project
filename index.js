@@ -86,6 +86,23 @@ program
     '--force-scrape',
     'Bypass robots.txt restrictions (use with caution, default: respect robots.txt)',
   )
+  .option(
+    '--establish-baseline',
+    'Establish current results as baseline for regression detection (requires --enable-history)',
+  )
+  .option(
+    '--baseline-timestamp <timestamp>',
+    'Use specific historical result as baseline (ISO timestamp, requires --establish-baseline)',
+  )
+  .option(
+    '--extract-patterns',
+    'Extract successful patterns from high-scoring pages (generates pattern library)',
+  )
+  .option(
+    '--pattern-score-threshold <number>',
+    'Minimum score for pattern extraction (default: 70)',
+    (value) => parseInt(value, 10),
+  )
   .parse(process.argv);
 
 // Initialize configuration with validation

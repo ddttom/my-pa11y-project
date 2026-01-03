@@ -415,3 +415,402 @@ export async function generateTrendData(outputDir) {
 
   return trendData;
 }
+
+/**
+ * Establishes a baseline from a historical result
+ * @param {string} outputDir - Output directory
+ * @param {string} [timestamp] - Optional timestamp of result to use as baseline (defaults to latest)
+ * @returns {Promise<string>} Path to baseline file
+ */
+export async function establishBaseline(outputDir, timestamp = null) {
+  const historicalResults = await loadHistoricalResults(outputDir);
+
+  if (historicalResults.length === 0) {
+    throw new Error('No historical results found to establish baseline');
+  }
+
+  let baselineResult;
+  if (timestamp) {
+    baselineResult = historicalResults.find((r) => r.timestamp === timestamp);
+    if (!baselineResult) {
+      throw new Error(`No historical result found with timestamp: ${timestamp}`);
+    }
+  } else {
+    baselineResult = historicalResults[historicalResults.length - 1];
+  }
+
+  const baselineFile = path.join(outputDir, 'baseline.json');
+  await fs.writeFile(baselineFile, JSON.stringify(baselineResult, null, 2));
+
+  global.auditcore.logger.info(`Established baseline from ${baselineResult.timestamp}`);
+  return baselineFile;
+}
+
+/**
+ * Loads the baseline result
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<Object|null>} Baseline result or null if not found
+ */
+export async function loadBaseline(outputDir) {
+  const baselineFile = path.join(outputDir, 'baseline.json');
+
+  try {
+    const content = await fs.readFile(baselineFile, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    global.auditcore.logger.debug('No baseline found');
+    return null;
+  }
+}
+
+/**
+ * Detects regressions by comparing current results against baseline
+ * @param {Object} currentResults - Current analysis results
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<Object>} Regression analysis with severity classification
+ */
+export async function detectRegressions(currentResults, outputDir) {
+  const baseline = await loadBaseline(outputDir);
+
+  if (!baseline) {
+    return {
+      hasBaseline: false,
+      message: 'No baseline established. Run with --establish-baseline to set a baseline.',
+      regressions: [],
+    };
+  }
+
+  const comparison = compareResults(baseline.results, currentResults);
+  const regressions = [];
+
+  // Performance regressions
+  checkPerformanceRegressions(comparison.performance, regressions);
+
+  // Accessibility regressions
+  checkAccessibilityRegressions(comparison.accessibility, regressions);
+
+  // SEO regressions
+  checkSeoRegressions(comparison.seo, regressions);
+
+  // LLM suitability regressions
+  checkLLMRegressions(comparison.llm, regressions);
+
+  // URL count changes
+  checkUrlCountChanges(comparison.urlCount, regressions);
+
+  return {
+    hasBaseline: true,
+    baselineTimestamp: baseline.timestamp,
+    currentTimestamp: new Date().toISOString(),
+    regressions,
+    hasCriticalRegressions: regressions.some((r) => r.severity === 'critical'),
+    hasWarningRegressions: regressions.some((r) => r.severity === 'warning'),
+  };
+}
+
+/**
+ * Check for performance regressions
+ */
+function checkPerformanceRegressions(perfComparison, regressions) {
+  const thresholds = {
+    loadTime: { critical: 30, warning: 15 },
+    largestContentfulPaint: { critical: 30, warning: 15 },
+    firstContentfulPaint: { critical: 30, warning: 15 },
+    cumulativeLayoutShift: { critical: 50, warning: 25 },
+  };
+
+  Object.entries(perfComparison).forEach(([metric, data]) => {
+    if (data.percentChange > thresholds[metric].critical) {
+      regressions.push({
+        category: 'Performance',
+        metric,
+        severity: 'critical',
+        oldValue: data.old.toFixed(2),
+        newValue: data.new.toFixed(2),
+        delta: data.delta.toFixed(2),
+        percentChange: data.percentChange.toFixed(1),
+        message: `${metric} increased by ${data.percentChange.toFixed(1)}% (${data.old.toFixed(2)}ms → ${data.new.toFixed(2)}ms)`,
+      });
+    } else if (data.percentChange > thresholds[metric].warning) {
+      regressions.push({
+        category: 'Performance',
+        metric,
+        severity: 'warning',
+        oldValue: data.old.toFixed(2),
+        newValue: data.new.toFixed(2),
+        delta: data.delta.toFixed(2),
+        percentChange: data.percentChange.toFixed(1),
+        message: `${metric} increased by ${data.percentChange.toFixed(1)}% (${data.old.toFixed(2)}ms → ${data.new.toFixed(2)}ms)`,
+      });
+    }
+  });
+}
+
+/**
+ * Check for accessibility regressions
+ */
+function checkAccessibilityRegressions(a11yComparison, regressions) {
+  const { totalIssues, errorCount } = a11yComparison;
+
+  if (errorCount.delta > 0) {
+    regressions.push({
+      category: 'Accessibility',
+      metric: 'errorCount',
+      severity: 'critical',
+      oldValue: errorCount.old,
+      newValue: errorCount.new,
+      delta: errorCount.delta,
+      message: `Accessibility errors increased from ${errorCount.old} to ${errorCount.new} (+${errorCount.delta})`,
+    });
+  }
+
+  if (totalIssues.delta > 10) {
+    regressions.push({
+      category: 'Accessibility',
+      metric: 'totalIssues',
+      severity: 'warning',
+      oldValue: totalIssues.old,
+      newValue: totalIssues.new,
+      delta: totalIssues.delta,
+      percentChange: totalIssues.percentChange.toFixed(1),
+      message: `Total accessibility issues increased by ${totalIssues.percentChange.toFixed(1)}% (${totalIssues.old} → ${totalIssues.new})`,
+    });
+  }
+}
+
+/**
+ * Check for SEO regressions
+ */
+function checkSeoRegressions(seoComparison, regressions) {
+  const { averageScore } = seoComparison;
+
+  if (averageScore.percentChange < -10) {
+    regressions.push({
+      category: 'SEO',
+      metric: 'averageScore',
+      severity: 'critical',
+      oldValue: averageScore.old.toFixed(1),
+      newValue: averageScore.new.toFixed(1),
+      delta: averageScore.delta.toFixed(1),
+      percentChange: averageScore.percentChange.toFixed(1),
+      message: `SEO score decreased by ${Math.abs(averageScore.percentChange).toFixed(1)}% (${averageScore.old.toFixed(1)} → ${averageScore.new.toFixed(1)})`,
+    });
+  } else if (averageScore.percentChange < -5) {
+    regressions.push({
+      category: 'SEO',
+      metric: 'averageScore',
+      severity: 'warning',
+      oldValue: averageScore.old.toFixed(1),
+      newValue: averageScore.new.toFixed(1),
+      delta: averageScore.delta.toFixed(1),
+      percentChange: averageScore.percentChange.toFixed(1),
+      message: `SEO score decreased by ${Math.abs(averageScore.percentChange).toFixed(1)}% (${averageScore.old.toFixed(1)} → ${averageScore.new.toFixed(1)})`,
+    });
+  }
+}
+
+/**
+ * Check for LLM suitability regressions
+ */
+function checkLLMRegressions(llmComparison, regressions) {
+  const { servedScore, renderedScore } = llmComparison;
+
+  if (servedScore.percentChange < -10) {
+    regressions.push({
+      category: 'LLM Suitability',
+      metric: 'servedScore',
+      severity: 'critical',
+      oldValue: servedScore.old.toFixed(1),
+      newValue: servedScore.new.toFixed(1),
+      delta: servedScore.delta.toFixed(1),
+      percentChange: servedScore.percentChange.toFixed(1),
+      message: `LLM served score decreased by ${Math.abs(servedScore.percentChange).toFixed(1)}% (${servedScore.old.toFixed(1)} → ${servedScore.new.toFixed(1)})`,
+    });
+  } else if (servedScore.percentChange < -5) {
+    regressions.push({
+      category: 'LLM Suitability',
+      metric: 'servedScore',
+      severity: 'warning',
+      oldValue: servedScore.old.toFixed(1),
+      newValue: servedScore.new.toFixed(1),
+      delta: servedScore.delta.toFixed(1),
+      percentChange: servedScore.percentChange.toFixed(1),
+      message: `LLM served score decreased by ${Math.abs(servedScore.percentChange).toFixed(1)}% (${servedScore.old.toFixed(1)} → ${servedScore.new.toFixed(1)})`,
+    });
+  }
+
+  if (renderedScore.percentChange < -10) {
+    regressions.push({
+      category: 'LLM Suitability',
+      metric: 'renderedScore',
+      severity: 'warning',
+      oldValue: renderedScore.old.toFixed(1),
+      newValue: renderedScore.new.toFixed(1),
+      delta: renderedScore.delta.toFixed(1),
+      percentChange: renderedScore.percentChange.toFixed(1),
+      message: `LLM rendered score decreased by ${Math.abs(renderedScore.percentChange).toFixed(1)}% (${renderedScore.old.toFixed(1)} → ${renderedScore.new.toFixed(1)})`,
+    });
+  }
+}
+
+/**
+ * Check for URL count changes
+ */
+function checkUrlCountChanges(urlCountComparison, regressions) {
+  const { old: oldCount, new: newCount, delta } = urlCountComparison;
+
+  if (Math.abs(delta) > oldCount * 0.2) {
+    regressions.push({
+      category: 'Site Structure',
+      metric: 'urlCount',
+      severity: 'info',
+      oldValue: oldCount,
+      newValue: newCount,
+      delta,
+      message: `URL count changed significantly from ${oldCount} to ${newCount} (${delta > 0 ? '+' : ''}${delta})`,
+    });
+  }
+}
+
+/**
+ * Generates a regression report
+ * @param {Object} regressionAnalysis - Regression analysis from detectRegressions()
+ * @param {string} outputDir - Output directory
+ * @returns {Promise<string>} Path to regression report
+ */
+export async function generateRegressionReport(regressionAnalysis, outputDir) {
+  const reportPath = path.join(outputDir, 'regression_report.md');
+
+  if (!regressionAnalysis.hasBaseline) {
+    const content = `# Regression Report
+
+${regressionAnalysis.message}
+
+To establish a baseline, run the audit with historical tracking enabled and then use the \`--establish-baseline\` option.
+`;
+    await fs.writeFile(reportPath, content);
+    return reportPath;
+  }
+
+  const {
+    baselineTimestamp, currentTimestamp, regressions, hasCriticalRegressions, hasWarningRegressions,
+  } = regressionAnalysis;
+
+  let content = `# Regression Report
+
+**Baseline**: ${new Date(baselineTimestamp).toLocaleString()}
+**Current**: ${new Date(currentTimestamp).toLocaleString()}
+
+`;
+
+  // Summary section
+  content += '## Summary\n\n';
+
+  if (regressions.length === 0) {
+    content += '✅ **No regressions detected** - All metrics are stable or improved compared to baseline.\n\n';
+  } else {
+    const criticalCount = regressions.filter((r) => r.severity === 'critical').length;
+    const warningCount = regressions.filter((r) => r.severity === 'warning').length;
+    const infoCount = regressions.filter((r) => r.severity === 'info').length;
+
+    content += `**Total Regressions**: ${regressions.length}\n`;
+    if (criticalCount > 0) content += `- 🚨 **Critical**: ${criticalCount}\n`;
+    if (warningCount > 0) content += `- ⚠️ **Warning**: ${warningCount}\n`;
+    if (infoCount > 0) content += `- ℹ️ **Info**: ${infoCount}\n`;
+    content += '\n';
+
+    if (hasCriticalRegressions) {
+      content += '🚨 **Action Required**: Critical regressions detected. Immediate attention needed.\n\n';
+    } else if (hasWarningRegressions) {
+      content += '⚠️ **Review Recommended**: Warning-level regressions detected. Review and address soon.\n\n';
+    }
+  }
+
+  // Critical regressions
+  const criticalRegressions = regressions.filter((r) => r.severity === 'critical');
+  if (criticalRegressions.length > 0) {
+    content += '## 🚨 Critical Regressions\n\n';
+    content += 'These require immediate attention:\n\n';
+
+    criticalRegressions.forEach((regression) => {
+      content += `### ${regression.category}: ${regression.metric}\n\n`;
+      content += `${regression.message}\n\n`;
+      content += '- **Severity**: Critical\n';
+      content += `- **Old Value**: ${regression.oldValue}\n`;
+      content += `- **New Value**: ${regression.newValue}\n`;
+      content += `- **Change**: ${regression.delta}`;
+      if (regression.percentChange) {
+        content += ` (${regression.percentChange}%)`;
+      }
+      content += '\n\n';
+    });
+  }
+
+  // Warning regressions
+  const warningRegressions = regressions.filter((r) => r.severity === 'warning');
+  if (warningRegressions.length > 0) {
+    content += '## ⚠️ Warning Regressions\n\n';
+    content += 'These should be reviewed and addressed:\n\n';
+
+    warningRegressions.forEach((regression) => {
+      content += `### ${regression.category}: ${regression.metric}\n\n`;
+      content += `${regression.message}\n\n`;
+      content += '- **Severity**: Warning\n';
+      content += `- **Old Value**: ${regression.oldValue}\n`;
+      content += `- **New Value**: ${regression.newValue}\n`;
+      content += `- **Change**: ${regression.delta}`;
+      if (regression.percentChange) {
+        content += ` (${regression.percentChange}%)`;
+      }
+      content += '\n\n';
+    });
+  }
+
+  // Info regressions
+  const infoRegressions = regressions.filter((r) => r.severity === 'info');
+  if (infoRegressions.length > 0) {
+    content += '## ℹ️ Informational Changes\n\n';
+    content += 'These are notable changes but may not require action:\n\n';
+
+    infoRegressions.forEach((regression) => {
+      content += `### ${regression.category}: ${regression.metric}\n\n`;
+      content += `${regression.message}\n\n`;
+      content += '- **Severity**: Info\n';
+      content += `- **Old Value**: ${regression.oldValue}\n`;
+      content += `- **New Value**: ${regression.newValue}\n`;
+      content += `- **Change**: ${regression.delta}\n\n`;
+    });
+  }
+
+  // Recommendations section
+  if (regressions.length > 0) {
+    content += '## Recommended Actions\n\n';
+
+    if (hasCriticalRegressions) {
+      content += '### Immediate Actions\n\n';
+      content += '1. Review the critical regressions above\n';
+      content += '2. Identify the changes that caused these regressions\n';
+      content += '3. Implement fixes or rollback problematic changes\n';
+      content += '4. Re-run the audit to verify fixes\n\n';
+    }
+
+    if (hasWarningRegressions) {
+      content += '### Short-Term Actions\n\n';
+      content += '1. Schedule time to investigate warning-level regressions\n';
+      content += '2. Determine if changes are intentional or need correction\n';
+      content += '3. Plan fixes for unintentional regressions\n';
+      content += '4. Update baseline if changes are intentional improvements elsewhere\n\n';
+    }
+
+    content += '### General Recommendations\n\n';
+    content += '1. Run audits regularly to catch regressions early\n';
+    content += '2. Establish baselines after major releases\n';
+    content += '3. Integrate regression detection into CI/CD pipeline\n';
+    content += '4. Set up alerts for critical regressions\n\n';
+  }
+
+  await fs.writeFile(reportPath, content);
+  global.auditcore.logger.info(`Generated regression report: ${reportPath}`);
+
+  return reportPath;
+}

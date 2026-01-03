@@ -42,6 +42,18 @@ The folder /docs contains prompts in .md format that are useful for extending th
   - Stores historical results in timestamped files
   - Compares current run with previous runs
   - Identifies improvements and regressions
+- **Regression Detection**: Automated quality gate enforcement
+  - Baseline establishment for reference point tracking
+  - Severity classification (Critical/Warning/Info)
+  - Threshold-based alerting (>30% critical, >15% warning)
+  - Comprehensive regression reports with actionable recommendations
+  - CI/CD integration ready
+- **Pattern Extraction**: Learn from high-scoring pages
+  - Identifies successful patterns from high-scoring sites
+  - Extracts working examples across 6 categories
+  - Generates pattern library with implementation recommendations
+  - Priority and effort levels for each pattern
+  - Configurable score thresholds (default: 70/100)
 - **Executive Summary**: Single-page overview with key insights
   - High-level status across all categories
   - Key findings and actionable recommendations
@@ -54,6 +66,12 @@ The folder /docs contains prompts in .md format that are useful for extending th
   - JSON-based threshold configuration
   - Category-specific thresholds (performance, SEO, accessibility)
   - Warn and fail levels for each metric
+- **CI/CD Integration**: Production-ready automation
+  - GitHub Actions workflow template
+  - GitLab CI and Jenkins examples
+  - Baseline caching and restoration
+  - Automated PR commenting
+  - Build failure on critical regressions
 
 ## Complete Website Analysis Tool: Business Guide
 
@@ -331,7 +349,13 @@ web-audit-suite/
 │       ├── comment.md          # Commenting guidelines
 │       ├── modification.md     # Code modification templates
 │       └── system.md           # Development standards
-├── results/        # Generated reports and analysis
+├── results/        # Generated reports and analysis (default output directory)
+│   ├── .cache/             # Cache directory (consolidated within output)
+│   │   ├── rendered/           # Rendered HTML cache
+│   │   ├── served/             # Served HTML cache
+│   │   ├── screenshots/        # Page screenshots (iPad viewport)
+│   │   └── *.json              # Cached analysis data
+│   ├── history/            # Historical tracking data
 │   ├── seo_report.csv
 │   ├── performance_analysis.csv
 │   ├── seo_scores.csv
@@ -339,7 +363,9 @@ web-audit-suite/
 │   ├── final_sitemap.xml
 │   ├── results.json
 │   ├── wcag_report.md
-│   └── summary.json
+│   ├── summary.json
+│   ├── combined.log        # Complete activity log
+│   └── error.log           # Error tracking
 ├── src/           # Source code
 │   ├── main.js
 │   └── utils/     # Utility functions
@@ -352,12 +378,11 @@ web-audit-suite/
 │       │   └── reportGenerators.js   # Report generation functions
 │       ├── networkUtils.js # Network error handling
 │       └── reports.js    # Main report coordination
-├── .cache/        # Cache directory (automatically created)
 ├── index.js       # Entry point
-├── README.md
-├── combined.log   # Complete activity log
-└── error.log      # Error tracking
+└── README.md
 ```
+
+**Note**: All output files (reports, cache, screenshots, logs) are now consolidated within the output directory (default: `results/`) for easier management and sharing.
 
 ## Features
 
@@ -449,13 +474,17 @@ See [User Manual](docs/usermanual.md#environment-variables) for full `.env` opti
 - `-c, --count <number>`: Limit number of files to include in both passes (-1 for infinite)
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Force delete existing cache
+- `--force-delete-cache`: Clear cache and old reports (preserves history/ and baseline.json)
 - `--log-level <level>`: Set logging level (error, warn, info, debug)
 - `--include-all-languages`: Include all language variants in analysis (default: only /en and /us)
 - `--enable-history`: Enable historical tracking (stores results for comparison over time)
 - `--generate-dashboard`: Generate interactive HTML dashboard with charts
 - `--generate-executive-summary`: Generate executive summary report
 - `--thresholds <file>`: Path to custom thresholds configuration file (JSON)
+- `--establish-baseline`: Establish current results as baseline for regression detection (requires --enable-history)
+- `--baseline-timestamp <timestamp>`: Use specific historical result as baseline (ISO timestamp)
+- `--extract-patterns`: Extract successful patterns from high-scoring pages
+- `--pattern-score-threshold <number>`: Minimum score for pattern extraction (default: 70)
 
 ### Output Files
 
@@ -553,6 +582,20 @@ See [User Manual](docs/usermanual.md#environment-variables) for full `.env` opti
   - `results-<timestamp>.json`: Timestamped historical results
   - Enables comparative analysis and trend tracking
 
+- `baseline.json`: Established baseline for regression detection (created with --establish-baseline)
+  - Reference point for future comparisons
+  - Used to detect quality regressions
+
+- `regression_report.md`: Regression analysis report (generated with --enable-history)
+  - Critical, warning, and info regressions
+  - Actionable recommendations
+  - Immediate and short-term actions
+
+- `pattern_library.md`: Pattern library report (generated with --extract-patterns)
+  - Successful patterns from high-scoring pages
+  - Real-world examples by category
+  - Implementation recommendations with priority and effort levels
+
 ### Usage Examples
 
 #### Basic Analysis
@@ -639,3 +682,49 @@ npm start -- -s https://example.com/sitemap.xml --enable-history --generate-dash
 # - Trend charts across all runs
 # - Improvements and regressions
 ```
+
+#### Regression Detection Workflow
+
+```bash
+# Establish baseline from current run
+npm start -- -s https://example.com/sitemap.xml \
+  --enable-history \
+  --establish-baseline
+
+# Future runs will detect regressions against baseline
+npm start -- -s https://example.com/sitemap.xml --enable-history
+
+# Output will show:
+# - Critical regressions (>30% degradation)
+# - Warning regressions (>15% degradation)
+# - Info changes (notable differences)
+# - See regression_report.md for details
+```
+
+#### Pattern Extraction Workflow
+
+```bash
+# Extract patterns from high-scoring pages
+npm start -- -s https://example.com/sitemap.xml \
+  --extract-patterns \
+  --pattern-score-threshold 70
+
+# Output pattern_library.md will contain:
+# - Structured data patterns
+# - Semantic HTML patterns
+# - Form field patterns
+# - Error handling patterns
+# - State management patterns
+# - llms.txt patterns
+```
+
+#### CI/CD Integration Workflow
+
+See [.github/CI_CD_INTEGRATION.md](.github/CI_CD_INTEGRATION.md) for complete CI/CD setup guide including:
+
+- GitHub Actions workflow template
+- GitLab CI configuration
+- Jenkins pipeline setup
+- Baseline management in CI
+- PR commenting
+- Build failure on regressions

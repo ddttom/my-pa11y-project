@@ -624,6 +624,19 @@ export function calculateRenderedScore(metrics) {
 }
 
 /**
+ * Helper to add recommendation with priority, effort, and book reference metadata
+ */
+function addRecommendation(recommendations, recommendationsWithPriority, text, priority, effort, bookReference) {
+  recommendations.push(text);
+  recommendationsWithPriority.push({
+    text,
+    priority,
+    effort,
+    bookReference,
+  });
+}
+
+/**
  * Generate actionable feedback based on metrics
  * Prioritizes ESSENTIAL issues over NICE_TO_HAVE
  */
@@ -631,48 +644,92 @@ export function generateFeedback(metrics) {
   const essentialIssues = [];
   const niceToHaveIssues = [];
   const recommendations = [];
+  const recommendationsWithPriority = [];
 
   if (!metrics || metrics.error) {
     return {
       essentialIssues: ['Failed to collect LLM metrics'],
       niceToHaveIssues: [],
       recommendations: [],
+      recommendationsWithPriority: [],
     };
   }
 
   // ESSENTIAL_SERVED issues
   if (!metrics.semanticHTML?.metrics.hasMain) {
     essentialIssues.push('No <main> element - agents cannot identify primary content');
-    recommendations.push('Add <main> element around primary page content');
+    addRecommendation(
+      recommendations,
+      recommendationsWithPriority,
+      'Add <main> element around primary page content',
+      'Critical',
+      'Low',
+      'Chapter 10: Technical Patterns - Semantic HTML Structure',
+    );
   }
 
   if (!metrics.semanticHTML?.metrics.hasNav) {
     essentialIssues.push('No <nav> element - agents cannot identify navigation');
-    recommendations.push('Wrap navigation menus in <nav> elements');
+    addRecommendation(
+      recommendations,
+      recommendationsWithPriority,
+      'Wrap navigation menus in <nav> elements',
+      'Critical',
+      'Low',
+      'Chapter 10: Technical Patterns - Semantic HTML Structure',
+    );
   }
 
   if (metrics.formFields?.metrics && metrics.formFields.metrics.totalInputs > 0) {
     const standardRatio = metrics.formFields.metrics.standardNameRatio;
     if (standardRatio < 0.5) {
       essentialIssues.push(`Only ${Math.round(standardRatio * 100)}% of form fields use standard names`);
-      recommendations.push('Use standard field names: email, firstName, lastName, phone, etc.');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Use standard field names: email, firstName, lastName, phone, etc.',
+        'Critical',
+        'Low',
+        'Chapter 10: Technical Patterns - Form Field Naming',
+      );
     }
 
     const { labelRatio } = metrics.formFields.metrics;
     if (labelRatio < 0.8) {
       essentialIssues.push(`${Math.round((1 - labelRatio) * 100)}% of form fields missing labels`);
-      recommendations.push('Add <label> or aria-label to all form fields');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Add <label> or aria-label to all form fields',
+        'High',
+        'Low',
+        'Chapter 10: Technical Patterns - Form Accessibility',
+      );
     }
   }
 
   if (!metrics.structuredData?.metrics.hasSchemaOrg) {
     essentialIssues.push('No Schema.org structured data');
-    recommendations.push('Add JSON-LD with Schema.org vocabulary for key content');
+    addRecommendation(
+      recommendations,
+      recommendationsWithPriority,
+      'Add JSON-LD with Schema.org vocabulary for key content',
+      'Critical',
+      'Low',
+      'Chapter 10: Technical Patterns - Structured Data',
+    );
   }
 
   if (!metrics.llmsTxt?.metrics.hasLLMsTxtReference && !metrics.llmsTxt?.metrics.hasLLMsTxtMeta) {
     essentialIssues.push('No llms.txt file detected');
-    recommendations.push('Add llms.txt file at site root for LLM agent discovery (see llmstxt.org)');
+    addRecommendation(
+      recommendations,
+      recommendationsWithPriority,
+      'Add llms.txt file at site root for LLM agent discovery (see llmstxt.org)',
+      'Critical',
+      'Low',
+      'Chapter 11: Agent-Friendly Patterns - llms.txt Specification',
+    );
   }
 
   // Form autocomplete issues
@@ -680,7 +737,14 @@ export function generateFeedback(metrics) {
     const { autocompleteRatio } = metrics.formAutocomplete.metrics;
     if (autocompleteRatio < 0.5) {
       essentialIssues.push(`Only ${Math.round(autocompleteRatio * 100)}% of form fields have autocomplete attributes`);
-      recommendations.push('Add autocomplete attributes to form fields (e.g., autocomplete="email", "name", "tel")');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Add autocomplete attributes to form fields (e.g., autocomplete="email", "name", "tel")',
+        'High',
+        'Low',
+        'Chapter 10: Technical Patterns - Form Autocomplete',
+      );
     }
   }
 
@@ -688,11 +752,25 @@ export function generateFeedback(metrics) {
   if (metrics.robotsTxt?.metrics) {
     if (metrics.robotsTxt.metrics.hasAgentRestrictions) {
       essentialIssues.push('Page has robot restrictions (noindex/nofollow) that may block agents');
-      recommendations.push('Review robots meta tags - consider allowing agent access where appropriate');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Review robots meta tags - consider allowing agent access where appropriate',
+        'High',
+        'Low',
+        'Chapter 9: Access Control - Robot Restrictions',
+      );
     }
     if (!metrics.robotsTxt.metrics.hasAiTxtReference) {
       niceToHaveIssues.push('No ai.txt file detected for AI-specific instructions');
-      recommendations.push('Consider adding ai.txt file for AI agent-specific guidance');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Consider adding ai.txt file for AI agent-specific guidance',
+        'Low',
+        'Low',
+        'Chapter 11: Agent-Friendly Patterns - ai.txt File',
+      );
     }
   }
 
@@ -700,39 +778,86 @@ export function generateFeedback(metrics) {
   if (metrics.htmlSource === 'rendered') {
     if (!metrics.dataAttributes?.metrics.hasDataState) {
       niceToHaveIssues.push('No data-state attributes for dynamic content');
-      recommendations.push('Add data-state to loading indicators and dynamic content');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Add data-state to loading indicators and dynamic content',
+        'Medium',
+        'Moderate',
+        'Chapter 10: Technical Patterns - Explicit State Attributes',
+      );
     }
 
     if (!metrics.dataAttributes?.metrics.hasAgentVisibilityControl) {
       niceToHaveIssues.push('No data-agent-visible attributes found');
-      recommendations.push('Consider using data-agent-visible to explicitly control agent visibility');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Consider using data-agent-visible to explicitly control agent visibility',
+        'Medium',
+        'Low',
+        'Chapter 11: Agent-Friendly Patterns - Agent Visibility Control',
+      );
     }
 
     if (!metrics.errorHandling?.metrics.hasPersistentErrors) {
       niceToHaveIssues.push('Error messages may not persist');
-      recommendations.push('Use role="alert" and aria-live for persistent errors');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Use role="alert" and aria-live for persistent errors',
+        'High',
+        'Moderate',
+        'Chapter 10: Technical Patterns - Error Handling',
+      );
     }
   }
 
   // NICE_TO_HAVE issues (low priority)
   if (metrics.captchaProtection?.metrics?.hasBotProtection) {
     niceToHaveIssues.push(`Bot protection detected: ${metrics.captchaProtection.metrics.captchaType}`);
-    recommendations.push('Bot protection may prevent agent access - consider alternative verification for agents');
+    addRecommendation(
+      recommendations,
+      recommendationsWithPriority,
+      'Bot protection may prevent agent access - consider alternative verification for agents',
+      'Medium',
+      'High',
+      'Chapter 9: Access Control - CAPTCHA and Bot Protection',
+    );
   }
 
   if (metrics.apiEndpoints?.metrics && metrics.apiEndpoints.metrics.apiDiscoverabilityScore < 25) {
     niceToHaveIssues.push('Low API endpoint discoverability');
-    recommendations.push('Add API documentation links and OpenAPI/Swagger specifications for agent access');
+    addRecommendation(
+      recommendations,
+      recommendationsWithPriority,
+      'Add API documentation links and OpenAPI/Swagger specifications for agent access',
+      'Medium',
+      'Moderate',
+      'Chapter 12: API-First Design - API Discoverability',
+    );
   }
 
   if (metrics.tableData?.metrics && metrics.tableData.metrics.tableCount > 0) {
     if (metrics.tableData.metrics.tablesWithScope === 0) {
       niceToHaveIssues.push('Tables missing scope attributes');
-      recommendations.push('Add scope="col" and scope="row" to table headers');
+      addRecommendation(
+        recommendations,
+        recommendationsWithPriority,
+        'Add scope="col" and scope="row" to table headers',
+        'Low',
+        'Low',
+        'Chapter 10: Technical Patterns - Table Semantics',
+      );
     }
   }
 
-  return { essentialIssues, niceToHaveIssues, recommendations };
+  return {
+    essentialIssues,
+    niceToHaveIssues,
+    recommendations,
+    recommendationsWithPriority,
+  };
 }
 
 /**
