@@ -228,24 +228,34 @@ Based on "The Invisible Users" methodology by Tom Cranstoun:
 
 **Result:** Clear prioritization of what to fix first
 
-### Output: 11 Actionable Reports
+### Output: 13 Actionable Reports
 
 **Format:** CSV (machine-readable) + Markdown (human-readable)
 
-1. `seo_report.csv` - Page-level SEO analysis
-2. `performance_analysis.csv` - Core Web Vitals
-3. `seo_scores.csv` - Detailed scoring breakdown
-4. `accessibility_report.csv` - WCAG compliance data
-5. `wcag_report.md` - Human-readable accessibility report
-6. `image_optimization.csv` - Image analysis
-7. `link_analysis.csv` - Link structure quality
-8. `content_quality.csv` - Content analysis
-9. `security_report.csv` - Security headers
-10. **`llm_general_suitability.csv`** - Overall AI compatibility
-11. **`llm_frontend_suitability.csv`** - Frontend patterns
-12. **`llm_backend_suitability.csv`** - Backend patterns
+1. **`executive_summary.md`** - High-level stakeholder report with headline score and cache staleness status
+2. **`executive_summary.json`** - Machine-readable executive summary
+3. `seo_report.csv` - Page-level SEO analysis
+4. `performance_analysis.csv` - Core Web Vitals
+5. `seo_scores.csv` - Detailed scoring breakdown
+6. `accessibility_report.csv` - WCAG compliance data
+7. `wcag_report.md` - Human-readable accessibility report
+8. `image_optimization.csv` - Image analysis
+9. `link_analysis.csv` - Link structure quality
+10. `content_quality.csv` - Content analysis
+11. `security_report.csv` - Security headers
+12. **`llm_general_suitability.csv`** - Overall AI compatibility
+13. **`llm_frontend_suitability.csv`** - Frontend patterns
+14. **`llm_backend_suitability.csv`** - Backend patterns
 
 Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
+
+**Executive Summary Features:**
+
+- Overall site health score (Performance + Accessibility + SEO + LLM)
+- robots.txt compliance status
+- Cache staleness capability reporting (indicates if site provides HTTP Last-Modified headers)
+- Key findings with severity prioritization (Critical/Medium/Low)
+- Actionable recommendations ranked by impact
 
 ### Production-Ready Features
 
@@ -320,8 +330,9 @@ The tool includes enterprise-grade capabilities for comprehensive website analys
 
 ✅ **Comprehensive Analysis**
 
-- 11 detailed report generators
+- 13 detailed report generators
 - 3 LLM suitability reports
+- Executive summary with headline score
 - Puppeteer-based rendering
 - Pa11y accessibility integration
 - Cloudflare bypass capability
@@ -503,7 +514,7 @@ Book (Methodology) + Tool (Measurement) = Complete Solution
 ✅ **Prioritizes essential vs speculative patterns**
 ✅ **Based on published, peer-reviewed methodology**
 ✅ **Combines traditional metrics + AI compatibility**
-✅ **11 reports in one analysis run**
+✅ **13 reports in one analysis run**
 ✅ **Open architecture for extensions**
 
 ### Market Timing
@@ -810,7 +821,7 @@ analysis regardless.
 **Risk:** Large platforms (Google, Microsoft) release free tools
 
 **Mitigation:** We can pivot to enterprise/agency market with white-label. Our
-tool is more comprehensive (11 reports). We have implementation methodology
+tool is more comprehensive (13 reports). We have implementation methodology
 from book.
 
 **Risk:** Market adopts competing standard for AI agent compatibility
@@ -849,7 +860,7 @@ site monitoring.
 - Private repository with complete source code
 - Comprehensive documentation
 - Proven methodology from published book
-- 11 specialized report generators
+- 13 specialized report generators including executive summary
 
 **Market Position:**
 
@@ -977,7 +988,7 @@ site monitoring.
 ✅ Comprehensive documentation
 ✅ Testing on real production sites
 ✅ Understanding of both human and agent requirements
-✅ 11 specialized reports
+✅ 13 specialized reports including executive summary
 ✅ Served vs rendered HTML distinction
 ✅ Clear implementation roadmap
 
@@ -1106,7 +1117,7 @@ get slightly better experience. Top priority: Add Schema.org structured data.
 | **WCAG Compliance**            | ✅              | ❌          | ✅            | ❌          |
 | **Performance Metrics**        | ✅              | ❌          | ❌            | ✅          |
 | **Security Headers**           | ✅              | ❌          | ❌            | ❌          |
-| **Comprehensive Reports**      | 11 reports      | 3-5 reports | 2-3 reports   | 2-3 reports |
+| **Comprehensive Reports**      | 13 reports      | 3-5 reports | 2-3 reports   | 2-3 reports |
 | **Prioritization Framework**   | ✅              | ❌          | ❌            | ❌          |
 
 ### Appendix D: Case Study - E-commerce Site
