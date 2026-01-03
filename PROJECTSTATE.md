@@ -419,6 +419,9 @@ Current snapshot of Web Audit Suite implementation status.
 - **Executive Summary Improvements**
   - Added headline score by averaging 4 category scores (Performance, Accessibility, SEO, LLM)
   - Displays prominently at top of executive summary with status (Excellent/Good/Fair/Needs Improvement/Critical)
+  - Added cache staleness capability reporting - checks if site provides HTTP Last-Modified headers
+  - Reports capability with status: ✅ works / ⚠️ won't work / ℹ️ unknown
+  - Helps users understand if automatic cache invalidation will work for their site
   - Fixed markdown table formatting to comply with markdownlint rules (spaces around pipes)
   - Removed italic emphasis from footer to fix markdown linting errors
   - Fixed 11 data structure mismatches in executive summary generation:

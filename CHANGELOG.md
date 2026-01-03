@@ -18,6 +18,21 @@ All notable changes to this project will be documented in this file.
   - Files modified:
     - `src/utils/reportUtils/executiveSummary.js` - Added headline score calculation and display
 
+- **Cache Staleness Capability Reporting**: Executive summary now reports if cache staleness checking will work (2026-01-03)
+  - Checks first URL's cache file for HTTP `Last-Modified` header presence
+  - Reports capability with clear status messages in executive summary:
+    - ✅ "Site provides HTTP Last-Modified header - cache staleness checking will work"
+    - ⚠️ "No Last-Modified header found - cache staleness checking will not work"
+    - ℹ️ "Unable to determine (cache not available)"
+  - Helps users understand whether automatic cache invalidation will work for their site
+  - Implementation:
+    - Added `checkCacheStalenessCapability()` async function to read cache files
+    - Added `generateCacheKey()` function to match caching.js MD5 implementation
+    - Made `buildOverview()`, `buildExecutiveSummary()`, and `generateExecutiveSummary()` async
+    - Added crypto module import for MD5 hashing
+  - Files modified:
+    - `src/utils/reportUtils/executiveSummary.js` - Added cache capability checking and reporting
+
 - **Cache Staleness Checking**: Automatic validation of cached data freshness (2026-01-03)
   - HTTP HEAD requests to check if source URLs have been modified
   - Compares `Last-Modified` header from source with cache's `lastCrawled` timestamp
