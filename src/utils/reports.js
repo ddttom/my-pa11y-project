@@ -15,6 +15,11 @@ import {
   generateFrontendLLMReport,
   generateBackendLLMReport,
 } from './reportUtils/llmReports.js';
+import {
+  generateRobotsTxtReport,
+  generateLlmsTxtReport,
+  generateAIFilesSummaryReport,
+} from './reportUtils/aiFileReports.js';
 import { generateExecutiveSummary } from './reportUtils/executiveSummary.js';
 import { generateDashboard } from './reportUtils/dashboardGenerator.js';
 import { compareWithPrevious, generateTrendData } from './historicalComparison.js';
@@ -42,6 +47,11 @@ export async function generateReports(results, urls, outputDir) {
     await generateGeneralLLMReport(results, outputDir);
     await generateFrontendLLMReport(results, outputDir);
     await generateBackendLLMReport(results, outputDir);
+
+    // Generate AI files quality reports (robots.txt and llms.txt)
+    await generateRobotsTxtReport(results, outputDir);
+    await generateLlmsTxtReport(results, outputDir);
+    await generateAIFilesSummaryReport(results, outputDir);
 
     // Check if enhanced features are enabled
     const { options } = global.auditcore;

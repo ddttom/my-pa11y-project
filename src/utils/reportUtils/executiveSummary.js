@@ -17,7 +17,7 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
     const mdPath = path.join(outputDir, 'executive_summary.md');
     const jsonPath = path.join(outputDir, 'executive_summary.json');
 
-    await fs.writeFile(mdPath, generateMarkdownSummary(summary));
+    await fs.writeFile(mdPath, generateMarkdownSummary(summary, results));
     await fs.writeFile(jsonPath, JSON.stringify(summary, null, 2));
 
     global.auditcore.logger.info('Executive summary report generated successfully');
@@ -71,6 +71,7 @@ function buildOverview(results) {
     totalPages: (results.urls || []).length,
     analysisDate: new Date().toISOString().split('T')[0],
     schemaVersion: results.schemaVersion || '1.0.0',
+    robotsComplianceEnabled: !global.auditcore?.options?.forceScrape,
   };
 }
 
@@ -339,6 +340,50 @@ function buildKeyFindings(results) {
     });
   }
 
+  // robots.txt quality findings
+  const robotsAnalysis = results.robotsTxtAnalysis || [];
+  if (robotsAnalysis.length > 0) {
+    const robotsData = robotsAnalysis[0];
+    if (robotsData.exists && robotsData.analysis) {
+      const { score, quality } = robotsData.analysis;
+      if (score < 60) {
+        findings.push({
+          category: 'AI Compatibility',
+          severity: score < 40 ? 'Medium' : 'Low',
+          finding: `robots.txt quality is ${quality} (${score}/100) - needs improvement for AI agent compatibility`,
+        });
+      }
+    } else if (!robotsData.exists) {
+      findings.push({
+        category: 'AI Compatibility',
+        severity: 'Low',
+        finding: 'robots.txt file not found - recommended for guiding AI agent access',
+      });
+    }
+  }
+
+  // llms.txt quality findings
+  const llmsAnalysis = results.llmsTxtAnalysis || [];
+  if (llmsAnalysis.length > 0) {
+    const llmsData = llmsAnalysis[0];
+    if (llmsData.exists && llmsData.analysis) {
+      const { score, quality } = llmsData.analysis;
+      if (score < 70) {
+        findings.push({
+          category: 'AI Compatibility',
+          severity: score < 50 ? 'Medium' : 'Low',
+          finding: `llms.txt quality is ${quality} (${score}/100) - consider improving for better AI agent guidance`,
+        });
+      }
+    } else if (!llmsData.exists) {
+      findings.push({
+        category: 'AI Compatibility',
+        severity: 'Low',
+        finding: 'llms.txt file not found - recommended for comprehensive AI agent guidance (see llmstxt.org)',
+      });
+    }
+  }
+
   return findings;
 }
 
@@ -410,6 +455,54 @@ function buildRecommendations(results) {
     });
   }
 
+  // robots.txt recommendations
+  const robotsAnalysis = results.robotsTxtAnalysis || [];
+  if (robotsAnalysis.length > 0) {
+    const robotsData = robotsAnalysis[0];
+    if (robotsData.exists && robotsData.analysis) {
+      const { score, recommendations: robotsRecs } = robotsData.analysis;
+      if (score < 60 && robotsRecs && robotsRecs.length > 0) {
+        // Get top recommendation
+        const topRec = robotsRecs[0];
+        recommendations.push({
+          category: 'AI Compatibility',
+          priority: score < 40 ? 'Medium' : 'Low',
+          recommendation: `robots.txt: ${topRec}`,
+        });
+      }
+    } else if (!robotsData.exists) {
+      recommendations.push({
+        category: 'AI Compatibility',
+        priority: 'Low',
+        recommendation: 'Create a robots.txt file with AI-specific user agents (GPTBot, ClaudeBot) and sitemap references',
+      });
+    }
+  }
+
+  // llms.txt recommendations
+  const llmsAnalysis = results.llmsTxtAnalysis || [];
+  if (llmsAnalysis.length > 0) {
+    const llmsData = llmsAnalysis[0];
+    if (llmsData.exists && llmsData.analysis) {
+      const { score, recommendations: llmsRecs } = llmsData.analysis;
+      if (score < 70 && llmsRecs && llmsRecs.length > 0) {
+        // Get top recommendation
+        const topRec = llmsRecs[0];
+        recommendations.push({
+          category: 'AI Compatibility',
+          priority: score < 50 ? 'Medium' : 'Low',
+          recommendation: `llms.txt: ${topRec}`,
+        });
+      }
+    } else if (!llmsData.exists) {
+      recommendations.push({
+        category: 'AI Compatibility',
+        priority: 'Low',
+        recommendation: 'Create a comprehensive llms.txt file following llmstxt.org specification with access guidelines and content restrictions',
+      });
+    }
+  }
+
   return recommendations;
 }
 
@@ -457,11 +550,18 @@ function buildComparisonSummary(comparison) {
 /**
  * Generate markdown format of the summary
  */
-function generateMarkdownSummary(summary) {
+function generateMarkdownSummary(summary, results) {
   let md = '# Executive Summary\n\n';
   md += `**Site:** ${summary.site}\n`;
   md += `**Generated:** ${new Date(summary.generatedAt).toLocaleString()}\n`;
-  md += `**Pages Analyzed:** ${summary.overview.totalPages}\n\n`;
+  md += `**Pages Analyzed:** ${summary.overview.totalPages}\n`;
+
+  // Add robots.txt compliance status
+  const complianceIcon = summary.overview.robotsComplianceEnabled ? '✅' : '⚠️';
+  const complianceText = summary.overview.robotsComplianceEnabled
+    ? 'Enabled (respecting robots.txt directives)'
+    : 'Disabled (force-scrape mode active)';
+  md += `**robots.txt Compliance:** ${complianceIcon} ${complianceText}\n\n`;
 
   md += '---\n\n';
 
@@ -529,6 +629,40 @@ function generateMarkdownSummary(summary) {
     md += `- **Trend (Served):** ${summary.llmSuitability.trend.servedScore > 0 ? '📈' : '📉'} ${summary.llmSuitability.trend.servedScore.toFixed(1)}%\n`;
   }
   md += '\n';
+
+  // AI Compatibility section (robots.txt and llms.txt)
+  const robotsAnalysis = results.robotsTxtAnalysis || [];
+  const llmsAnalysis = results.llmsTxtAnalysis || [];
+
+  if (robotsAnalysis.length > 0 || llmsAnalysis.length > 0) {
+    md += '## AI File Compatibility\n\n';
+
+    // robots.txt status
+    if (robotsAnalysis.length > 0) {
+      const robotsData = robotsAnalysis[0];
+      if (robotsData.exists && robotsData.analysis) {
+        const { score, quality } = robotsData.analysis;
+        const icon = score >= 80 ? '✅' : score >= 60 ? '🟡' : '🟠';
+        md += `- **robots.txt:** ${icon} ${quality} (${score}/100)\n`;
+      } else {
+        md += '- **robots.txt:** ❌ Not found\n';
+      }
+    }
+
+    // llms.txt status
+    if (llmsAnalysis.length > 0) {
+      const llmsData = llmsAnalysis[0];
+      if (llmsData.exists && llmsData.analysis) {
+        const { score, quality } = llmsData.analysis;
+        const icon = score >= 85 ? '✅' : score >= 70 ? '🟡' : '🟠';
+        md += `- **llms.txt:** ${icon} ${quality} (${score}/100)\n`;
+      } else {
+        md += '- **llms.txt:** ❌ Not found\n';
+      }
+    }
+
+    md += '\nSee `ai_files_summary.md` for detailed analysis and recommendations.\n\n';
+  }
 
   // Key findings
   if (summary.keyFindings.length > 0) {

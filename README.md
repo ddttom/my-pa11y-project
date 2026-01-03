@@ -18,8 +18,13 @@ The folder /docs contains prompts in .md format that are useful for extending th
   - Detailed markdown reports for better readability
 - **Security Analysis**: Security headers and HTTPS configuration
 - **Content Quality**: Structure and freshness analysis
+- **robots.txt Compliance**: Ethical scraping with robots.txt enforcement
+  - Automatic robots.txt fetching before crawling
+  - Interactive prompts for blocked URLs
+  - Force-scrape override capability
+  - Comprehensive compliance logging
 - **LLM Suitability**: AI agent compatibility analysis (served vs rendered HTML)
-  - llms.txt detection for AI agent guidance
+  - robots.txt and llms.txt quality scoring
   - Automatic `llms.txt` discovery at domain root
   - data-agent-visible attribute tracking
   - Three specialized reports (general, frontend, backend)

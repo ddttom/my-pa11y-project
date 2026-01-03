@@ -82,6 +82,10 @@ program
     '--thresholds <file>',
     'Path to custom thresholds configuration file (JSON)',
   )
+  .option(
+    '--force-scrape',
+    'Bypass robots.txt restrictions (use with caution, default: respect robots.txt)',
+  )
   .parse(process.argv);
 
 // Initialize configuration with validation
@@ -199,6 +203,20 @@ Object.entries(global.auditcore.options).forEach(([key, value]) => {
   }
 });
 console.log('===========================');
+
+// Log robots.txt compliance mode prominently
+if (global.auditcore.options.forceScrape) {
+  console.log('');
+  console.log('⚠️  WARNING: robots.txt COMPLIANCE DISABLED');
+  console.log('    Force scrape mode is ENABLED - robots.txt restrictions will be bypassed');
+  console.log('    Use this feature responsibly and ensure you have permission to scrape');
+  console.log('');
+} else {
+  console.log('');
+  console.log('✓  robots.txt compliance ENABLED (default)');
+  console.log('   The tool will respect robots.txt directives');
+  console.log('');
+}
 /* eslint-enable no-console */
 
 /**

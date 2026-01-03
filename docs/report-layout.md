@@ -11,7 +11,7 @@ This document provides a comprehensive technical reference for all report struct
 
 ## Report Overview
 
-The tool generates **15+ reports** in CSV format (plus XML, Markdown, JSON, and HTML files):
+The tool generates **18+ reports** in CSV format (plus XML, Markdown, JSON, and HTML files):
 
 | Report File | Primary Key | Record Type | Aggregation Level |
 |-------------|-------------|-------------|-------------------|
@@ -23,6 +23,9 @@ The tool generates **15+ reports** in CSV format (plus XML, Markdown, JSON, and 
 | `seo_scores.csv` | URL | Per-page | Page-level |
 | `llm_readability_report.csv` | URL | Per-page | Page-level |
 | `http_status_report.csv` | URL | Per-page | Page-level |
+| `robots_txt_quality.csv` | URL | Per-file | File-level |
+| `llms_txt_quality.csv` | URL | Per-file | File-level |
+| `ai_files_summary.md` | - | Site-wide | Site-wide |
 | `image_optimization.csv` | Page URL + Image URL | Per-image | Image-level |
 | `link_analysis.csv` | Source URL + Target URL | Per-link | Link-level |
 | `all_resources_report.csv` | Resource URL | Per-resource | Site-wide |
@@ -416,7 +419,264 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 
 ---
 
-## 9. Image Optimization (`image_optimization.csv`)
+## 9. robots.txt Quality Report (`robots_txt_quality.csv`)
+
+**Purpose**: Analyze robots.txt file quality for AI agent compatibility
+**Key Field**: `URL`
+**Sort Order**: Unsorted (typically one file per site)
+**Reference**: Based on guidance from "The Invisible Users" book
+
+### Fields
+
+| Field Name | Data Type | Description | Possible Values | Nullable |
+|------------|-----------|-------------|-----------------|----------|
+| `URL` | String (URL) | URL to robots.txt file | `https://example.com/robots.txt` | No |
+| `File Exists` | Boolean | Whether file is accessible | `true`, `false` | No |
+| `Overall Quality` | String (Enum) | Quality assessment | `Excellent`, `Good`, `Fair`, `Poor`, `Missing` | No |
+| `Quality Score` | Integer | Numeric quality score | 0-100 | No |
+| `Max Score` | Integer | Maximum possible score | 100 | No |
+| `Has AI User Agents` | Boolean | Declares AI-specific user agents | `true`, `false` | No |
+| `AI User Agents Found` | String | Semicolon-separated list | `GPTBot; ClaudeBot; PerplexityBot` | Yes |
+| `Has Sitemap` | Boolean | Contains sitemap reference | `true`, `false` | No |
+| `Sitemap Count` | Integer | Number of sitemaps declared | 0 to N | No |
+| `Protects Sensitive Paths` | Boolean | Disallows sensitive directories | `true`, `false` | No |
+| `Protected Paths` | String | Semicolon-separated list | `/admin; /account; /cart` | Yes |
+| `References llms.txt` | Boolean | Comments mention llms.txt | `true`, `false` | No |
+| `Has Comments` | Boolean | Contains explanatory comments | `true`, `false` | No |
+| `Total Rules` | Integer | Number of allow/disallow rules | 0 to N | No |
+| `Structure Quality` | String (Enum) | Structure assessment | `Excellent`, `Good`, `Basic`, `Unknown` | No |
+| `Issues` | String | Semicolon-separated issues | `No AI-specific user agents found` | Yes |
+| `Recommendations` | String | Semicolon-separated recommendations | `Add GPTBot, ClaudeBot declarations` | Yes |
+
+### Quality Scoring Breakdown
+
+**Total Score: 100 points**
+
+- **AI User Agents (30 points)**
+  - 30 points: 3+ AI user agents declared
+  - 20 points: 1-2 AI user agents declared
+  - 5 points: Generic user agents only
+
+- **Sitemap References (20 points)**
+  - 20 points: At least one sitemap declared
+  - 0 points: No sitemaps
+
+- **Sensitive Path Protection (25 points)**
+  - 25 points: 3+ sensitive paths protected
+  - 15 points: 1-2 sensitive paths protected
+  - 0 points: No protection
+
+- **llms.txt Reference (15 points)**
+  - 15 points: Comments mention llms.txt
+  - 0 points: No reference
+
+- **Comments and Documentation (10 points)**
+  - 10 points: 3+ helpful comments
+  - 5 points: 1-2 comments
+  - 0 points: No comments
+
+- **Completeness Bonus (10 points)**
+  - 10 points: All elements present
+
+### Example Row
+
+```csv
+URL,File Exists,Overall Quality,Quality Score,Max Score,Has AI User Agents,AI User Agents Found,Has Sitemap,Sitemap Count,Protects Sensitive Paths,Protected Paths,References llms.txt,Has Comments,Total Rules,Structure Quality,Issues,Recommendations
+https://example.com/robots.txt,true,Good,75,100,true,GPTBot; ClaudeBot,true,1,true,/admin; /account; /cart,false,true,12,Good,,"Add llms.txt reference in comments"
+```
+
+---
+
+## 10. llms.txt Quality Report (`llms_txt_quality.csv`)
+
+**Purpose**: Evaluate llms.txt file quality for AI agent guidance
+**Key Field**: `URL`
+**Sort Order**: Unsorted (typically one file per site)
+**Reference**: Based on llmstxt.org specification and "The Invisible Users" book
+
+### Fields
+
+| Field Name | Data Type | Description | Possible Values | Nullable |
+|------------|-----------|-------------|-----------------|----------|
+| `URL` | String (URL) | URL to llms.txt file | `https://example.com/llms.txt` | No |
+| `File Exists` | Boolean | Whether file is accessible | `true`, `false` | No |
+| `Overall Quality` | String (Enum) | Quality assessment | `Excellent`, `Good`, `Fair`, `Poor`, `Very Poor`, `Missing` | No |
+| `Quality Score` | Integer | Numeric quality score | 0-100 | No |
+| `Max Score` | Integer | Maximum possible score | 100 | No |
+| `Has Title` | Boolean | Contains H1 title | `true`, `false` | No |
+| `Title` | String | Extracted H1 title | Any text | Yes |
+| `Has Description` | Boolean | Contains site description | `true`, `false` | No |
+| `Has Contact` | Boolean | Contains contact information | `true`, `false` | No |
+| `Contact` | String | Contact email or URL | Any text | Yes |
+| `Has Last Updated` | Boolean | Contains last updated date | `true`, `false` | No |
+| `Last Updated` | String | Last updated timestamp | Date string | Yes |
+| `Has Site Type` | Boolean | Declares site type | `true`, `false` | No |
+| `Site Type` | String | Site category | `E-Commerce`, `Content-Driven`, `API-Driven`, etc. | Yes |
+| `Core Elements Present` | Integer | Number of core elements | 0-4 | No |
+| `Core Elements Total` | Integer | Total core elements expected | 4 | No |
+| `Sections Present` | Integer | Number of important sections | 0-6 | No |
+| `Sections Total` | Integer | Total sections recommended | 6 | No |
+| `Word Count` | Integer | Total words in file | 0 to N | No |
+| `Line Count` | Integer | Total lines in file | 0 to N | No |
+| `Link Count` | Integer | Number of documentation links | 0 to N | No |
+| `Heading Count` | Integer | Number of markdown headings | 0 to N | No |
+| `Content Length Assessment` | String (Enum) | Content adequacy | `Comprehensive`, `Adequate`, `Minimal`, `Insufficient`, `Unknown` | No |
+| `Specificity Level` | String (Enum) | Detail level | `High`, `Medium`, `Low`, `Unknown` | No |
+| `Has Structured Content` | Boolean | Well-organized sections | `true`, `false` | No |
+| `Issues` | String | Semicolon-separated issues | `Missing contact information` | Yes |
+| `Recommendations` | String | Semicolon-separated recommendations | `Add API documentation section` | Yes |
+
+### Core Elements
+
+Required elements for a quality llms.txt file:
+
+1. **Title (H1)** - Site identification
+2. **Description** - Purpose and content type
+3. **Contact** - Email for AI policy questions
+4. **Last Updated** - Version timestamp
+
+### Important Sections
+
+Recommended sections for comprehensive guidance:
+
+1. **Access Guidelines** - Rate limits, usage policies
+2. **Content Restrictions** - Off-limits paths and data
+3. **API Access** - Endpoints, authentication
+4. **Training Guidelines** - Permitted/prohibited uses
+5. **Attribution** - How to credit content
+6. **Error Handling** - Retry logic, fallbacks
+
+### Quality Scoring Breakdown
+
+**Total Score: 105 points (bonus possible)**
+
+- **Core Elements (40 points)** - 10 points each
+  - Title, Description, Contact, Last Updated
+
+- **Important Sections (30 points)** - 5 points each
+  - Access Guidelines, Content Restrictions, API Access, Training Guidelines, Attribution, Error Handling
+
+- **Content Structure and Length (15 points)**
+  - 15 points: 200+ words (Comprehensive)
+  - 10 points: 100-199 words (Adequate)
+  - 5 points: 50-99 words (Minimal)
+  - 0 points: <50 words (Insufficient)
+
+- **Links and Documentation (10 points)**
+  - 10 points: 5+ links
+  - 7 points: 3-4 links
+  - 4 points: 1-2 links
+  - 0 points: No links
+
+- **Specificity and Detail (5 points)**
+  - Checks for rate limits, API endpoints, specific paths
+
+- **Bonus Points (up to 5 points)**
+  - Site type declared (+3)
+  - 5+ headings (+2)
+
+### Example Row
+
+```csv
+URL,File Exists,Overall Quality,Quality Score,Max Score,Has Title,Title,Has Description,Has Contact,Contact,Has Last Updated,Last Updated,Has Site Type,Site Type,Core Elements Present,Core Elements Total,Sections Present,Sections Total,Word Count,Line Count,Link Count,Heading Count,Content Length Assessment,Specificity Level,Has Structured Content,Issues,Recommendations
+https://example.com/llms.txt,true,Good,78,100,true,Example Site,true,true,ai@example.com,true,2026-01-03,true,Content-Driven,4,4,4,6,245,58,6,8,Comprehensive,High,true,,"Add training guidelines section; Include specific rate limits"
+```
+
+---
+
+## 11. AI Files Summary Report (`ai_files_summary.md`)
+
+**Purpose**: Human-readable summary of robots.txt and llms.txt quality
+**Format**: Markdown
+**Aggregation Level**: Site-wide
+
+### Structure
+
+```markdown
+# AI Files Quality Summary
+
+**Generated**: [ISO timestamp]
+
+## Overview
+
+Summary of robots.txt and llms.txt quality for AI agent compatibility.
+
+---
+
+## robots.txt Analysis
+
+**URL**: [robots.txt URL]
+**Exists**: Yes/No
+**Quality Score**: X/100 - Quality Level
+
+### Quality Breakdown
+- AI User Agents Declared: Yes/No (List)
+- Sitemap Reference: Yes/No (Count)
+- Sensitive Path Protection: Yes/No (Paths)
+- References llms.txt: Yes/No
+- Has Comments: Yes/No
+- Total Rules: N
+- Structure Quality: Level
+
+### Issues
+- [List of issues]
+
+### Recommendations
+- [List of recommendations]
+
+---
+
+## llms.txt Analysis
+
+**URL**: [llms.txt URL]
+**Exists**: Yes/No
+**Quality Score**: X/100 - Quality Level
+
+### File Contents
+- Title: [Title]
+- Description: [Description]
+- Contact: [Contact]
+- Last Updated: [Date]
+- Site Type: [Type]
+
+### Quality Metrics
+- Core Elements: X/4 present
+- Sections: X/6 present
+- Content Length: Assessment (N words)
+- Specificity: Level
+- Links: N documentation links
+- Headings: N sections
+
+### Issues
+- [List of issues]
+
+### Recommendations
+- [List of recommendations]
+
+---
+
+## Additional Resources
+
+- llms.txt Specification: https://llmstxt.org/
+- The Invisible Users Book: https://github.com/tomcranstoun/invisible-users
+- robots.txt Standard: https://www.robotstxt.org/
+```
+
+### Key Sections
+
+| Section | Content Type | Description |
+|---------|--------------|-------------|
+| Overview | Site-wide summary | Introduction and context |
+| robots.txt Analysis | File quality | Detailed robots.txt assessment |
+| llms.txt Analysis | File quality | Detailed llms.txt assessment |
+| Quality Breakdown | Metrics | Specific quality indicators |
+| Issues | Problems | Items requiring attention |
+| Recommendations | Actions | Prioritized improvements |
+| Additional Resources | Links | Reference documentation |
+
+---
+
+## 12. Image Optimization (`image_optimization.csv`)
 
 **Purpose**: Per-image analysis and optimization recommendations
 **Key Fields**: `Page URL` + `Image URL` (composite key)
@@ -916,6 +1176,7 @@ The tool also generates cache files for debugging:
 - **Trends**: Percentage changes from previous run
 - **Findings**: Critical issues requiring attention
 - **Recommendations**: Prioritized action items
+- **robots.txt Compliance**: Shows whether compliance mode was enabled during analysis
 
 ---
 
@@ -934,7 +1195,8 @@ The tool also generates cache files for debugging:
   "overview": {
     "totalPages": 100,
     "analysisDate": "YYYY-MM-DD",
-    "schemaVersion": "2.0.0"
+    "schemaVersion": "2.0.0",
+    "robotsComplianceEnabled": true
   },
   "performance": {
     "status": "Excellent|Good|Fair|Poor",
@@ -996,6 +1258,33 @@ The tool also generates cache files for debugging:
   }
 }
 ```
+
+### Executive Summary JSON Field Descriptions
+
+**Overview Section:**
+
+- `totalPages`: Number of pages analyzed in this run
+- `analysisDate`: Date when analysis was performed (YYYY-MM-DD format)
+- `schemaVersion`: Data structure version for compatibility checking
+- `robotsComplianceEnabled`: Boolean indicating if robots.txt compliance was enforced
+  - `true`: Tool respected robots.txt directives (default, ethical mode)
+  - `false`: Tool used force-scrape mode (bypassed robots.txt restrictions)
+  - This field indicates whether the `--force-scrape` flag was used or `FORCE_SCRAPE=true` was set in .env
+
+**robots.txt Compliance Context:**
+
+When `robotsComplianceEnabled` is `true`, the tool:
+
+- Fetched and parsed robots.txt before crawling
+- Checked each URL against robots.txt rules
+- Prompted user when URLs were blocked
+- May have skipped some URLs due to robots.txt restrictions
+
+When `robotsComplianceEnabled` is `false`, the tool:
+
+- Bypassed all robots.txt restrictions
+- Crawled all URLs regardless of robots.txt rules
+- Used force-scrape mode (should only be used with explicit permission)
 
 ---
 

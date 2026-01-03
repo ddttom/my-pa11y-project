@@ -7,6 +7,7 @@ import { executeNetworkOperation, initializeBrowserPool, shutdownBrowserPool } f
 import { getDiscoveredUrls } from './utils/sitemapUtils.js';
 import { RESULTS_SCHEMA_VERSION, areVersionsCompatible } from './utils/schemaVersion.js';
 import { storeHistoricalResult } from './utils/historicalComparison.js';
+import { fetchRobotsTxt, extractBaseUrl } from './utils/robotsFetcher.js';
 
 /**
  * Main function to run accessibility and SEO tests on a sitemap or webpage
@@ -54,6 +55,30 @@ export async function runTestsOnSitemap() {
     });
   } catch (error) {
     global.auditcore.logger.warn('Failed to initialize browser pool, will use fallback mode:', error.message);
+  }
+
+  // Fetch robots.txt FIRST before any URL processing (Phase 0: robots.txt compliance check)
+  global.auditcore.logger.info('Phase 0: Fetching robots.txt for compliance checking...');
+  try {
+    const baseUrl = extractBaseUrl(sitemapUrl);
+    const robotsTxtData = await fetchRobotsTxt(baseUrl);
+
+    // Store in global state for access throughout the session
+    global.auditcore.robotsTxtData = robotsTxtData;
+    global.auditcore.forceScrape = global.auditcore.options.forceScrape || false;
+    global.auditcore.isFirstBlockedUrl = true; // Track if this is the first time we encounter a blocked URL
+
+    if (robotsTxtData) {
+      global.auditcore.logger.info('✓ robots.txt fetched and parsed successfully');
+    } else {
+      global.auditcore.logger.info('✓ No robots.txt found - allowing all URLs by default');
+    }
+  } catch (error) {
+    global.auditcore.logger.warn(`Error fetching robots.txt: ${error.message}`);
+    global.auditcore.logger.info('Proceeding without robots.txt (allowing all URLs by default)');
+    global.auditcore.robotsTxtData = null;
+    global.auditcore.forceScrape = global.auditcore.options.forceScrape || false;
+    global.auditcore.isFirstBlockedUrl = true;
   }
 
   // Check for existing results to support resume functionality

@@ -10,6 +10,7 @@ import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js
 import analyzePerformance from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
 import { writeToInvalidUrlFile } from './urlUtils.js';
+import { checkRobotsCompliance } from './robotsCompliance.js';
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,
@@ -56,6 +57,48 @@ export class UrlProcessor {
       global.auditcore.logger.error(`Undefined or invalid URL provided at index ${index + 1}`);
       this.results.failedUrls.push({ url: 'undefined', error: 'Invalid or undefined URL' });
       return;
+    }
+
+    // Check robots.txt compliance BEFORE processing
+    if (global.auditcore.robotsTxtData || !global.auditcore.forceScrape) {
+      const complianceResult = await checkRobotsCompliance(
+        global.auditcore.robotsTxtData,
+        testUrl,
+        global.auditcore.forceScrape,
+        global.auditcore.isFirstBlockedUrl,
+      );
+
+      // Update force-scrape state if user enabled it
+      if (complianceResult.updatedForceScrape && !global.auditcore.forceScrape) {
+        global.auditcore.forceScrape = true;
+        global.auditcore.logger.warn('⚠️  Force-scrape mode ENABLED by user - all subsequent robots.txt checks will be bypassed');
+      }
+
+      // Mark that we've checked at least one URL (no longer the first)
+      if (global.auditcore.isFirstBlockedUrl && !complianceResult.allowed) {
+        global.auditcore.isFirstBlockedUrl = false;
+      }
+
+      // Handle quit signal
+      if (complianceResult.quit) {
+        global.auditcore.logger.error('Analysis aborted by user due to robots.txt restrictions');
+        throw new Error('USER_QUIT_ROBOTS_TXT');
+      }
+
+      // Skip this URL if not allowed and user declined override
+      if (!complianceResult.allowed) {
+        global.auditcore.logger.info(`Skipping ${testUrl} due to robots.txt restrictions`);
+        this.results.failedUrls.push({
+          url: testUrl,
+          error: 'Blocked by robots.txt (user declined override)',
+        });
+        return;
+      }
+
+      // Log if URL was allowed
+      if (complianceResult.reason) {
+        global.auditcore.logger.debug(`robots.txt check: ${complianceResult.reason}`);
+      }
     }
 
     for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
@@ -285,10 +328,16 @@ export class UrlProcessor {
 
     global.auditcore.logger.info(`Processing ${urls.length} URLs with concurrency ${concurrency}`);
     const totalTests = urls.length;
-    const progressTracker = { completed: 0 }; // Use object to avoid no-loop-func issue
+    const progressTracker = { completed: 0, quit: false }; // Use object to avoid no-loop-func issue
 
     // Process URLs in batches based on concurrency
     for (let i = 0; i < urls.length; i += concurrency) {
+      // Check if user requested quit
+      if (progressTracker.quit) {
+        global.auditcore.logger.warn('Processing terminated by user');
+        break;
+      }
+
       const batch = urls.slice(i, i + concurrency);
       const startIndex = i;
 
@@ -300,6 +349,12 @@ export class UrlProcessor {
           progressTracker.completed++;
           global.auditcore.logger.info(`Progress: ${progressTracker.completed}/${totalTests} URLs completed`);
         } catch (error) {
+          // Handle user quit signal
+          if (error.message === 'USER_QUIT_ROBOTS_TXT') {
+            progressTracker.quit = true;
+            global.auditcore.logger.warn('User chose to quit due to robots.txt restrictions');
+            return; // Exit this URL processing
+          }
           global.auditcore.logger.error(`Error processing URL ${url}:`, error);
           progressTracker.completed++;
         }
@@ -344,8 +399,9 @@ export class UrlProcessor {
     }
 
     let index = 0;
+    let userQuit = false;
 
-    while (urlQueue.length > 0) {
+    while (urlQueue.length > 0 && !userQuit) {
       // Check if we've reached the absolute limit (if set)
       if (this.options.limit > 0 && processedUrls.size >= this.options.limit) {
         global.auditcore.logger.info(`Reached configured limit of ${this.options.limit} URLs. Stopping recursive crawl.`);
@@ -367,8 +423,19 @@ export class UrlProcessor {
       console.info(`Processing URL ${totalProcessed} (${totalQueued} in queue): ${url}`);
 
       // Process this URL
-      await this.processUrl(url, lastmod, index, totalProcessed);
-      index++;
+      try {
+        await this.processUrl(url, lastmod, index, totalProcessed);
+        index++;
+      } catch (error) {
+        // Handle user quit signal
+        if (error.message === 'USER_QUIT_ROBOTS_TXT') {
+          global.auditcore.logger.warn('User chose to quit due to robots.txt restrictions');
+          userQuit = true;
+          break;
+        }
+        // Other errors are already logged by processUrl
+        index++;
+      }
 
       // Extract newly discovered URLs from this page's internal links
       const discoveredUrls = this.extractDiscoveredUrls(url, baseUrl, processedUrls);

@@ -26,6 +26,12 @@ import {
 import {
   updateLLMMetrics,
 } from './llmMetrics.js';
+import {
+  processRobotsTxt,
+} from './robotsTxtParser.js';
+import {
+  processLlmsTxt,
+} from './llmsTxtParser.js';
 
 async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config, cachedPa11yResult = null) {
   if (!url) {
@@ -117,6 +123,47 @@ async function analyzePageContent({
 
     // Validate and normalize URLs first
     const { testUrl: validTestUrl, baseUrl: validBaseUrl } = validateInput(testUrl, html, baseUrl);
+
+    // Special handling for robots.txt and llms.txt files
+    if (validTestUrl.endsWith('/robots.txt')) {
+      global.auditcore.logger.info(`Detected robots.txt file: ${validTestUrl}`);
+      const robotsAnalysis = await processRobotsTxt(validTestUrl, html);
+
+      // Store robots.txt analysis in results
+      if (!results.robotsTxtAnalysis) results.robotsTxtAnalysis = [];
+      results.robotsTxtAnalysis.push(robotsAnalysis);
+
+      global.auditcore.logger.info(`robots.txt quality score: ${robotsAnalysis.analysis.score}/${robotsAnalysis.analysis.maxScore} (${robotsAnalysis.analysis.quality})`);
+
+      // Return minimal analysis for robots.txt (skip Pa11y and full page analysis)
+      const duration = calculateDuration(startTime);
+      return {
+        url: validTestUrl,
+        duration,
+        type: 'robots.txt',
+        analysis: robotsAnalysis,
+      };
+    }
+
+    if (validTestUrl.endsWith('/llms.txt')) {
+      global.auditcore.logger.info(`Detected llms.txt file: ${validTestUrl}`);
+      const llmsAnalysis = await processLlmsTxt(validTestUrl, html);
+
+      // Store llms.txt analysis in results
+      if (!results.llmsTxtAnalysis) results.llmsTxtAnalysis = [];
+      results.llmsTxtAnalysis.push(llmsAnalysis);
+
+      global.auditcore.logger.info(`llms.txt quality score: ${llmsAnalysis.analysis.score}/${llmsAnalysis.analysis.maxScore} (${llmsAnalysis.analysis.quality})`);
+
+      // Return minimal analysis for llms.txt (skip Pa11y and full page analysis)
+      const duration = calculateDuration(startTime);
+      return {
+        url: validTestUrl,
+        duration,
+        type: 'llms.txt',
+        analysis: llmsAnalysis,
+      };
+    }
 
     const $ = cheerio.load(html);
     global.auditcore.logger.debug(`Cheerio loaded for ${validTestUrl}`);

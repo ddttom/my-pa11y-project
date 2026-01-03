@@ -74,6 +74,7 @@ Some issues like line length and table formatting require manual fixes.
 - `--generate-dashboard`: Generate interactive HTML dashboard with charts
 - `--generate-executive-summary`: Generate executive summary report
 - `--thresholds <file>`: Path to custom thresholds configuration (JSON)
+- `--force-scrape`: Bypass robots.txt restrictions (use with caution, default: respect robots.txt)
 
 ### Performance Options
 
@@ -97,7 +98,14 @@ The tool includes significant performance optimizations:
 
 ## Architecture
 
-### Three-Phase Processing Pipeline
+### Four-Phase Processing Pipeline
+
+0. **robots.txt Compliance Phase** (`fetchRobotsTxt`):
+   - Fetches robots.txt BEFORE any URL crawling begins
+   - Parses and validates robots.txt directives
+   - Checks compliance before each URL is processed
+   - Supports interactive user prompts and force-scrape mode
+   - Ensures ethical scraping practices
 
 1. **URL Collection Phase** (`getUrlsFromSitemap`):
    - Processes sitemap XML or extracts links from HTML
@@ -107,6 +115,7 @@ The tool includes significant performance optimizations:
 
 2. **Data Collection Phase** (`processSitemapUrls`):
    - Analyzes each page using Puppeteer
+   - Checks robots.txt compliance before each URL
    - Collects performance metrics, SEO data, accessibility issues
    - Runs Pa11y for WCAG 2.1 compliance testing
    - Stores all data in `results.json` (single source of truth)
@@ -141,15 +150,20 @@ web-audit-suite/
 │       ├── pageAnalyzer.js # Page content analysis
 │       ├── pa11yRunner.js  # Accessibility testing
 │       ├── llmMetrics.js   # LLM suitability metrics collection
+│       ├── robotsTxtParser.js  # robots.txt quality analysis
+│       ├── robotsFetcher.js    # robots.txt fetching
+│       ├── robotsCompliance.js # robots.txt compliance checking
+│       ├── llmsTxtParser.js    # llms.txt quality analysis
 │       ├── reports.js      # Report coordination (Phase 3)
 │       ├── networkUtils.js # Network error handling & retry, browser pool
 │       ├── browserPool.js  # Browser pooling for performance
-│       ├── urlProcessor.js # URL processing with concurrency
+│       ├── urlProcessor.js # URL processing with concurrency & compliance
 │       ├── metricsUpdater.js    # Metrics collection helpers
 │       ├── shutdownHandler.js   # Graceful shutdown
 │       └── reportUtils/
 │           ├── reportGenerators.js     # All report generation
 │           ├── llmReports.js           # LLM suitability reports
+│           ├── aiFileReports.js        # robots.txt & llms.txt reports
 │           ├── accessibilityAnalysis.js
 │           ├── contentAnalysis.js
 │           ├── imageAnalysis.js
@@ -168,13 +182,17 @@ The application uses a global `auditcore` object:
 
 ```javascript
 global.auditcore = {
-  logger: winston.Logger,  // Winston logger instance
-  options: Object          // Parsed CLI options
+  logger: winston.Logger,       // Winston logger instance
+  options: Object,              // Parsed CLI options
+  robotsTxtData: Object|null,   // Parsed robots.txt data (Phase 0)
+  forceScrape: boolean,         // Force-scrape mode flag
+  isFirstBlockedUrl: boolean    // Track first blocked URL for prompting
 }
 ```
 
 Access logger: `global.auditcore.logger.info('message')`
 Access options: `global.auditcore.options.sitemap`
+Access robots.txt data: `global.auditcore.robotsTxtData`
 
 ## Key Technical Details
 
@@ -257,6 +275,75 @@ function shouldSkipLanguageVariant(url)
 
 The tool can resume from existing `results.json` if found, skipping data collection phase and going straight to report generation.
 
+### robots.txt Compliance System
+
+The tool includes a comprehensive robots.txt compliance system to ensure ethical scraping practices.
+
+**Architecture:**
+
+- **Phase 0 Fetching** (`robotsFetcher.js`): Fetches robots.txt BEFORE any URL crawling begins
+- **Compliance Checking** (`robotsCompliance.js`): Validates each URL against robots.txt directives
+- **Interactive Prompts**: User-friendly prompts when URLs are blocked by robots.txt
+- **Force-Scrape Mode**: Override capability with explicit logging
+
+**Key Features:**
+
+1. **robots.txt Exclusion Standard Compliance:**
+   - Pattern matching with wildcards (`*`) and end markers (`$`)
+   - Longest-match-wins precedence
+   - Allow rules take precedence over Disallow rules of equal specificity
+   - User-agent specific rules (WebAuditSuite/1.0)
+
+2. **Interactive User Prompts:**
+   When a URL is blocked by robots.txt, the user is prompted with options:
+   - `[y]` Scrape this URL only (override for single URL)
+   - `[a]` Enable force-scrape mode (bypass all subsequent robots.txt checks)
+   - `[n]` Skip this URL and continue
+   - `[q]` Quit the analysis
+
+3. **Force-Scrape Mode:**
+   - Enabled via `--force-scrape` CLI flag or `FORCE_SCRAPE=true` in .env
+   - Can be enabled mid-session via interactive prompt
+   - State changes are prominently logged
+   - Bypasses all robots.txt restrictions
+
+4. **Startup Logging:**
+   - Prominently displays robots.txt compliance state at startup
+   - Warns when force-scrape mode is enabled
+   - Logs robots.txt fetching and parsing results
+
+**Implementation Details:**
+
+```javascript
+// robotsCompliance.js - Main compliance checking function
+export async function checkRobotsCompliance(
+  robotsTxtData,
+  url,
+  forceScrape = false,
+  isFirstCheck = false,
+) {
+  // Returns: { allowed, updatedForceScrape, quit, reason }
+}
+
+// robotsFetcher.js - Fetch robots.txt before crawling
+export async function fetchRobotsTxt(siteUrl) {
+  // Tries HTTP fetch first, falls back to Puppeteer
+  // Returns parsed robots.txt data or null
+}
+```
+
+**Integration Points:**
+
+- `main.js` (lines 60-82): Fetches robots.txt in Phase 0, stores in global state
+- `urlProcessor.js` (lines 62-102): Checks compliance before processing each URL
+- `index.js` (lines 207-219): Logs compliance state at startup
+
+**Configuration:**
+
+- Environment: `FORCE_SCRAPE=false` (default) in .env
+- CLI Flag: `--force-scrape`
+- Global State: `global.auditcore.forceScrape` (mutable during execution)
+
 ### LLM Suitability Analysis
 
 Evaluates website compatibility with AI agents based on patterns from "The Invisible Users" book.
@@ -338,6 +425,52 @@ Scoring heavily weights ESSENTIAL patterns, lightly weights NICE_TO_HAVE pattern
    - Essential for all agent types
    - New columns: "Has llms.txt", "llms.txt URL"
 
+### AI File Quality Analysis (robots.txt & llms.txt)
+
+The tool automatically analyzes robots.txt and llms.txt files for AI agent compatibility based on guidance from "The Invisible Users" book.
+
+**Automatic URL Discovery:**
+
+- robots.txt and llms.txt are automatically added to the crawl queue
+- Added at the beginning (high priority) so they're not cut off by count limits
+- robots.txt: priority 0.9, llms.txt: priority 0.8
+
+**robots.txt Quality Analysis:**
+
+Reference: `/Users/tomcranstoun/Documents/GitHub/invisible-users`
+
+Evaluates robots.txt files based on:
+
+1. **AI User Agents (30 points)** - Specific declarations for GPTBot, ClaudeBot, PerplexityBot, etc.
+2. **Sitemap References (20 points)** - Sitemap declarations for content discovery
+3. **Sensitive Path Protection (25 points)** - Disallow rules for /admin, /account, /cart, /checkout
+4. **llms.txt Reference (15 points)** - Comments mentioning llms.txt for comprehensive guidance
+5. **Comments and Documentation (10 points)** - Helpful explanatory comments
+6. **Completeness Bonus (10 points)** - All elements present
+
+Quality levels: Excellent (80+), Good (60-79), Fair (40-59), Poor (<40)
+
+**llms.txt Quality Analysis:**
+
+Reference: <https://llmstxt.org/> and "The Invisible Users" book
+
+Evaluates llms.txt files based on:
+
+1. **Core Elements (40 points)** - Title (H1), Description, Contact, Last Updated
+2. **Important Sections (30 points)** - Access Guidelines, Content Restrictions, API Access, Training Guidelines, Attribution, Error Handling
+3. **Content Structure (15 points)** - Comprehensive (200+ words), Adequate (100-199), Minimal (50-99)
+4. **Links and Documentation (10 points)** - Links to API docs, policies, resources
+5. **Specificity (5 points)** - Rate limits, API endpoints, specific paths
+6. **Bonus Points (up to 5)** - Site type declaration, 5+ headings
+
+Quality levels: Excellent (85+), Good (70-84), Fair (50-69), Poor (30-49), Very Poor (<30)
+
+**Reports Generated:**
+
+1. `robots_txt_quality.csv` - Detailed robots.txt quality metrics
+2. `llms_txt_quality.csv` - Detailed llms.txt quality metrics
+3. `ai_files_summary.md` - Human-readable summary with recommendations
+
 ## Output Files
 
 All files generated in the output directory (default: `results/`):
@@ -361,6 +494,9 @@ All files generated in the output directory (default: `results/`):
 - `llm_general_suitability.csv` - Overall AI agent compatibility scoring
 - `llm_frontend_suitability.csv` - Frontend-specific AI patterns analysis
 - `llm_backend_suitability.csv` - Backend/server-side AI patterns analysis
+- `robots_txt_quality.csv` - robots.txt file quality analysis for AI agents
+- `llms_txt_quality.csv` - llms.txt file quality analysis for AI agents
+- `ai_files_summary.md` - Human-readable summary of robots.txt and llms.txt quality
 
 ### Enhanced Reports (New Features)
 

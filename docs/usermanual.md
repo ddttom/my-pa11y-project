@@ -108,6 +108,7 @@ You can configure the application using a `.env` file or environment variables. 
   - `GENERATE_EXECUTIVE_SUMMARY`
   - `INCLUDE_ALL_LANGUAGES`
   - `NO_RECURSIVE`
+  - `FORCE_SCRAPE` (default: `false`)
 - **Cache**: `CACHE_ONLY`, `NO_CACHE`, `FORCE_DELETE_CACHE`
 - **Other**: `NO_PUPPETEER`, `THRESHOLDS_FILE`
 
@@ -142,6 +143,17 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
   - Overrides default behavior of only processing /en and /us variants
   - Uses enhanced URL extraction logic with automatic detection
 
+### robots.txt Compliance
+
+- `--force-scrape`: Bypass robots.txt restrictions (use with caution)
+  - Default: respect robots.txt directives
+  - Can also be set via `FORCE_SCRAPE=true` in .env
+  - When disabled (default), the tool will:
+    - Fetch robots.txt before any crawling begins
+    - Check compliance before processing each URL
+    - Prompt user when a URL is blocked by robots.txt
+    - Allow runtime override via interactive prompts
+
 ### Cache Control
 
 - `--cache-only`: Use only cached data
@@ -167,6 +179,117 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
 - `--thresholds <file>`: Path to custom thresholds configuration (JSON)
   - Customize pass/fail criteria for all metrics
   - See [Configuration Guide](CONFIGURATION.md) for details
+
+## robots.txt Compliance and Ethical Scraping
+
+Web Audit Suite includes a comprehensive robots.txt compliance system to ensure ethical and respectful web scraping practices.
+
+### How It Works
+
+1. **Phase 0: robots.txt Fetching**
+   - Before any URL crawling begins, the tool fetches robots.txt from the target site
+   - Parses directives for the `WebAuditSuite/1.0` user agent and wildcard (`*`) rules
+   - Logs a summary of discovered rules, user agents, and sitemaps
+
+2. **Compliance Checking**
+   - Before processing each URL, the tool checks if it's allowed by robots.txt
+   - Implements the robots exclusion standard with:
+     - Wildcard pattern matching (`*`)
+     - End-of-path markers (`$`)
+     - Longest-match-wins precedence
+     - Allow rules take precedence over Disallow rules of equal specificity
+
+3. **Interactive User Prompts**
+   - When a URL is blocked by robots.txt, you'll see a prompt with these options:
+     - `[y]` Scrape this URL only (override for single URL)
+     - `[a]` Enable force-scrape mode (bypass all subsequent robots.txt checks)
+     - `[n]` Skip this URL and continue
+     - `[q]` Quit the analysis
+   - The first blocked URL shows a detailed explanation
+   - Subsequent blocks show abbreviated prompts
+
+4. **Force-Scrape Mode**
+   - Can be enabled at startup via `--force-scrape` flag or `FORCE_SCRAPE=true` in .env
+   - Can be enabled mid-session by selecting `[a]` when prompted
+   - When enabled, all robots.txt checks are bypassed
+   - State changes are prominently logged
+
+### Example Scenarios
+
+#### Scenario 1: Site allows scraping
+
+```bash
+$ npm start -- -s https://example.com/sitemap.xml
+
+✓ robots.txt compliance ENABLED (default)
+Phase 0: Fetching robots.txt for compliance checking...
+✓ robots.txt fetched and parsed successfully
+robots.txt summary:
+  - User agents declared: 2 (*, GPTBot)
+  - Total rules: 5
+  - Sitemaps: 1
+```
+
+#### Scenario 2: Site blocks some URLs
+
+```bash
+Phase 2: Processing URLs...
+
+⚠️  robots.txt RESTRICTION DETECTED
+
+The URL is blocked by robots.txt:
+  URL: https://example.com/admin/dashboard
+  Rule: /admin
+
+Options:
+  [y] Scrape this URL anyway (override for this URL only)
+  [a] Scrape all URLs (enable force-scrape mode for remainder of session)
+  [n] Skip this URL and continue
+  [q] Quit the analysis
+
+Your choice (y/a/n/q): n
+✓ Skipping this URL
+```
+
+#### Scenario 3: Enabling force-scrape mode mid-session
+
+```bash
+Your choice (y/a/n/q): a
+✓ Force-scrape mode ENABLED - all robots.txt restrictions will be bypassed
+   This setting will persist for the remainder of this session
+
+⚠️  User enabled force-scrape mode - robots.txt restrictions will be bypassed for remainder of session
+```
+
+#### Scenario 4: Using force-scrape from startup
+
+```bash
+$ npm start -- -s https://example.com/sitemap.xml --force-scrape
+
+⚠️  WARNING: robots.txt COMPLIANCE DISABLED
+    Force scrape mode is ENABLED
+    This bypasses robots.txt restrictions and may violate site policies
+    Use with caution and only with explicit permission
+✓  Force-scrape mode enabled via --force-scrape flag
+```
+
+### Best Practices
+
+1. **Respect robots.txt by default**: Don't use `--force-scrape` unless you have explicit permission
+2. **Review robots.txt first**: Check what's restricted before starting analysis
+3. **Use selective overrides**: If only a few URLs are blocked, use `[y]` to override individually
+4. **Get permission**: For sites with strict robots.txt, contact the site owner before enabling force-scrape
+5. **Monitor logs**: The tool logs all compliance checks and state changes for audit trails
+
+### Related Reports
+
+The tool also generates quality analysis reports for robots.txt and llms.txt files:
+
+- `robots_txt_quality.csv`: Quality score and analysis of robots.txt for AI agent compatibility
+- `llms_txt_quality.csv`: Quality score and analysis of llms.txt for AI agent guidance
+- `ai_files_summary.md`: Human-readable summary of both files
+
+See the AI File Quality Reports section below for details.
 
 ## Generated Reports
 

@@ -116,11 +116,12 @@ export async function getUrlsFromSitemap(url, limit = -1) {
       }
     }
 
-    // Automatically add base domain and llms.txt if not present
+    // Automatically add base domain, robots.txt, and llms.txt if not present
     // Add them at the BEGINNING so they're not cut off by count limits
     try {
       const inputUrlObj = new URL(url);
       const baseUrl = `${inputUrlObj.origin}/`;
+      const robotsTxtUrl = `${inputUrlObj.origin}/robots.txt`;
       const llmsTxtUrl = `${inputUrlObj.origin}/llms.txt`;
       const priorityUrls = [];
 
@@ -133,6 +134,18 @@ export async function getUrlsFromSitemap(url, limit = -1) {
           lastmod: new Date().toISOString(),
           changefreq: 'daily',
           priority: 1.0,
+        });
+      }
+
+      // Add robots.txt if not present
+      const robotsExists = urls.some((u) => u.url === robotsTxtUrl);
+      if (!robotsExists) {
+        global.auditcore.logger.info(`Automatically adding ${robotsTxtUrl} to processing list (priority)`);
+        priorityUrls.push({
+          url: robotsTxtUrl,
+          lastmod: new Date().toISOString(),
+          changefreq: 'daily',
+          priority: 0.9,
         });
       }
 
@@ -153,7 +166,7 @@ export async function getUrlsFromSitemap(url, limit = -1) {
         urls.unshift(...priorityUrls);
       }
     } catch (error) {
-      global.auditcore.logger.debug(`Could not add base domain or llms.txt: ${error.message}`);
+      global.auditcore.logger.debug(`Could not add base domain, robots.txt, or llms.txt: ${error.message}`);
     }
 
     // Filter and validate URLs
