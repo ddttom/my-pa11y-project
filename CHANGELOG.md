@@ -6,6 +6,124 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Regression Detection**: Automated quality gate enforcement with baseline comparison
+  - **Historical Tracking**: Store timestamped results for trend analysis
+    - Results stored in `history/results-<timestamp>.json`
+    - Enables comparative analysis across multiple runs
+    - Automatic comparison with previous run when history enabled
+  - **Baseline Management**: Reference point establishment for regression detection
+    - `--establish-baseline` flag to mark current results as baseline
+    - `--baseline-timestamp <timestamp>` to use specific historical result
+    - `baseline.json` stores reference metrics
+    - Baseline preserved during cache clearing
+  - **Regression Detection**: Compare current run against baseline
+    - Severity classification: Critical (>30%), Warning (>15%), Info
+    - Comprehensive checks:
+      - Performance regressions (load time, LCP, FCP, CLS)
+      - Accessibility regressions (error count increases)
+      - SEO score drops
+      - LLM compatibility decreases
+      - URL count changes
+    - Automatic console alerts with severity levels
+    - CI/CD-ready exit codes (fail on critical regressions)
+  - **Regression Reports**: Detailed markdown reports with actionable recommendations
+    - `regression_report.md` with immediate and short-term actions
+    - Summary of regressions by severity
+    - Baseline and current timestamps
+    - Specific recommendations for each regression
+  - **Trend Data**: Multi-run analysis for visualization
+    - Aggregate metrics across all historical runs
+    - Performance, accessibility, SEO, and LLM trends
+    - Dashboard integration for trend charts
+  - **Files**:
+    - New file: `src/utils/historicalComparison.js` (816 lines)
+    - Modified: `src/utils/reports.js` for integration
+    - Modified: `src/main.js` for history storage
+    - Modified: `index.js` for CLI options
+
+- **Pattern Extraction**: Learn from high-scoring pages to identify successful implementations
+  - **High-Scoring Analysis**: Identifies pages scoring ≥70/100 (configurable threshold)
+  - **Six Pattern Categories**:
+    - Structured Data (JSON-LD, Schema.org implementations)
+    - Semantic HTML (main, nav, header, article, section usage)
+    - Form Patterns (standard field naming, autocomplete attributes)
+    - Error Handling (persistent error messages, aria-live regions)
+    - State Management (validation state, loading state, agent visibility)
+    - llms.txt Implementation (AI agent guidance files)
+  - **Real-World Examples**: Up to 5 working examples per category from analyzed pages
+  - **Priority & Effort Levels**: Critical/High priority, Low/Moderate effort classifications
+  - **Implementation Recommendations**: Actionable guidance for each pattern with expected impact
+  - **Pattern Library Report**: `pattern_library.md` with comprehensive examples
+  - **CLI Options**:
+    - `--extract-patterns` flag to enable pattern extraction
+    - `--pattern-score-threshold <number>` to set minimum score (default: 70)
+  - **Files**:
+    - New file: `src/utils/patternExtraction.js` (399 lines)
+    - Modified: `src/utils/reports.js` for integration
+    - Modified: `index.js` for CLI options
+
+- **CI/CD Integration**: Production-ready automation for continuous quality monitoring
+  - **GitHub Actions Template**: Complete workflow template in `.github/workflows/audit-ci.yml.template`
+    - Automated audits on push, PR, or manual dispatch
+    - Baseline caching and restoration
+    - Automatic PR commenting with metrics
+    - Build failure on critical regressions
+    - Artifact uploading for report review
+  - **GitLab CI Configuration**: Example `.gitlab-ci.yml` configuration in documentation
+  - **Jenkins Pipeline**: Example `Jenkinsfile` pipeline configuration
+  - **Multi-Environment Support**: Separate configs for staging and production
+  - **Scheduled Runs**: Nightly or weekly audit examples
+  - **Notification Integration**: Slack webhook examples
+  - **Comprehensive Documentation**:
+    - New file: `.github/CI_CD_INTEGRATION.md` (543 lines)
+    - Setup guides for GitHub Actions, GitLab CI, Jenkins
+    - Baseline management in CI
+    - Failure threshold configuration
+    - Troubleshooting guide
+    - Advanced scenarios (scheduled runs, multiple environments, notifications)
+
+- **Consolidated Directory Structure**: All output files organized within output directory
+  - **Cache Consolidation**: Cache moved from project root to `{outputDir}/.cache/`
+    - Subdirectories: `rendered/`, `served/`, `screenshots/`
+    - Cleaner project root directory
+    - Easier sharing of complete results
+  - **Log Consolidation**: Logs moved to output directory
+    - `combined.log` and `error.log` in output directory
+    - All output in one location for archiving
+  - **History Tracking**: `history/` subdirectory within output
+    - Historical results organized with timestamps
+    - Preserved during cache clearing
+  - **Benefits**:
+    - Easier sharing and archiving of results
+    - Simplified cleanup operations
+    - Better organization for CI/CD
+    - Single directory for all analysis artifacts
+  - **Files Modified**:
+    - `src/config/defaults.js`: Cache directory configuration
+    - `src/main.js`: Cache path handling
+    - `src/utils/caching.js`: Cache directory creation
+
+- **Intelligent Cache Clearing**: Selective deletion preserving critical data
+  - **Preservation Logic**: Whitelist-based approach
+    - **Preserved**: `history/` directory (historical tracking)
+    - **Preserved**: `baseline.json` (regression detection reference)
+    - **Deleted**: Cache files, screenshots, old reports, logs
+  - **Modified Flag Behavior**: `--force-delete-cache` now intelligent
+    - Clears ephemeral data while maintaining continuity
+    - Enables cache clearing without losing regression baselines
+    - Essential for CI/CD quality gates
+  - **Implementation**:
+    - Selective deletion in `src/main.js`
+    - Checks file/directory names against preservation list
+    - Maintains historical continuity for trend analysis
+
+- **Performance Improvements**: Consolidated metrics initialization
+  - **Reduced Allocations**: 90% reduction in object allocations during metrics initialization
+  - **Single Initialization Loop**: Replaced 24 separate operations with one loop
+  - **Cleaner Code**: Single initialization point for all metrics
+  - **Easier Maintenance**: Add new metrics in one place
+  - **Files Modified**: `src/utils/metricsUpdater.js`
+
 - **robots.txt Compliance System**: Comprehensive ethical scraping controls
   - **Phase 0 Fetching**: robots.txt automatically fetched before any URL processing
     - HTTP fetch with Puppeteer fallback for Cloudflare-protected sites
