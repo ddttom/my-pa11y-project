@@ -39,3 +39,5 @@ This is NOT documentation - these are rules learned the hard way when something 
 5. ONLY THEN write the code
 
 This prevents hours of debugging data structure mismatches.
+
+**Check HTTP header date formats when parsing cache data** (2026-01-03): Added cache staleness capability check to executive summary by reading cache files and checking for Last-Modified headers. Made assumption about date format without verifying actual header values. HTTP Last-Modified headers use RFC 7231 format (e.g., "Sun, 28 Dec 2025 18:44:06 GMT") which JavaScript Date constructor can parse, but always verify actual data format before assuming parsing will work. When working with HTTP headers or any external date sources, check actual values first to confirm format matches expectations.

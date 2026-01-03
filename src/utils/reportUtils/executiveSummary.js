@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { calculateServedScore, calculateRenderedScore } from '../llmMetrics.js';
@@ -12,7 +13,7 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
   try {
     global.auditcore.logger.info('Generating executive summary report...');
 
-    const summary = buildExecutiveSummary(results, comparison);
+    const summary = await buildExecutiveSummary(results, comparison);
 
     // Generate both markdown and JSON formats
     const mdPath = path.join(outputDir, 'executive_summary.md');
@@ -31,11 +32,11 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
 /**
  * Builds the executive summary data structure
  */
-function buildExecutiveSummary(results, comparison) {
+async function buildExecutiveSummary(results, comparison) {
   const summary = {
     generatedAt: new Date().toISOString(),
     site: extractSiteName(results),
-    overview: buildOverview(results),
+    overview: await buildOverview(results),
     performance: buildPerformanceSummary(results, comparison?.performance),
     accessibility: buildAccessibilitySummary(results, comparison?.accessibility),
     seo: buildSeoSummary(results, comparison?.seo),
@@ -77,17 +78,87 @@ function extractSiteName(results) {
 }
 
 /**
+ * Generate cache key from URL (matches caching.js implementation)
+ */
+function generateCacheKey(url) {
+  return crypto.createHash('md5').update(url).digest('hex');
+}
+
+/**
+ * Check if site provides date information for cache staleness
+ */
+async function checkCacheStalenessCapability(results) {
+  try {
+    const outputDir = global.auditcore?.options?.outputDir || 'results';
+    const cacheDir = path.join(outputDir, '.cache');
+
+    // Get first URL to check
+    const performanceData = results.performanceAnalysis || results.urls || [];
+    if (performanceData.length === 0) {
+      return {
+        capable: false,
+        reason: 'No URLs analyzed',
+      };
+    }
+
+    const firstUrl = performanceData[0].url;
+    const cacheKey = generateCacheKey(firstUrl);
+    const cachePath = path.join(cacheDir, `${cacheKey}.json`);
+
+    // Try to read cache file
+    const cacheData = await fs.readFile(cachePath, 'utf8');
+    const cache = JSON.parse(cacheData);
+
+    // Check for Last-Modified header
+    if (cache.headers && cache.headers['last-modified']) {
+      return {
+        capable: true,
+        method: 'HTTP Last-Modified header',
+      };
+    }
+
+    // Note: JSON-LD date fields would require parsing HTML, which is expensive
+    // For now, we only check HTTP headers since that's what the cache staleness feature uses
+
+    return {
+      capable: false,
+      reason: 'No Last-Modified header found in HTTP response',
+    };
+  } catch (error) {
+    // If we can't read cache, assume unknown
+    return {
+      capable: null,
+      reason: 'Unable to determine (cache not available)',
+    };
+  }
+}
+
+/**
  * Build overview section
  */
-function buildOverview(results) {
+async function buildOverview(results) {
   // Count total pages from performanceAnalysis (current structure) or legacy urls array
   const totalPages = (results.performanceAnalysis || results.urls || []).length;
+
+  // Check if site provides date information for cache staleness checking
+  const cacheCapability = await checkCacheStalenessCapability(results);
+
+  let cacheStalenessNote;
+  if (cacheCapability.capable === true) {
+    cacheStalenessNote = `✅ Site provides ${cacheCapability.method} - cache staleness checking will work`;
+  } else if (cacheCapability.capable === false) {
+    cacheStalenessNote = `⚠️ ${cacheCapability.reason} - cache staleness checking will not work`;
+  } else {
+    cacheStalenessNote = `ℹ️ ${cacheCapability.reason}`;
+  }
 
   return {
     totalPages,
     analysisDate: new Date().toISOString().split('T')[0],
     schemaVersion: results.schemaVersion || '1.0.0',
     robotsComplianceEnabled: !global.auditcore?.options?.forceScrape,
+    cacheStalenessNote,
+    cacheStalenessCapable: cacheCapability.capable,
   };
 }
 
@@ -620,7 +691,13 @@ function generateMarkdownSummary(summary, results) {
   const complianceText = summary.overview.robotsComplianceEnabled
     ? 'Enabled (respecting robots.txt directives)'
     : 'Disabled (force-scrape mode active)';
-  md += `**robots.txt Compliance:** ${complianceIcon} ${complianceText}\n\n`;
+  md += `**robots.txt Compliance:** ${complianceIcon} ${complianceText}\n`;
+
+  // Add cache staleness note
+  if (summary.overview.cacheStalenessNote) {
+    md += `**Cache Staleness:** ${summary.overview.cacheStalenessNote}\n`;
+  }
+  md += '\n';
 
   // Calculate headline score by averaging all category scores
   const headlineScore = Math.round(
