@@ -233,7 +233,8 @@ function buildContentSummary(results, comparisonData) {
   }
 
   const avgWordCount = average(metrics.map((m) => m.wordCount || 0));
-  const avgHeadings = average(metrics.map((m) => m.headingCount || 0));
+  // Calculate total heading count from h1Count, h2Count, h3Count
+  const avgHeadings = average(metrics.map((m) => (m.h1Count || 0) + (m.h2Count || 0) + (m.h3Count || 0)));
   const pagesWithLowContent = metrics.filter((m) => (m.wordCount || 0) < 300).length;
 
   const summary = {
