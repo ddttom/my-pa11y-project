@@ -106,20 +106,41 @@ function buildPerformanceSummary(results, comparisonData) {
   const avgFCP = average(metrics.map((m) => m.firstContentfulPaint || 0));
   const avgCLS = average(metrics.map((m) => m.cumulativeLayoutShift || 0));
 
-  // Score based on thresholds
+  // Check which metrics are actually collected (non-zero values indicate real data)
+  const hasLCP = metrics.some((m) => m.largestContentfulPaint && m.largestContentfulPaint > 0);
+  const hasCLS = metrics.some((m) => m.cumulativeLayoutShift !== undefined && m.cumulativeLayoutShift !== null);
+
+  // Score based on thresholds - only score metrics that are actually collected
   let score = 0;
+  let maxPossibleScore = 0;
+
+  // Load time (always collected)
+  maxPossibleScore += 25;
   if (avgLoadTime < 1000) score += 25;
   else if (avgLoadTime < 2000) score += 20;
   else if (avgLoadTime < 3000) score += 15;
 
-  if (avgLCP < 2500) score += 25;
-  else if (avgLCP < 4000) score += 15;
+  // LCP (only score if collected)
+  if (hasLCP) {
+    maxPossibleScore += 25;
+    if (avgLCP < 2500) score += 25;
+    else if (avgLCP < 4000) score += 15;
+  }
 
+  // FCP (always collected)
+  maxPossibleScore += 25;
   if (avgFCP < 1800) score += 25;
   else if (avgFCP < 3000) score += 15;
 
-  if (avgCLS < 0.1) score += 25;
-  else if (avgCLS < 0.25) score += 15;
+  // CLS (only score if collected)
+  if (hasCLS) {
+    maxPossibleScore += 25;
+    if (avgCLS < 0.1) score += 25;
+    else if (avgCLS < 0.25) score += 15;
+  }
+
+  // Normalize score to 0-100 based on metrics actually collected
+  score = Math.round((score / maxPossibleScore) * 100);
 
   const status = score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : score >= 25 ? 'Fair' : 'Needs Improvement';
 
@@ -479,15 +500,18 @@ function buildRecommendations(results) {
     });
   }
 
-  // LLM recommendations
+  // LLM recommendations - calculate scores on-the-fly (not stored in results.json)
   const llmMetrics = results.llmMetrics || [];
-  const avgServedScore = average(llmMetrics.map((m) => m.servedScore || 0));
-  if (avgServedScore < 50) {
-    recommendations.push({
-      category: 'LLM Suitability',
-      priority: 'Low',
-      recommendation: 'Improve semantic HTML structure and add structured data for better AI agent compatibility',
-    });
+  if (llmMetrics.length > 0) {
+    const servedScores = llmMetrics.map((m) => calculateServedScore(m));
+    const avgServedScore = average(servedScores);
+    if (avgServedScore < 50) {
+      recommendations.push({
+        category: 'LLM Suitability',
+        priority: 'Low',
+        recommendation: 'Improve semantic HTML structure and add structured data for better AI agent compatibility',
+      });
+    }
   }
 
   // robots.txt recommendations
