@@ -166,6 +166,7 @@ This measures patterns that require JavaScript execution:
 **Definition**: Patterns that work for ALL agent types (CLI, browser, API).
 
 **Examples**:
+
 - Missing `<main>` element (agents can't identify primary content)
 - Non-standard form field names (agents don't know what `field_x7b3` means)
 - Missing structured data (agents can't extract product/event information)
@@ -178,6 +179,7 @@ This measures patterns that require JavaScript execution:
 **Definition**: Patterns that work for browser-based agents that execute JavaScript.
 
 **Examples**:
+
 - Missing `data-validation-state` attributes (agents can't detect field validity)
 - No `data-agent-visible` control (agents see everything or nothing)
 - Transient error messages (errors disappear before agents can read them)
@@ -190,6 +192,7 @@ This measures patterns that require JavaScript execution:
 **Definition**: Speculative patterns that may help but aren't critical.
 
 **Examples**:
+
 - Missing `data-price` on table cells (agents might parse anyway)
 - No `data-disabled-reason` on buttons (agents might infer from context)
 - Missing `data-authenticated` state (agents might detect via other signals)

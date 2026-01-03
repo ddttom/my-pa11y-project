@@ -12,7 +12,8 @@
       "Bash(npm install)",
       "Bash(npm run lint:md:fix:*)",
       "Bash(npx eslint .)",
-      "Bash(npx eslint . --fix)"
+      "Bash(npx eslint . --fix)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

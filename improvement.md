@@ -61,22 +61,27 @@ This document proposes improvements to the book based on 2,234 lines of producti
 ### Synthesis: What the Book Needs
 
 **Dimension 1: Concreteness**
+
 - Current: Abstract principles ("persistent error messages are better")
 - Needed: Specific implementations with code + scoring rubrics
 
 **Dimension 2: Measurability**
+
 - Current: Qualitative benefits ("improves agent success")
 - Needed: Quantitative metrics (score: low vs high, significantly faster)
 
 **Dimension 3: Validation**
+
 - Current: Theoretical frameworks
 - Needed: Production evidence ("tested on many websites", "significantly reduced errors")
 
 **Dimension 4: Complexity Management**
+
 - Current: Linear progression from simple to complex
 - Needed: Recognition of real-world trade-offs, edge cases, and failure modes
 
 **Dimension 5: Tool Integration**
+
 - Current: Manual implementation guidance
 - Needed: References to validation tools, automated testing, measurement frameworks
 
@@ -295,6 +300,7 @@ Sitemap: https://example.com/sitemap.xml
 Sites with high robots.txt scores demonstrate professional AI readiness,
 clear policies, and ethical stance. This correlates with significantly higher
 agent trust scores and completion rates.
+
 ```
 
 **Why this matters:** The book currently treats robots.txt superficially. This addition provides production-tested implementation guidance with measurable quality criteria.
@@ -333,15 +339,18 @@ don't consider:
 Agent sees: "Loading..." (useless)
 
 ### Rendered HTML (Dynamic State)
+
 **What:** The HTML document after JavaScript execution and all dynamic updates
 **Who sees it:** Browser-based agents (Playwright, Selenium), browser extension assistants
 **Characteristics:**
+
 - Full JavaScript execution
 - Dynamic content loaded
 - State changes applied
 - What humans see in DevTools
 
 **Example (rendered):**
+
 ```html
 <div id="product-price">£149.99</div>
 <script>
@@ -356,12 +365,14 @@ Agent sees: "£149.99" (correct)
 ### The Compatibility Problem
 
 **Served-only agents** (the majority) cannot:
+
 - Execute JavaScript
 - Wait for dynamic content
 - See client-side state changes
 - Access data from API calls
 
 **This means:**
+
 - SPA (Single Page Application) sites are largely invisible
 - Client-side rendering breaks agent access
 - JavaScript-dependent features fail
@@ -397,18 +408,21 @@ agents get real-time updates.
 The Web Audit Suite scores these separately:
 
 **Served Score:**
+
 - Measures what ALL agents can access
 - No JavaScript execution
 - Critical for CLI and API agents
 - Weight: Higher (because most agents are served-only)
 
 **Rendered Score:**
+
 - Measures browser agent experience
 - After JavaScript execution
 - Includes dynamic state
 - Weight: Lower (browser agents are minority)
 
 **Example Results:**
+
 - Site A: Served low, Rendered high → Overall: Moderate (JavaScript-dependent)
 - Site B: Served high, Rendered high → Overall: High (progressive enhancement)
 
@@ -418,6 +432,7 @@ Sites with high served scores work for all agent types.
 Sites with low served scores work for only a minority of agent types.
 
 This is the single most important distinction in AI agent compatibility.
+
 ```
 
 **Why this matters:** This distinction is mentioned briefly in the book but not emphasized enough. It's the foundational concept that explains why SPAs fail for agents and why progressive enhancement matters.
@@ -448,6 +463,7 @@ const applicableRules = rules.filter((rule) =>
 ```
 
 **Right:**
+
 ```javascript
 const applicableRules = rules.filter((rule) => (
   rule.userAgent.toLowerCase() === userAgent.toLowerCase()
@@ -465,12 +481,14 @@ Added import statement planning to use it later, but never used it - ESLint
 caught it in production.
 
 **Wrong:**
+
 ```javascript
 import { parseRobotsTxt } from './robotsTxtParser.js';
 import readline from 'readline';  // Never used!
 ```
 
 **Right:**
+
 ```javascript
 import readline from 'readline';  // Only what you need
 ```
@@ -485,6 +503,7 @@ Tried incrementing a `completed` counter inside `map()` callbacks within a
 loop, triggered ESLint no-loop-func error.
 
 **Wrong:**
+
 ```javascript
 let completed = 0;
 for (let i = 0; i < urls.length; i++) {
@@ -496,6 +515,7 @@ for (let i = 0; i < urls.length; i++) {
 ```
 
 **Right:**
+
 ```javascript
 const progressTracker = { completed: 0 };  // Object reference
 for (let i = 0; i < urls.length; i++) {
@@ -517,6 +537,7 @@ Cached results from previous analysis became invalid when we added new
 fields. Users got incomplete data mixed with old cached data.
 
 **Solution:**
+
 ```javascript
 const RESULTS_SCHEMA_VERSION = '2.1.0';
 
@@ -539,12 +560,14 @@ For 100 URLs, that's 200-500 seconds of pure overhead.
 
 **Solution:**
 Implement a browser pool:
+
 - Reuse multiple browser instances
 - Automatic restart after many pages (prevent memory leaks)
 - Queue management for waiting requests
 - Graceful shutdown
 
 **Impact:**
+
 - Dramatic reduction in browser launch overhead
 - Many URLs: Significant time savings on browser launches
 - Overall: Much faster execution time
@@ -559,6 +582,7 @@ When user quits robots.txt compliance check, needed to stop ALL concurrent
 URL processing immediately, not just current URL.
 
 **Solution:**
+
 ```javascript
 const progressTracker = { completed: 0, quit: false };
 
@@ -591,6 +615,7 @@ quit signals to propagate across all parallel workers.
 Pretty-printed results.json file was 2-5 MB for 100 URLs, causing slow I/O.
 
 **Solution:**
+
 ```javascript
 // Before
 await fs.writeFile(resultsPath, JSON.stringify(results, null, 2));
@@ -600,6 +625,7 @@ await fs.writeFile(resultsPath, JSON.stringify(results));
 ```
 
 **Impact:**
+
 - Significant reduction in file size
 - Much faster I/O operations
 - Marginal complexity increase
@@ -614,6 +640,7 @@ Complex tables with multiple alignment styles. Auto-fix made them worse by
 mixing styles inconsistently.
 
 **Lesson:**
+
 - Run `markdownlint --fix` for simple issues (blank lines, code fences)
 - Manually fix complex tables with mixed alignment
 - Don't trust auto-fix blindly on structured content
@@ -626,6 +653,7 @@ drifted apart and contradicted each other.
 
 **Solution:**
 When features change, update ALL synchronized files together:
+
 - PITCH.md
 - BLOG.md
 - CLAUDE.md
@@ -642,6 +670,7 @@ Initialized metrics with 24 separate `Object.assign()` operations on first
 URL processed. Created unnecessary object allocations and GC pressure.
 
 **Solution:**
+
 ```javascript
 // Before: 24 separate initializations
 if (!results.externalResourcesAggregation) {
@@ -665,6 +694,7 @@ if (!metricsInitialized) {
 ```
 
 **Impact:**
+
 - Significant reduction in object allocations
 - Cleaner code (single initialization point)
 - Easier to maintain (add new metrics in one place)
@@ -697,6 +727,7 @@ Tools monitoring agent compatibility need to distinguish between:
 - **Transient artifacts** (cache, screenshots, regenerable reports)
 
 **The Anti-Pattern We Hit:**
+
 ```javascript
 // Nuclear option: Clear everything together
 await fs.rm(outputDir, { recursive: true, force: true });
@@ -706,6 +737,7 @@ This destroyed baseline.json (regression detection reference) along with stale
 cache. Like deleting server-side HTML state along with JavaScript enhancements.
 
 **The Pattern That Works:**
+
 ```javascript
 // Selective clearing: Preserve truth, clear artifacts
 const PERSISTENT_STATE = ['history', 'baseline.json'];
@@ -765,6 +797,7 @@ function clearEphemeralData(outputDir) {
 Sites that maintain historical baselines can track agent compatibility trends
 over time, measure improvement ROI, and enforce quality gates in CI/CD.
 Sites that clear baselines lose this continuity and can't detect regressions.
+
 ```
 
 **Why This Improves the Book:**
@@ -827,10 +860,12 @@ test('error messages remain visible', async () => {
 ```
 
 **Success Criteria:**
+
 - ✅ All metrics in green zone
 - ✅ Automated tests pass
 - ✅ Manual validation confirms
 - ✅ High agent success rate
+
 ```
 
 **Why this matters:** Readers can implement patterns but can't verify they're working without measurement guidance.
@@ -1101,11 +1136,13 @@ npm start -- -s https://example.com \
 This shows your overall AI agent compatibility score.
 
 **Key columns:**
+
 - `served_score`: Works for ALL agent types (scored)
 - `rendered_score`: Works for browser agents (scored)
 - `overall_score`: Weighted average (served weighted higher, rendered lower)
 
 **Interpreting scores:**
+
 - Low scores: Critical issues, agents will fail frequently
 - Moderate-low scores: Basic functionality, many problems remain
 - Moderate-high scores: Good implementation, minor improvements needed
@@ -1116,6 +1153,7 @@ This shows your overall AI agent compatibility score.
 Shows how well your robots.txt serves AI agents.
 
 **Key columns:**
+
 - `score`: Overall quality (scored)
 - `has_ai_user_agents`: Declares AI bot user agents
 - `has_sitemap`: Includes sitemap declaration
@@ -1123,6 +1161,7 @@ Shows how well your robots.txt serves AI agents.
 - `has_llms_txt_reference`: References llms.txt file
 
 **Priority fixes:**
+
 1. Add sitemap declaration (significant improvement)
 2. Declare AI user agents (major improvement with multiple agents)
 3. Protect sensitive paths (significant improvement with multiple paths)
@@ -1133,6 +1172,7 @@ Shows how well your robots.txt serves AI agents.
 High-level overview for stakeholders.
 
 **Key sections:**
+
 - robots.txt compliance status
 - Agent compatibility overview
 - Critical issues to address
@@ -1175,10 +1215,12 @@ open results/dashboard.html
 ```
 
 The dashboard shows:
+
 - Score trends over time
 - Issue resolution tracking
 - Business impact correlation
 - Competitive benchmarking (if multiple sites)
+
 ```
 
 **Why this matters:** The book references tools abstractly. This document shows readers exactly how to use Web Audit Suite to measure their own progress.
@@ -1267,6 +1309,7 @@ function clearError(fieldId) {
 **Problem:** Hidden fees, "From £99" pricing confuses agents
 
 **Solution:**
+
 ```html
 <!-- Bad: Incomplete pricing -->
 <div class="product-price">
@@ -1325,6 +1368,7 @@ function clearError(fieldId) {
 **Score impact:** +8 points (pricing category)
 
 [... 10 more recipes ...]
+
 ```
 
 **Why this matters:** Readers want copy-paste solutions. This cookbook provides production-tested code they can use immediately.
@@ -1376,6 +1420,7 @@ Audit your top 5 competitors using Web Audit Suite, then compare:
 Plot all competitors on 2D chart:
 
 ```
+
 High Agent Readiness (80-100)
     │
     │    [Leader]
@@ -1388,6 +1433,7 @@ High Agent Readiness (80-100)
 Low Agent Readiness (0-40)
     └────────────────────────────────────
     Low Market Share         High Market Share
+
 ```
 
 **Strategic Insights:**
@@ -1687,12 +1733,14 @@ CLI agents, API agents, and server-based agents see everything they need.
 **Works for:** Browser agents (moderate segment)
 
 **Requirements:**
+
 - Enhances Layer 1 without replacing
 - Updates data attributes
 - Maintains HTML truth
 - Adds interactivity
 
 **Example:**
+
 ```javascript
 // Enhance price display with live updates
 async function updatePrice() {
@@ -1715,12 +1763,14 @@ async function updatePrice() {
 **Works for:** Browser extension assistants (smallest segment)
 
 **Requirements:**
+
 - Inherits authenticated session
 - Respects user permissions
 - Logs agent actions
 - Provides delegation tokens
 
 **Example:**
+
 ```javascript
 // Detect extension assistant
 if (window.AI_ASSISTANT_CONTEXT) {
@@ -1745,6 +1795,7 @@ if (window.AI_ASSISTANT_CONTEXT) {
 ### Implementation Sequence
 
 **Phase 1 (Initial):** Layer 1 foundation
+
 - Focus on served HTML
 - Add structured data
 - Make everything visible without JS
@@ -1752,6 +1803,7 @@ if (window.AI_ASSISTANT_CONTEXT) {
 - **Coverage: All agents**
 
 **Phase 2 (Next):** Layer 2 enhancement
+
 - Add JavaScript enhancements
 - Maintain HTML truth
 - Add explicit state attributes
@@ -1759,6 +1811,7 @@ if (window.AI_ASSISTANT_CONTEXT) {
 - **Coverage: Still all agents, enhanced for browser agents**
 
 **Phase 3 (Later):** Layer 3 advanced
+
 - Implement session detection
 - Add agent-specific features
 - Build delegation system
@@ -1768,12 +1821,14 @@ if (window.AI_ASSISTANT_CONTEXT) {
 ### Testing Progressive Enhancement
 
 **Test 1: Disable JavaScript**
+
 ```bash
 # Should work perfectly
 curl https://example.com/product/123
 ```
 
 **Test 2: Enable JavaScript**
+
 ```javascript
 // Should enhance, not replace
 test('enhancement preserves base functionality', async () => {
@@ -1791,6 +1846,7 @@ test('enhancement preserves base functionality', async () => {
 ```
 
 **Test 3: Agent Detection**
+
 ```javascript
 // Should work with and without agent context
 test('works for regular browsers too', async () => {
@@ -1810,22 +1866,26 @@ test('works for regular browsers too', async () => {
 ### Benefits
 
 **For Developers:**
+
 - Clear implementation path
 - Testable layers
 - Backward compatible
 - Forward compatible
 
 **For Business:**
+
 - Complete agent coverage from day 1
 - Incremental enhancement
 - Reduced risk
 - Measurable progress
 
 **For Users (Human and Agent):**
+
 - Fast base experience
 - Enhanced when supported
 - Never broken
 - Always accessible
+
 ```
 
 **Why this matters:** Progressive enhancement is the solution but the book doesn't explain how to implement it for agents specifically.
@@ -1870,6 +1930,7 @@ Agent knows exactly when to retry. Avoids hammering your server.
 **Problem:** Agent submits form, gets "Invalid input", doesn't know what's wrong
 
 **Solution:**
+
 ```http
 HTTP/1.1 400 Bad Request
 
@@ -1903,6 +1964,7 @@ Agent can fix specific issues and resubmit.
 **Problem:** Agent adds 10 items to cart, 2 fail, doesn't know which 8 succeeded
 
 **Solution:**
+
 ```http
 HTTP/1.1 207 Multi-Status
 
@@ -1929,6 +1991,7 @@ Agent knows which items succeeded and can retry only failed ones.
 **Problem:** Agent's token expires mid-session, loses all progress
 
 **Solution:**
+
 ```http
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: Bearer realm="API", error="invalid_token", error_description="Token expired"
@@ -1951,6 +2014,7 @@ Agent can refresh auth and resume from saved session.
 **Problem:** Agent tries to complete action, but user or another agent already did it
 
 **Solution:**
+
 ```http
 HTTP/1.1 409 Conflict
 
@@ -1979,6 +2043,7 @@ Agent knows what changed and can decide how to proceed.
 ### Recovery Testing
 
 **Test recovery paths:**
+
 ```javascript
 describe('Error Recovery', () => {
   test('handles rate limit gracefully', async () => {
@@ -2034,9 +2099,11 @@ Track these metrics:
 - **Recovery abandonment:** % of agents that give up
 
 **Targets:**
+
 - Recovery success rate: High
 - Average recovery time: Fast
 - Recovery abandonment: Low
+
 ```
 
 **Why this matters:** The book focuses on preventing errors but doesn't address the reality that errors will happen. Recovery patterns are critical for production systems.
@@ -2066,6 +2133,7 @@ Track these metrics:
 
    The tool generates 19 different reports covering all patterns discussed
    in this chapter, with quantitative scoring and actionable recommendations.
+
    ```
 
 2. **Implementation Checklist header:**
@@ -2077,7 +2145,8 @@ Track these metrics:
    the tool's reports.
    ```
 
-3. **New appendix:**
+1. **New appendix:**
+
    ```markdown
    # Appendix D: Web Audit Suite Integration
 
@@ -2394,12 +2463,14 @@ Public directory of certified sites:
 **Total estimated effort:** Substantial
 
 **Breakdown:**
+
 - Phase 1 (Immediate): Short timeframe
 - Phase 2 (Enhancements): Medium timeframe
 - Phase 3 (Structural): Substantial timeframe
 - Phase 4 (Integration): Long-term timeframe
 
 **Phased approach allows:**
+
 - Quick wins in Phase 1
 - Substantial improvement in Phases 1-2
 - Complete transformation in Phases 1-3
@@ -2408,12 +2479,14 @@ Public directory of certified sites:
 ### Expertise Required
 
 **Phase 1-3 (Content):**
+
 - Technical writing
 - Web development knowledge
 - Practical implementation experience
 - Access to Web Audit Suite codebase
 
 **Phase 4 (Integration):**
+
 - Frontend development (React)
 - Backend development (Node.js)
 - DevOps (hosting, monitoring)
@@ -2423,19 +2496,23 @@ Public directory of certified sites:
 ### Cost Estimate
 
 **Content Development:**
+
 - Moderate effort investment
 - Or: Internal effort by book author (no cost)
 
 **Tool Development:**
+
 - Substantial effort investment
 - Or: Phased development with revenue validation
 
 **Design/Media:**
+
 - Screenshots/diagrams: Moderate cost
 - UI design: Moderate cost
 - Marketing materials: Moderate cost
 
 **Infrastructure:**
+
 - Hosting: Low ongoing cost
 - Domain: Minimal cost
 - SSL: Free (Let's Encrypt)
@@ -2451,26 +2528,31 @@ Public directory of certified sites:
 ### Risks and Mitigation
 
 **Risk 1: Scope Creep**
+
 - **Probability:** High
 - **Impact:** Medium (delayed completion)
 - **Mitigation:** Strict phase boundaries, ship Phase 1 before starting Phase 2
 
 **Risk 2: Tool Maintenance Burden**
+
 - **Probability:** Medium
 - **Impact:** High (ongoing cost)
 - **Mitigation:** Open source community, clear deprecation policy, paid support tiers
 
 **Risk 3: Rapid Standards Evolution**
+
 - **Probability:** High
 - **Impact:** Medium (content becomes dated)
 - **Mitigation:** Living document approach, version control, regular updates, disclaimer about experimental patterns
 
 **Risk 4: Reader Overwhelm**
+
 - **Probability:** Medium
 - **Impact:** Medium (reduced implementation)
 - **Mitigation:** Clear progressive path, "start here" guidance, quick wins emphasized
 
 **Risk 5: Competitive Tools**
+
 - **Probability:** Medium
 - **Impact:** Low (differentiation through integration)
 - **Mitigation:** Tight book integration, comprehensive coverage, better UX, certification program
@@ -2500,18 +2582,21 @@ Public directory of certified sites:
 ### Summary of Value Proposition
 
 **Current Book Strengths:**
+
 - Strong theoretical foundation
 - Clear problem articulation
 - Comprehensive coverage of issues
 - Well-structured narrative arc
 
 **Current Book Weaknesses:**
+
 - Limited practical validation
 - Insufficient measurement frameworks
 - Weak tool integration
 - Missing production learnings
 
 **After Improvements:**
+
 - Maintains theoretical strength
 - Adds quantitative rigor
 - Provides production validation
@@ -2521,24 +2606,28 @@ Public directory of certified sites:
 ### Recommended Approach
 
 **Start with Phase 1** (1 week, $3,750 or internal):
+
 - High-impact content additions
 - Immediate practical value
 - Low risk
 - Quick validation of approach
 
 **If successful, proceed to Phase 2** (1.5 weeks, $9,000 or internal):
+
 - Major enhancements
 - Transforms book into toolkit
 - Medium risk
 - Substantial value add
 
 **If validated, execute Phase 3** (1.75 weeks, $10,500 or internal):
+
 - Structural improvements
 - Completes vision
 - Medium risk
 - Comprehensive reference
 
 **Only if justified, build Phase 4** (8 weeks, $48,000):
+
 - Tool ecosystem
 - Revenue generation
 - Higher risk
@@ -2547,24 +2636,28 @@ Public directory of certified sites:
 ### Expected Outcomes
 
 **After Phase 1:**
+
 - Moderate improvement in practical value
 - Clear measurement frameworks
 - Production validation
 - Stronger differentiation
 
 **After Phase 2:**
+
 - Substantial improvement in practical value
 - Complete toolkit
 - Battle-tested patterns
 - Professional-grade reference
 
 **After Phase 3:**
+
 - Major improvement in practical value
 - Comprehensive coverage
 - Strategic guidance
 - Industry-standard reference
 
 **After Phase 4:**
+
 - Complete transformation in practical value
 - Active community
 - Revenue diversification
