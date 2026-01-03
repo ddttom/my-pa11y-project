@@ -73,7 +73,7 @@ async function isCacheStale(url, cacheTimestamp) {
 
     if (isStale) {
       global.auditcore.logger.info(
-        `Cache stale for ${url}: source modified ${sourceModifiedDate.toISOString()}, cache created ${cacheDate.toISOString()}`
+        `Cache stale for ${url}: source modified ${sourceModifiedDate.toISOString()}, cache created ${cacheDate.toISOString()}`,
       );
     } else {
       global.auditcore.logger.debug(`Cache fresh for ${url}`);
