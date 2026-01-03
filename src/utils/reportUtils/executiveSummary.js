@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { calculateServedScore, calculateRenderedScore } from '../llmMetrics.js';
 
 /**
  * Generates an executive summary report with high-level insights
@@ -202,7 +203,7 @@ function buildSeoSummary(results, comparisonData) {
     return { status: 'No data', score: 0 };
   }
 
-  const avgScore = average(metrics.map((m) => m.totalScore || 0));
+  const avgScore = average(metrics.map((m) => m.score || 0));
   const status = avgScore >= 90 ? 'Excellent' : avgScore >= 80 ? 'Very Good' : avgScore >= 70 ? 'Good' : avgScore >= 60 ? 'Fair' : 'Needs Improvement';
 
   const summary = {
@@ -261,8 +262,12 @@ function buildLLMSummary(results, comparisonData) {
     return { status: 'No data', servedScore: 0, renderedScore: 0 };
   }
 
-  const avgServedScore = average(metrics.map((m) => m.servedScore || 0));
-  const avgRenderedScore = average(metrics.map((m) => m.renderedScore || 0));
+  // Calculate scores on-the-fly from metrics (they're not stored in results.json)
+  const servedScores = metrics.map((m) => calculateServedScore(m));
+  const renderedScores = metrics.map((m) => calculateRenderedScore(m));
+
+  const avgServedScore = average(servedScores);
+  const avgRenderedScore = average(renderedScores);
 
   const status = avgServedScore >= 70 ? 'Good' : avgServedScore >= 50 ? 'Fair' : 'Needs Improvement';
 
