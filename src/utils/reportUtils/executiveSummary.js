@@ -457,9 +457,9 @@ function buildRecommendations(results) {
     });
   }
 
-  // SEO recommendations
-  const seoMetrics = results.seoScores || [];
-  const pagesWithoutMeta = seoMetrics.filter((m) => !m.metaDescription || m.metaDescription.length === 0).length;
+  // SEO recommendations - check contentAnalysis for meta descriptions
+  const contentMetricsForSeo = results.contentAnalysis || [];
+  const pagesWithoutMeta = contentMetricsForSeo.filter((m) => !m.metaDescription || m.metaDescription.length === 0).length;
   if (pagesWithoutMeta > 0) {
     recommendations.push({
       category: 'SEO',
