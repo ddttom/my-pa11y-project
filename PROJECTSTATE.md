@@ -1,6 +1,6 @@
 # Project State
 
-**Last Updated:** 2026-01-01
+**Last Updated:** 2026-01-03
 
 Current snapshot of Web Audit Suite implementation status.
 
@@ -11,6 +11,26 @@ Current snapshot of Web Audit Suite implementation status.
 **Node.js Requirement:** >= 20.0.0
 
 ## Core Functionality
+
+### Phase 0: robots.txt Compliance ✅
+
+**Status:** Complete and tested (NEW - Jan 3, 2026)
+
+- robots.txt fetching before any URL processing
+- HTTP fetch with Puppeteer fallback
+- robots.txt parsing and quality scoring (100-point system)
+- Interactive compliance checking with user prompts
+- Force-scrape mode with runtime toggle
+- Graceful quit handling
+- Executive summary reporting
+
+**Files:**
+
+- [src/utils/robotsFetcher.js](src/utils/robotsFetcher.js) (104 lines)
+- [src/utils/robotsCompliance.js](src/utils/robotsCompliance.js) (273 lines)
+- [src/utils/robotsTxtParser.js](src/utils/robotsTxtParser.js) (296 lines)
+- [src/utils/llmsTxtParser.js](src/utils/llmsTxtParser.js) (395 lines)
+- [src/utils/reportUtils/aiFileReports.js](src/utils/reportUtils/aiFileReports.js) (273 lines)
 
 ### Phase 1: URL Collection ✅
 
@@ -83,8 +103,11 @@ Current snapshot of Web Audit Suite implementation status.
 12. llm_general_suitability.csv
 13. llm_frontend_suitability.csv
 14. llm_backend_suitability.csv
-15. virtual_sitemap.xml
-16. final_sitemap.xml
+15. robots_txt_quality.csv (NEW)
+16. llms_txt_quality.csv (NEW)
+17. ai_files_summary.md (NEW)
+18. virtual_sitemap.xml
+19. final_sitemap.xml
 
 **Files:**
 
@@ -97,6 +120,75 @@ Current snapshot of Web Audit Suite implementation status.
 - [src/utils/reportUtils/linkAnalysis.js](src/utils/reportUtils/linkAnalysis.js)
 
 ## Recent Enhancements
+
+### January 3, 2026
+
+**robots.txt Compliance System:**
+
+- **Phase 0 Fetching** (NEW)
+  - robots.txt automatically fetched before any URL processing
+  - HTTP fetch with Puppeteer fallback for Cloudflare-protected sites
+  - Parsed and stored in global state for session-wide access
+  - Permissive default: allows scraping if robots.txt doesn't exist or is invalid
+  - Files: [src/utils/robotsFetcher.js](src/utils/robotsFetcher.js) (104 lines)
+
+- **Interactive Compliance Checking** (NEW)
+  - Real-time compliance checks before each URL is processed
+  - Four user options: y (override single URL), a (enable force-scrape), n (skip URL), q (quit analysis)
+  - Force-scrape mode can be toggled at runtime via interactive prompt
+  - Graceful quit handling with USER_QUIT_ROBOTS_TXT error signal
+  - Quit signal propagation through concurrent and recursive URL processing
+  - Files: [src/utils/robotsCompliance.js](src/utils/robotsCompliance.js) (273 lines)
+
+- **Pattern Matching Implementation**
+  - Implements robots.txt exclusion standard with wildcards (*), end markers ($), and literal paths
+  - User-agent matching (specific agent or wildcard *)
+  - Longest-match-wins precedence (Allow takes precedence over Disallow at equal specificity)
+  - Path normalization including query strings
+
+- **CLI and Configuration**
+  - `--force-scrape` CLI flag to bypass all robots.txt restrictions
+  - `FORCE_SCRAPE` environment variable (default: false)
+  - Prominent startup logging of compliance mode state
+  - Runtime state changes logged with warning level
+  - Files: [index.js](index.js:85-88,207-219), [.env.example](.env.example:30-33)
+
+- **Executive Summary Integration**
+  - `robotsComplianceEnabled` field in overview section
+  - Visual indicators (✅ enabled, ⚠️ disabled)
+  - Clear explanation text in markdown output
+  - Files: [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js:69-75,559-564)
+
+- **Quality Scoring for AI Agent Compatibility**
+  - robots.txt: 100-point scoring system across 6 criteria
+    - Checks for AI agent declarations (ChatGPT-User, GPTBot, etc.)
+    - Validates sitemap references and sensitive path protection
+    - Identifies llms.txt references and helpful comments
+    - Bonus points for exceptional configurations
+    - Files: [src/utils/robotsTxtParser.js](src/utils/robotsTxtParser.js) (296 lines)
+    - Report: robots_txt_quality.csv (17 columns)
+  - llms.txt: 105-point scoring system with bonuses across 5 main criteria
+    - Checks for core elements (title, overview, directory, examples)
+    - Validates important sections (architecture, API, setup, troubleshooting, etc.)
+    - Evaluates content length, link quality, and technical specificity
+    - Bonus points for exceptional documentation
+    - Files: [src/utils/llmsTxtParser.js](src/utils/llmsTxtParser.js) (395 lines)
+    - Report: llms_txt_quality.csv (27 columns)
+  - AI File Reports: Consolidated quality analysis
+    - Files: [src/utils/reportUtils/aiFileReports.js](src/utils/reportUtils/aiFileReports.js) (273 lines)
+    - Report: ai_files_summary.md (markdown summary)
+
+- **Integration Points**
+  - Modified [src/main.js](src/main.js:59-81): Added Phase 0 robots.txt fetching
+  - Modified [src/utils/urlProcessor.js](src/utils/urlProcessor.js:61-101): Compliance checking before URL processing
+  - Modified [src/utils/urlProcessor.js](src/utils/urlProcessor.js:331-360): Quit handling in concurrent processing
+  - Modified [src/utils/urlProcessor.js](src/utils/urlProcessor.js:426-437): Quit handling in recursive processing
+
+- **Documentation Updates**
+  - Updated [CLAUDE.md](CLAUDE.md): Four-phase pipeline, compliance system architecture
+  - Updated [docs/usermanual.md](docs/usermanual.md:145-288): User guide with 4 example scenarios
+  - Updated [docs/report-layout.md](docs/report-layout.md:1262-1287): Executive summary field descriptions
+  - Updated [README.md](README.md:21-30): Added to key features
 
 ### January 1, 2026
 
@@ -239,7 +331,11 @@ global.auditcore = {
 }
 ```
 
-### Three-Phase Pipeline
+### Four-Phase Pipeline
+
+0. **robots.txt Compliance** (`fetchRobotsTxt`)
+   - Input: Base URL
+   - Output: robotsTxtData (stored in global state)
 
 1. **URL Collection** (`getUrlsFromSitemap`)
    - Input: Sitemap URL or webpage URL
@@ -345,9 +441,14 @@ web-audit-suite/
 │       ├── urlProcessor.js # URL processing with concurrency
 │       ├── metricsUpdater.js    # Metrics helpers
 │       ├── shutdownHandler.js   # Graceful shutdown
+│       ├── robotsFetcher.js     # robots.txt fetching (NEW)
+│       ├── robotsCompliance.js  # Compliance checking (NEW)
+│       ├── robotsTxtParser.js   # robots.txt quality scoring (NEW)
+│       ├── llmsTxtParser.js     # llms.txt quality scoring (NEW)
 │       └── reportUtils/
 │           ├── reportGenerators.js
 │           ├── llmReports.js
+│           ├── aiFileReports.js  # AI file quality reports (NEW)
 │           ├── accessibilityAnalysis.js
 │           ├── contentAnalysis.js
 │           ├── imageAnalysis.js

@@ -6,6 +6,72 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **robots.txt Compliance System**: Comprehensive ethical scraping controls
+  - **Phase 0 Fetching**: robots.txt automatically fetched before any URL processing
+    - HTTP fetch with Puppeteer fallback for Cloudflare-protected sites
+    - Parsed and stored in global state for session-wide access
+    - Permissive default: allows scraping if robots.txt doesn't exist or is invalid
+    - New file: `src/utils/robotsFetcher.js` (104 lines)
+  - **Interactive Compliance Checking**: User prompts when URLs are blocked
+    - Real-time compliance checks before each URL is processed
+    - Four user options: y (override single URL), a (enable force-scrape), n (skip URL), q (quit analysis)
+    - Force-scrape mode can be toggled at runtime via interactive prompt
+    - Graceful quit handling with USER_QUIT_ROBOTS_TXT error signal
+    - Quit signal propagation through concurrent and recursive processing
+    - New file: `src/utils/robotsCompliance.js` (273 lines)
+  - **Pattern Matching**: Implements robots.txt exclusion standard
+    - Supports wildcards (*), end markers ($), and literal paths
+    - User-agent matching (specific agent or wildcard *)
+    - Longest-match-wins precedence (Allow takes precedence over Disallow at equal specificity)
+    - Path normalization (includes query strings)
+  - **CLI and Configuration**:
+    - `--force-scrape` CLI flag to bypass all robots.txt restrictions
+    - `FORCE_SCRAPE` environment variable (default: false)
+    - Prominent startup logging of compliance mode state
+    - Runtime state changes logged with warning level
+  - **Executive Summary Integration**:
+    - `robotsComplianceEnabled` field in overview section
+    - Visual indicators (✅ enabled, ⚠️ disabled)
+    - Clear explanation text in markdown output
+  - **Quality Scoring**: Evaluate AI agent compatibility of robots.txt files
+    - 100-point scoring system across 6 criteria
+    - Checks for AI agent declarations (ChatGPT-User, GPTBot, etc.)
+    - Validates sitemap references and sensitive path protection
+    - Identifies llms.txt references and helpful comments
+    - Bonus points for exceptional configurations
+    - New file: `src/utils/robotsTxtParser.js` (296 lines)
+    - New report: `robots_txt_quality.csv` (17 columns)
+  - **Integration Points**:
+    - Modified `src/main.js`: Added Phase 0 robots.txt fetching (lines 59-81)
+    - Modified `src/utils/urlProcessor.js`: Compliance checking before URL processing (lines 61-101)
+    - Modified `src/utils/urlProcessor.js`: Quit handling in concurrent processing (lines 331-360)
+    - Modified `src/utils/urlProcessor.js`: Quit handling in recursive processing (lines 426-437)
+    - Modified `src/utils/reportUtils/executiveSummary.js`: Compliance reporting (lines 69-75, 559-564)
+    - Modified `index.js`: CLI flag and startup logging (lines 85-88, 207-219)
+    - Modified `.env.example`: FORCE_SCRAPE configuration (lines 30-33)
+  - **Documentation**:
+    - Updated `CLAUDE.md`: Four-phase pipeline, compliance system architecture
+    - Updated `docs/usermanual.md`: User guide with 4 example scenarios
+    - Updated `docs/report-layout.md`: Executive summary field descriptions
+    - Updated `README.md`: Added to key features
+
+- **llms.txt Quality Analysis**: Evaluate AI agent guidance files
+  - 105-point scoring system with bonuses across 5 main criteria
+  - Checks for core elements (title, overview, directory, examples)
+  - Validates important sections (architecture, API, setup, troubleshooting, etc.)
+  - Evaluates content length, link quality, and technical specificity
+  - Bonus points for exceptional documentation
+  - New file: `src/utils/llmsTxtParser.js` (395 lines)
+  - New report: `llms_txt_quality.csv` (27 columns)
+
+- **AI File Reports**: Consolidated quality analysis for robots.txt and llms.txt
+  - New file: `src/utils/reportUtils/aiFileReports.js` (273 lines)
+  - Generates three reports:
+    - `robots_txt_quality.csv`: Detailed robots.txt scoring and analysis
+    - `llms_txt_quality.csv`: Detailed llms.txt scoring and analysis
+    - `ai_files_summary.md`: Human-readable markdown summary
+  - Integrated into main report generation pipeline
+
 - **Base Domain Auto-Discovery**: Automatically include homepage in analysis
   - Base domain URL (e.g., `https://example.com/`) automatically added to processing queue
   - llms.txt URL automatically added for AI agent compatibility checks
