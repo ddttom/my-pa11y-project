@@ -178,6 +178,7 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
 
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
+- `--no-puppeteer`: Bypass Puppeteer execution (use cached data only)
 - `--force-delete-cache`: Clear cache and old reports (preserves history/ and baseline.json)
 
 ### Enhanced Features
