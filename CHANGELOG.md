@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **AI Files Summary Markdown Linting**: Fixed markdownlint errors in generated ai_files_summary.md (2026-01-04)
+  - MD034 (no-bare-urls): Wrapped all URLs in angle brackets (`<URL>`)
+  - MD024 (no-duplicate-heading): Made duplicate headings unique with context
+    - "Issues" → "robots.txt Issues" / "llms.txt Issues"
+    - "Recommendations" → "robots.txt Recommendations" / "llms.txt Recommendations"
+  - MD012 (no-multiple-blanks): Removed extra blank line at end of file
+  - Files modified:
+    - [src/utils/reportUtils/aiFileReports.js](src/utils/reportUtils/aiFileReports.js:173,199,207,225,249,257,266,272-274)
+
 ### Documentation
 
 - **Configuration Documentation Update**: Added 6 missing CLI options to CONFIGURATION.md (2026-01-04)
@@ -556,7 +567,7 @@ All notable changes to this project will be documented in this file.
   - docs/system.md: Added llms.txt and data-agent-visible implementation details
   - docs/usermanual.md: Enhanced LLM suitability report documentation
 
-### Fixed
+### Fixed (January 3, 2026)
 
 - **Executive Summary Data Structure Mismatches**: Fixed 11 critical data structure access errors (2026-01-03)
   - **Average Headings Calculation**: Changed from non-existent `m.headingCount` to sum of `h1Count + h2Count + h3Count`
