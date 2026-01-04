@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Data Structure Mismatches**: Fixed critical data collection issues identified by JSON audit (2026-01-04)
+  - Added missing metric collection calls in pageAnalyzer.js:
+    - `updateLlmReadabilityMetrics()` now properly called - enables llm_readability_report.csv generation
+    - `updateHttpStatusMetrics()` now properly called - enables http_status_report.csv generation
+  - Added missing fields to contentAnalysis in pageAnalyzerHelpers.js:
+    - `structuredData` - fixes "Has Structured Data" column in SEO report
+    - `openGraphTags` - fixes "Has Social Tags" column in SEO report
+    - `twitterTags` - fixes "Has Social Tags" column in SEO report
+  - Added null coalescing to Core Web Vitals in performanceAnalyzer.js:
+    - `largestContentfulPaint` (LCP) - ensures values stored instead of null
+    - `timeToInteractive` (TTI) - ensures values stored instead of null
+    - `totalBlockingTime` (TBT) - ensures values stored instead of null
+    - `cumulativeLayoutShift` (CLS) - ensures values stored instead of null
+  - Implemented Core Web Vitals collection in renderAndCacheData.js:
+    - Added PerformanceObserver for LCP, CLS, and long tasks
+    - Comprehensive error handling with try-catch blocks
+    - 2-second stabilization period for metrics collection
+    - Graceful fallback when observers fail
+  - Impact: Fixes 9 critical issues where data was collected but not stored or never collected at all
+  - Files modified:
+    - [src/utils/pageAnalyzer.js](src/utils/pageAnalyzer.js:25-26,308-309) - Added metric collection calls
+    - [src/utils/pageAnalyzerHelpers.js](src/utils/pageAnalyzerHelpers.js:123-125) - Added missing fields
+    - [src/utils/performanceAnalyzer.js](src/utils/performanceAnalyzer.js:119-124) - Added null coalescing
+    - [src/utils/renderAndCacheData.js](src/utils/renderAndCacheData.js:123-206) - Core Web Vitals collection
+
 ### Added
 
 - **Markdown Linting Automation**: Comprehensive markdown quality assurance system (2026-01-04)
@@ -37,9 +64,6 @@ All notable changes to this project will be documented in this file.
     - [docs/CI-CD-INTEGRATION.md](docs/CI-CD-INTEGRATION.md) - Fixed 7 table alignment errors
     - [docs/usermanual.md](docs/usermanual.md) - Fixed 1 duplicate heading
     - [improvement.md](improvement.md) - Fixed 27+ errors and updated metrics
-
-### Fixed
-
 - **AI Files Summary Markdown Linting**: Fixed markdownlint errors in generated ai_files_summary.md (2026-01-04)
   - MD034 (no-bare-urls): Wrapped all URLs in angle brackets (`<URL>`)
   - MD024 (no-duplicate-heading): Made duplicate headings unique with context

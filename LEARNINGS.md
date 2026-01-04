@@ -6,7 +6,7 @@ This is NOT documentation - these are rules learned the hard way when something 
 
 ## Critical Rules
 
-1. **ALWAYS run /json-audit before modifying report generation code** (2026-01-04): Repeatedly made "assumed field" errors - adding code that references fields that don't exist, or accessing wrong data structures. Created `/json-audit` skill to systematically verify results.json structure matches implementation. MANDATORY: Run `/json-audit` before any changes to src/utils/reportUtils/ files. The hook `pre-report-generation.sh` reminds you but you MUST actually run the audit.
+1. **ALWAYS run /json-audit before modifying report generation code** (2026-01-04): Repeatedly made "assumed field" errors - adding code that references fields that don't exist, or accessing wrong data structures. Created `/json-audit` skill to systematically verify results.json structure matches implementation. MANDATORY: Run `/json-audit` before any changes to src/utils/reportUtils/ files. The hook `pre-report-generation.sh` reminds you but you MUST actually run the audit. UPDATE (2026-01-04): Audit successfully caught 9 critical data structure mismatches in production code - 2 missing aggregation functions never called, 3 contentAnalysis fields not stored, 4 Core Web Vitals fields returning null. This validates the audit system is working.
 
 2. **package-lock.json Policy Changed** (2025-12-31): Initially tried to exclude it, but this breaks reproducible builds. Always commit it.
 

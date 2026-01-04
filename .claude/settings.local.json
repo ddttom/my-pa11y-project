@@ -15,7 +15,9 @@
       "Bash(npx eslint . --fix)",
       "Bash(npm run lint:*)",
       "Bash(npx markdownlint:*)",
-      "Bash(npm run lint:md:*)"
+      "Bash(npm run lint:md:*)",
+      "Skill(json-audit)",
+      "Skill(json-audit:*)"
     ],
     "deny": [],
     "ask": []
