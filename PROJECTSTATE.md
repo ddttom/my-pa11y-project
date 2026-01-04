@@ -295,6 +295,18 @@ Current snapshot of Web Audit Suite implementation status.
 
 ## Recent Enhancements
 
+### January 4, 2026
+
+**Enhanced Report Output:**
+
+- **Auto-Copy Documentation** (NEW)
+  - Documentation files automatically copied to output directory during report generation
+  - Copies `llm_general_suitability_guide.md` - User guide for understanding LLM suitability scores
+  - Copies `report-layout.md` - Technical reference for AI assistants parsing report data
+  - Creates self-contained report packages that include guidance and technical specs
+  - Graceful error handling if files cannot be copied
+  - Files: [src/utils/reports.js](src/utils/reports.js:154-172)
+
 ### January 3, 2026 (Latest)
 
 **Documentation Improvements:**

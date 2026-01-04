@@ -42,6 +42,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Auto-Copy Documentation to Output**: Documentation files automatically copied to output directory (2026-01-04)
+  - Copies `llm_general_suitability_guide.md` from docs/ to output directory
+  - Copies `report-layout.md` from docs/ to output directory
+  - Creates self-contained report packages with context-rich documentation
+  - Users get actionable guidance alongside their LLM suitability scores
+  - AI assistants have technical reference immediately available for parsing reports
+  - Graceful error handling if files cannot be copied (logs warning, continues execution)
+  - Files modified:
+    - `src/utils/reports.js` - Added documentation file copying logic
+    - `CLAUDE.md` - Documented auto-copied files in Output Files section
+
 - **Executive Summary Headline Score**: Overall site health score (2026-01-03)
   - Calculates average of 4 category scores: Performance, Accessibility, SEO, and LLM Suitability
   - Displays prominently at top of executive summary: "Overall Score: X/100 (Status)"
