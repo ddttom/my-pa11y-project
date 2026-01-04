@@ -1682,6 +1682,19 @@ The tool also generates cache files for debugging:
 - Status, Served Score, Rendered Score, llms.txt count
 - Trend information (if history enabled)
 
+## Technology Stack
+- CMS detection (Adobe EDS, WordPress, Drupal, etc.)
+- JavaScript frameworks (React, Vue.js, Angular, etc.)
+- Libraries (jQuery, Lodash, D3.js, etc.)
+- Analytics tools (Google Analytics, Adobe Analytics, etc.)
+- CDNs (Cloudflare, Akamai, Fastly, etc.)
+- Confidence levels (high/medium)
+- Resource count and base domain reference
+
+## AI File Compatibility
+- robots.txt quality score and status
+- llms.txt quality score and status
+
 ## Key Findings
 [Numbered list of critical findings with severity icons]
 
@@ -1766,6 +1779,32 @@ The tool also generates cache files for debugging:
     "renderedScore": 0-100,
     "pagesWithLLMsTxt": "count",
     "trend": { "servedScore": "%", "renderedScore": "%" }
+  },
+  "technologies": {
+    "detected": true|false,
+    "baseDomain": "URL",
+    "totalResources": "count",
+    "technologies": [
+      {
+        "name": "Technology Name",
+        "category": "CMS|Framework|Library|Analytics|CDN",
+        "confidence": "high|medium"
+      }
+    ],
+    "byCategory": {
+      "CMS": [],
+      "Framework": [],
+      "Library": [],
+      "Analytics": [],
+      "CDN": []
+    },
+    "summary": {
+      "cms": ["Adobe EDS", "WordPress"],
+      "frameworks": ["React", "Vue.js"],
+      "libraries": ["jQuery", "D3.js"],
+      "analytics": ["Google Analytics"],
+      "cdns": ["Cloudflare"]
+    }
   },
   "keyFindings": [
     {
@@ -1856,6 +1895,42 @@ When `cacheStalenessCapable` is `null`:
 **Implementation Details:**
 
 The executive summary checks the first URL's cache file for the presence of a `Last-Modified` header in the cached `headers` object. This provides a representative sample of whether the site supports cache staleness detection. The check uses the same MD5 hash function as the caching system to locate cache files.
+
+**Technologies Section:**
+
+The `technologies` object contains automatic detection results for web technologies used on the homepage:
+
+- `detected`: Boolean indicating if any technologies were detected
+- `baseDomain`: Homepage URL analyzed for technology detection
+- `totalResources`: Number of JavaScript resources analyzed
+- `technologies`: Array of all detected technologies with:
+  - `name`: Technology name (e.g., "Adobe Experience Manager Edge Delivery Services")
+  - `category`: Category type (CMS, Framework, Library, Analytics, CDN)
+  - `confidence`: Detection confidence level ("high" or "medium")
+  - `patterns` (Adobe EDS only): Object showing which detection patterns matched
+- `byCategory`: Technologies organized by category for easy filtering
+- `summary`: Simple arrays of technology names by category for quick reference
+
+**Technology Detection Patterns:**
+
+- **CMS**: Adobe EDS (aem.js, .hlx.page/.hlx.live, /clientlibs/), WordPress, Drupal, Shopify, Wix, Webflow, Squarespace, Joomla
+- **Frameworks**: React, Vue.js, Angular, Svelte, Next.js, Nuxt.js
+- **Libraries**: jQuery, Lodash, Moment.js, D3.js, Chart.js, GSAP, Alpine.js, HTMX, Three.js
+- **Analytics**: Google Analytics, Adobe Analytics, Matomo, Hotjar, Mixpanel, Segment
+- **CDNs**: Cloudflare, Akamai, Fastly, Amazon CloudFront
+
+**Adobe EDS Detection:**
+
+Adobe Edge Delivery Services (EDS) is detected via multiple patterns:
+
+- `hasAemJs`: Presence of aem.js file
+- `hasHlxDomain`: .hlx.page or .hlx.live domains
+- `hasFranklin`: Franklin references
+- `hasClientLibs`: /clientlibs/ directory
+- `hasGraniteLibs`: /libs/granite/ directory
+- `hasCqLibs`: /libs/cq/ directory
+
+Confidence is "high" if aem.js or .hlx domains are found, otherwise "medium".
 
 ---
 
