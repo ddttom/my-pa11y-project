@@ -297,6 +297,15 @@ Current snapshot of Web Audit Suite implementation status.
 
 ### January 4, 2026
 
+**Documentation Improvements:**
+
+- **Configuration Documentation Update** (NEW)
+  - Added 6 missing CLI options to [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+  - Documented `--force-scrape`, `--no-puppeteer`, `--establish-baseline`, `--baseline-timestamp`, `--extract-patterns`, `--pattern-score-threshold`
+  - Enhanced `--generate-executive-summary` description to mention technology detection feature
+  - Ensures all implemented CLI options are properly documented
+  - Files: [docs/CONFIGURATION.md](docs/CONFIGURATION.md:81-88,116-123,176-215)
+
 **Enhanced Report Output:**
 
 - **Technology Detection** (NEW)

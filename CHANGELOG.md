@@ -6,6 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- **Configuration Documentation Update**: Added 6 missing CLI options to CONFIGURATION.md (2026-01-04)
+  - Documented `--force-scrape`: Bypass robots.txt restrictions (use with caution)
+  - Documented `--no-puppeteer`: Bypass Puppeteer execution (use cached data only)
+  - Documented `--establish-baseline`: Set baseline for regression detection (requires --enable-history)
+  - Documented `--baseline-timestamp <timestamp>`: Use specific historical baseline
+  - Documented `--extract-patterns`: Extract successful patterns from high-scoring pages
+  - Documented `--pattern-score-threshold <number>`: Minimum score for pattern extraction (default: 70)
+  - Enhanced `--generate-executive-summary` description to mention technology detection feature
+  - Files modified:
+    - [docs/CONFIGURATION.md](docs/CONFIGURATION.md) - Added 6 CLI options and enhanced executive summary description
+
 - **JSON Structure Documentation**: Comprehensive results.json documentation for AI assistants (2026-01-03)
   - Added 410+ lines documenting results.json master file structure in [docs/report-layout.md](docs/report-layout.md)
   - Documented all 23 top-level arrays and objects with field details and examples
