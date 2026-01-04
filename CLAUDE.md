@@ -59,6 +59,119 @@ Global ESLint 9.x installations are incompatible with the `.eslintrc.cjs` format
 The `npm run lint:md:fix` command automatically fixes many issues like blank lines around lists and code block formatting.
 Some issues like line length and table formatting require manual fixes.
 
+### Writing Lint-Free Markdown Files
+
+When generating markdown files in code, follow these rules to ensure markdownlint compliance:
+
+#### 1. URLs (MD034 - no-bare-urls)
+
+- NEVER use bare URLs: `https://example.com` ❌
+- ALWAYS wrap URLs in angle brackets: `<https://example.com>` ✅
+- Or use markdown link syntax: `[Example](https://example.com)` ✅
+
+```javascript
+// Bad
+markdown += `**URL**: ${url}\n`;
+
+// Good
+markdown += `**URL**: <${url}>\n`;
+```
+
+#### 2. Duplicate Headings (MD024 - no-duplicate-heading)
+
+- Make headings unique by adding context
+- Common issue: Multiple "Issues" or "Recommendations" sections
+
+```javascript
+// Bad
+markdown += '### Issues\n\n';  // Used multiple times
+
+// Good
+markdown += '### robots.txt Issues\n\n';
+markdown += '### llms.txt Issues\n\n';
+```
+
+#### 3. Multiple Blank Lines (MD012 - no-multiple-blanks)
+
+- Only use single blank lines between sections
+- Check string concatenation doesn't create double `\n\n`
+
+```javascript
+// Bad
+markdown += 'Section text\n\n';  // If next line starts with \n
+
+// Good
+markdown += 'Section text\n';   // Single newline at end
+```
+
+#### 4. Table Formatting (MD060 - no-missing-space-atx-closed)
+
+- Use "compact" style with spaces around pipes: `| text | text |`
+- NOT: `|text|text|` or `|----------|--------|`
+
+```javascript
+// Bad
+markdown += '|----------|--------|-------|\\n';
+
+// Good
+markdown += '| -------- | ------ | ----- |\\n';
+```
+
+#### 5. Code Blocks (MD040 - fenced-code-language)
+
+- Always specify language for code blocks
+
+```javascript
+// Bad
+markdown += '```\ncode here\n```\n';
+
+// Good
+markdown += '```javascript\ncode here\n```\n';
+markdown += '```bash\ncommand here\n```\n';
+markdown += '```text\nplain text\n```\n';
+```
+
+#### 6. Testing Generated Markdown
+
+Always test generated markdown files:
+
+```bash
+# Generate the file
+npm start -- --generate-executive-summary
+
+# Lint the generated file
+npx markdownlint results/ai_files_summary.md
+
+# Auto-fix if possible
+npx markdownlint --fix results/ai_files_summary.md
+```
+
+#### Example: Complete Lint-Free Markdown Generation
+
+```javascript
+let markdown = '# Report Title\n\n';
+markdown += '**Generated**: ' + new Date().toISOString() + '\n\n';
+
+// URL with angle brackets (MD034)
+markdown += '**URL**: <' + url + '>\n\n';
+
+// Unique headings with context (MD024)
+markdown += '### Section A Issues\n\n';
+markdown += '- Issue 1\n';
+markdown += '- Issue 2\n\n';
+
+markdown += '### Section B Issues\n\n';
+markdown += '- Issue 3\n\n';
+
+// Links in Additional Resources
+markdown += '## Additional Resources\n\n';
+markdown += '- **Guide**: <https://example.com/guide>\n';
+markdown += '- **Docs**: <https://example.com/docs>\n';
+
+// Single newline at end (MD012)
+return markdown;  // No extra \n\n at the end
+```
+
 ### Common Options
 
 - `-s, --sitemap <url>`: URL of sitemap or webpage to process
