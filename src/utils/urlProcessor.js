@@ -6,7 +6,7 @@
 
 import { getOrRenderData, setCachedData } from './caching.js';
 import { processUrl } from './pageAnalyzer.js';
-import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js';
+import { updateUrlMetrics, updateResponseCodeMetrics, updateExternalResourcesMetrics } from './metricsUpdater.js';
 import analyzePerformance from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
 import { writeToInvalidUrlFile } from './urlUtils.js';
@@ -117,6 +117,7 @@ export class UrlProcessor {
         global.auditcore.logger.debug(`Data retrieved for ${testUrl}. Status code: ${statusCode}`);
         updateUrlMetrics(testUrl, this.options.baseUrl, html, statusCode, this.results, global.auditcore.logger);
         updateResponseCodeMetrics(statusCode, this.results, global.auditcore.logger);
+        updateExternalResourcesMetrics(pageData, this.results, testUrl);
 
         if (statusCode === 200) {
           global.auditcore.logger.info(`Successfully received 200 status for ${testUrl}`);
