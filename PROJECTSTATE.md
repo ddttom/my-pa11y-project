@@ -1,6 +1,6 @@
 # Project State
 
-**Last Updated:** 2026-01-03
+**Last Updated:** 2026-01-04
 
 Current snapshot of Web Audit Suite implementation status.
 
@@ -298,6 +298,18 @@ Current snapshot of Web Audit Suite implementation status.
 ### January 4, 2026
 
 **Enhanced Report Output:**
+
+- **Technology Detection** (NEW)
+  - Automatic detection of web technologies from homepage resources
+  - Detects CMS: Adobe Edge Delivery Services (EDS), WordPress, Drupal, Shopify, Wix, Webflow, Squarespace, Joomla
+  - Detects frameworks: React, Vue.js, Angular, Svelte, Next.js, Nuxt.js
+  - Detects libraries: jQuery, Lodash, Moment.js, D3.js, Chart.js, GSAP, Alpine.js, HTMX, Three.js
+  - Detects analytics: Google Analytics, Adobe Analytics, Matomo, Hotjar, Mixpanel, Segment
+  - Detects CDNs: Cloudflare, Akamai, Fastly, Amazon CloudFront
+  - Adobe EDS detection via: scripts/aem.js, .hlx.page/.hlx.live domains, /clientlibs/, /libs/granite/
+  - Integrated into executive summary with confidence levels
+  - Pattern-based detection analyzing JavaScript resource URLs
+  - Files: [src/utils/technologyDetection.js](src/utils/technologyDetection.js) (449 lines), [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js:37-48,791-833)
 
 - **Auto-Copy Documentation** (NEW)
   - Documentation files automatically copied to output directory during report generation

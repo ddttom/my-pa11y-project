@@ -152,6 +152,7 @@ web-audit-suite/
 │       ├── pageAnalyzer.js # Page content analysis
 │       ├── pa11yRunner.js  # Accessibility testing
 │       ├── llmMetrics.js   # LLM suitability metrics collection
+│       ├── technologyDetection.js  # Technology detection (CMS, frameworks, libraries)
 │       ├── robotsTxtParser.js  # robots.txt quality analysis
 │       ├── robotsFetcher.js    # robots.txt fetching
 │       ├── robotsCompliance.js # robots.txt compliance checking
@@ -298,6 +299,41 @@ function shouldSkipLanguageVariant(url)
 ### Resume Capability
 
 The tool can resume from existing `results.json` if found, skipping data collection phase and going straight to report generation.
+
+### Technology Detection
+
+The tool automatically detects web technologies, frameworks, CMS, and JavaScript libraries from the homepage resources.
+
+**Detection Categories:**
+
+- **CMS**: Adobe Edge Delivery Services (EDS), WordPress, Drupal, Shopify, Wix, Webflow, Squarespace, Joomla
+- **Frameworks**: React, Vue.js, Angular, Svelte, Next.js, Nuxt.js
+- **Libraries**: jQuery, Lodash, Moment.js, D3.js, Chart.js, GSAP, Alpine.js, HTMX, Three.js
+- **Analytics**: Google Analytics, Adobe Analytics, Matomo, Hotjar, Mixpanel, Segment
+- **CDNs**: Cloudflare, Akamai, Fastly, Amazon CloudFront
+
+**Adobe EDS Detection:**
+
+Adobe Edge Delivery Services is detected via multiple patterns:
+
+- `scripts/aem.js` file
+- `.hlx.page` or `.hlx.live` domains
+- `franklin` references
+- `/clientlibs/` directory
+- `/libs/granite/` or `/libs/cq/` directories
+
+**Implementation:**
+
+- Analyzes JavaScript resources from `externalResourcesAggregation`
+- Pattern-based detection using URL matching
+- Confidence levels: high or medium based on pattern specificity
+- Integrated into executive summary report
+- Technology stack displayed by category
+
+**Files:**
+
+- [src/utils/technologyDetection.js](src/utils/technologyDetection.js) - Main detection module
+- [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js) - Integration into executive summary
 
 ### robots.txt Compliance System
 

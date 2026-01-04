@@ -42,6 +42,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Technology Detection**: Automatic detection of web technologies, frameworks, and libraries (2026-01-04)
+  - Detects technologies from homepage JavaScript resources
+  - CMS detection: Adobe Edge Delivery Services (EDS), WordPress, Drupal, Shopify, Wix, Webflow, Squarespace, Joomla
+  - Framework detection: React, Vue.js, Angular, Svelte, Next.js, Nuxt.js
+  - Library detection: jQuery, Lodash, Moment.js, D3.js, Chart.js, GSAP, Alpine.js, HTMX, Three.js
+  - Analytics detection: Google Analytics, Adobe Analytics, Matomo, Hotjar, Mixpanel, Segment
+  - CDN detection: Cloudflare, Akamai, Fastly, Amazon CloudFront
+  - Adobe EDS detection via: scripts/aem.js, .hlx.page/.hlx.live domains, /clientlibs/, /libs/granite/
+  - Integrated into executive summary with confidence levels
+  - Shows technology stack with categories: CMS, Frameworks, Libraries, Analytics, CDNs
+  - Implementation:
+    - Created `src/utils/technologyDetection.js` module with pattern-based detection
+    - Added `detectTechnologies()` function analyzing externalResourcesAggregation
+    - Integrated into `buildExecutiveSummary()` in executiveSummary.js
+    - Added Technology Stack section to markdown output
+  - Files modified:
+    - `src/utils/technologyDetection.js` - New comprehensive detection module (+449 lines)
+    - `src/utils/reportUtils/executiveSummary.js` - Added technology detection integration
+
 - **Auto-Copy Documentation to Output**: Documentation files automatically copied to output directory (2026-01-04)
   - Copies `llm_general_suitability_guide.md` from docs/ to output directory
   - Copies `report-layout.md` from docs/ to output directory
