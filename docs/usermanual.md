@@ -10,6 +10,7 @@ Web Audit Suite is a comprehensive website analysis tool that generates detailed
 - **Security**: HTTPS configuration, security headers (HSTS, CSP, X-Frame-Options)
 - **Content Quality**: Content freshness, uniqueness, media richness, structure
 - **LLM Suitability**: AI agent compatibility analysis for both served and rendered HTML
+- **Technology Detection**: Automatic identification of CMS, frameworks, libraries, analytics tools, and CDNs
 - **Base Domain Auto-Discovery**: Automatically includes homepage and `llms.txt` in analysis for comprehensive AI agent compatibility checks
 
 ## Getting Started
@@ -607,6 +608,7 @@ Generated when corresponding CLI flags are used:
 
 - `executive_summary.md` - Executive summary report (--generate-executive-summary)
   - Overall status across all categories
+  - Technology stack detection (CMS, frameworks, libraries, analytics, CDNs)
   - Key findings and recommendations
   - Pass/fail status with configurable thresholds
   - Comparison with previous run (if history enabled)
@@ -784,6 +786,108 @@ npm start -- -s https://example.com/sitemap.xml -c 10
 - **AI Compatibility**: Always checks for llms.txt guidance file
 - **Flexible Input**: Works with sitemap URLs, page URLs, or any valid URL
 - **Zero Configuration**: Automatic detection and addition
+
+## Technology Detection
+
+The tool automatically detects web technologies, frameworks, and libraries used on the homepage. This information is included in the executive summary report when using the `--generate-executive-summary` flag.
+
+### What's Detected
+
+**Content Management Systems:**
+
+- Adobe Experience Manager Edge Delivery Services (EDS)
+- WordPress
+- Drupal
+- Shopify
+- Wix
+- Webflow
+- Squarespace
+- Joomla
+
+**JavaScript Frameworks:**
+
+- React
+- Vue.js
+- Angular
+- Svelte
+- Next.js
+- Nuxt.js
+
+**JavaScript Libraries:**
+
+- jQuery
+- Lodash
+- Moment.js
+- D3.js
+- Chart.js
+- GSAP
+- Alpine.js
+- HTMX
+- Three.js
+
+**Analytics & Tracking:**
+
+- Google Analytics
+- Adobe Analytics
+- Matomo
+- Hotjar
+- Mixpanel
+- Segment
+
+**Content Delivery Networks:**
+
+- Cloudflare CDN
+- Akamai
+- Fastly
+- Amazon CloudFront
+
+### Detection Process
+
+1. **Automatic Analysis**: The tool analyzes JavaScript resources loaded on the homepage
+2. **Pattern Matching**: Detects technologies based on URL patterns (e.g., `cdn.example.com/jquery.js`)
+3. **Confidence Levels**: Each detection includes a confidence rating (high or medium)
+4. **Executive Summary Integration**: Results appear in the Technology Stack section
+
+### Adobe EDS Detection
+
+Adobe Edge Delivery Services is detected via multiple specific patterns:
+
+- `scripts/aem.js` file presence
+- `.hlx.page` or `.hlx.live` domains
+- `franklin` references in URLs
+- `/clientlibs/` directory usage
+- `/libs/granite/` or `/libs/cq/` paths
+
+Confidence is "high" if `aem.js` or `.hlx` domains are found, otherwise "medium".
+
+### Example Output
+
+The executive summary includes a Technology Stack section:
+
+```markdown
+## Technology Stack
+
+**Content Management System:**
+
+- ✅ Adobe Experience Manager Edge Delivery Services (high confidence)
+
+**JavaScript Frameworks:** React, Vue.js
+
+**JavaScript Libraries:** jQuery, D3.js
+
+**Analytics & Tracking:** Google Analytics
+
+**Content Delivery Networks:** Cloudflare
+
+*Detected from 247 resources on https://example.com/*
+```
+
+### Technology Detection Benefits
+
+- **Technology Inventory**: Understand what technologies power the site
+- **Dependency Tracking**: Identify critical third-party dependencies
+- **Architecture Insights**: See frameworks and libraries in use
+- **Migration Planning**: Know what needs to be replaced during migrations
 
 ## Troubleshooting
 
