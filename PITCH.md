@@ -28,8 +28,8 @@ security, and critically - AI agent compatibility.
 - AI agent compatibility scoring based on proven methodology
 - Distinguishes served HTML (all agents) from rendered HTML (browser agents)
 - Prioritizes essential fixes over speculative improvements
-- Generates 11 detailed reports including 3 LLM suitability reports
-- Built on open-source foundation with proprietary scoring algorithms
+- Generates 13 detailed reports including 3 LLM suitability reports
+- Proprietary commercial software with comprehensive licensing options
 
 **Market Opportunity:**
 
@@ -856,11 +856,12 @@ site monitoring.
 
 **Technology Assets:**
 
-- Production-ready tool with substantial development investment
-- Private repository with complete source code
-- Comprehensive documentation
+- Production-ready proprietary tool with substantial development investment
+- Private repository with complete source code under commercial license
+- Comprehensive documentation and implementation guides
 - Proven methodology from published book
 - 13 specialized report generators including executive summary
+- Licensed for evaluation, commercial, partnership, and agency deployment
 
 **Market Position:**
 
@@ -1068,7 +1069,7 @@ Progressive customer acquisition through multiple channels:
 Email: <tom@allabout.network>
 Web: [allabout.network](https://allabout.network)
 Book: "The Invisible Users: Designing the Web for AI Agents and Everyone Else"
-Tool: Web Audit Suite (Private repository - access upon partnership)
+Tool: Web Audit Suite (Proprietary commercial software - licensed access upon partnership)
 
 ---
 
