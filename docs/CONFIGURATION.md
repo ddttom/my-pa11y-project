@@ -78,6 +78,15 @@ Disable recursive crawling (only process sitemap URLs).
 - **Default**: `true` (recursive enabled)
 - **Example**: `npm start -- --no-recursive`
 
+#### `--force-scrape`
+
+Bypass robots.txt restrictions (use with caution).
+
+- **Type**: Boolean flag
+- **Default**: `false` (respects robots.txt)
+- **Example**: `npm start -- --force-scrape`
+- **Warning**: Only use when you have authorization to scrape the site
+
 ### Cache Options
 
 #### `--cache-only`
@@ -103,6 +112,15 @@ Force delete existing cache before starting.
 - **Type**: Boolean flag
 - **Default**: `false`
 - **Example**: `npm start -- --force-delete-cache`
+
+#### `--no-puppeteer`
+
+Bypass Puppeteer execution (use cached data only).
+
+- **Type**: Boolean flag
+- **Default**: `false` (Puppeteer enabled)
+- **Example**: `npm start -- --no-puppeteer`
+- **Note**: Requires existing cached data to work
 
 ### Logging Options
 
@@ -138,12 +156,13 @@ Generate interactive HTML dashboard with charts.
 
 #### `--generate-executive-summary`
 
-Generate executive summary report.
+Generate executive summary report with technology detection.
 
 - **Type**: Boolean flag
 - **Default**: `false`
 - **Example**: `npm start -- --generate-executive-summary`
 - **Output**: `executive_summary.md` and `executive_summary.json`
+- **Includes**: Performance, accessibility, SEO, content, LLM suitability, technology stack (CMS, frameworks, libraries, analytics, CDNs), key findings, and recommendations
 
 #### `--thresholds <file>`
 
@@ -153,6 +172,46 @@ Path to custom thresholds configuration file.
 - **Default**: Uses built-in thresholds
 - **Example**: `npm start -- --thresholds ./custom-thresholds.json`
 - **See**: [Threshold Configuration](#threshold-configuration)
+
+#### `--establish-baseline`
+
+Establish current results as baseline for regression detection.
+
+- **Type**: Boolean flag
+- **Default**: `false`
+- **Example**: `npm start -- --enable-history --establish-baseline`
+- **Requires**: `--enable-history` flag must be enabled
+- **Purpose**: Sets the current run as the baseline for future comparisons
+
+#### `--baseline-timestamp <timestamp>`
+
+Use specific historical result as baseline.
+
+- **Type**: String (ISO timestamp)
+- **Default**: None
+- **Example**: `npm start -- --establish-baseline --baseline-timestamp 2026-01-04T10:30:00.000Z`
+- **Requires**: `--establish-baseline` flag must be enabled
+- **Purpose**: Compare against a specific historical run instead of the most recent
+
+#### `--extract-patterns`
+
+Extract successful patterns from high-scoring pages.
+
+- **Type**: Boolean flag
+- **Default**: `false`
+- **Example**: `npm start -- --extract-patterns`
+- **Output**: Generates pattern library from pages with high scores
+- **Purpose**: Identify best practices and successful patterns in your site
+
+#### `--pattern-score-threshold <number>`
+
+Minimum score for pattern extraction.
+
+- **Type**: Integer (0-100)
+- **Default**: `70`
+- **Example**: `npm start -- --extract-patterns --pattern-score-threshold 80`
+- **Requires**: `--extract-patterns` flag must be enabled
+- **Purpose**: Only extract patterns from pages scoring above this threshold
 
 ## Environment Variables
 
