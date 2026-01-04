@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { calculateServedScore, calculateRenderedScore } from '../llmMetrics.js';
+import { detectTechnologies } from '../technologyDetection.js';
 
 /**
  * Generates an executive summary report with high-level insights
@@ -33,6 +34,8 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
  * Builds the executive summary data structure
  */
 async function buildExecutiveSummary(results, comparison) {
+  const technologies = detectTechnologies(results);
+
   const summary = {
     generatedAt: new Date().toISOString(),
     site: extractSiteName(results),
@@ -42,6 +45,7 @@ async function buildExecutiveSummary(results, comparison) {
     seo: buildSeoSummary(results, comparison?.seo),
     content: buildContentSummary(results, comparison?.content),
     llmSuitability: buildLLMSummary(results, comparison?.llm),
+    technologies,
     keyFindings: buildKeyFindings(results),
     recommendations: buildRecommendations(results),
     comparison: comparison ? buildComparisonSummary(comparison) : null,
@@ -783,6 +787,50 @@ function generateMarkdownSummary(summary, results) {
     md += `- **Trend (Served):** ${summary.llmSuitability.trend.servedScore > 0 ? '📈' : '📉'} ${summary.llmSuitability.trend.servedScore.toFixed(1)}%\n`;
   }
   md += '\n';
+
+  // Technology Stack section
+  if (summary.technologies && summary.technologies.detected) {
+    md += '## Technology Stack\n\n';
+
+    const tech = summary.technologies;
+    const { byCategory, summary: techSummary } = tech;
+
+    // CMS (including Adobe EDS with special highlighting)
+    if (byCategory.CMS && byCategory.CMS.length > 0) {
+      md += '**Content Management System:**\n\n';
+      byCategory.CMS.forEach((t) => {
+        const confidenceIcon = t.confidence === 'high' ? '✅' : '🟡';
+        md += `- ${confidenceIcon} ${t.name}`;
+        if (t.confidence) {
+          md += ` (${t.confidence} confidence)`;
+        }
+        md += '\n';
+      });
+      md += '\n';
+    }
+
+    // Frameworks
+    if (techSummary.frameworks.length > 0) {
+      md += `**JavaScript Frameworks:** ${techSummary.frameworks.join(', ')}\n\n`;
+    }
+
+    // Libraries
+    if (techSummary.libraries.length > 0) {
+      md += `**JavaScript Libraries:** ${techSummary.libraries.join(', ')}\n\n`;
+    }
+
+    // Analytics
+    if (techSummary.analytics.length > 0) {
+      md += `**Analytics & Tracking:** ${techSummary.analytics.join(', ')}\n\n`;
+    }
+
+    // CDNs
+    if (techSummary.cdns.length > 0) {
+      md += `**Content Delivery Networks:** ${techSummary.cdns.join(', ')}\n\n`;
+    }
+
+    md += `*Detected from ${tech.totalResources} resources on ${tech.baseDomain}*\n\n`;
+  }
 
   // AI Compatibility section (robots.txt and llms.txt)
   const robotsAnalysis = results.robotsTxtAnalysis || [];
