@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Documentation
+
+- **JSON Structure Documentation**: Comprehensive results.json documentation for AI assistants (2026-01-03)
+  - Added 410+ lines documenting results.json master file structure in [docs/report-layout.md](docs/report-layout.md)
+  - Documented all 23 top-level arrays and objects with field details and examples
+  - Created "Primary Results File" section as technical reference for AI assistants
+  - Verified structure accuracy against actual data files using jq
+  - Helps AI assistants understand data structures when adding or modifying report generation code
+  - Fixed 6+ documentation errors found during verification:
+    - securityMetrics: corrected from array to object with URL keys
+    - robotsTxtAnalysis/llmsTxtAnalysis: corrected from object to array
+    - performanceAnalysis: corrected field list (6 fields not 7)
+    - seoScores: documented nested details object structure
+    - llmMetrics: documented all 15 categories with importance levels
+    - pa11y: documented all 14 fields in issue objects
+  - Files modified:
+    - [docs/report-layout.md](docs/report-layout.md:55-465) - Added comprehensive results.json documentation
+
+- **JSON Verification Pattern**: 7-step pattern for documenting JSON structures (2026-01-03)
+  - Added comprehensive pattern to [LEARNINGS.md](LEARNINGS.md) to prevent future documentation errors
+  - Documents 6+ specific errors made during JSON structure documentation
+  - Critical rule: ALWAYS verify BOTH type (array vs object) AND actual field structure before documenting
+  - Pattern includes using jq commands to verify types, check first element structures, verify nested objects
+  - Prevents hours of debugging data structure mismatches
+  - Files modified:
+    - [LEARNINGS.md](LEARNINGS.md:45-67) - Added JSON verification pattern and error examples
+
+- **Markdown Linting Fixes**: Fixed 262 pre-existing markdown linting errors (2026-01-03)
+  - Fixed in [docs/report-layout.md](docs/report-layout.md)
+  - Error types fixed:
+    - MD060: Table separator formatting (262 instances) - added spaces around pipes
+    - MD024: Duplicate heading names - made unique with parent context
+    - MD040: Code fences missing language specifiers - added `text` language
+    - MD036: Emphasis used as headings - added context to prevent interpretation as headings
+  - File now passes all markdown linting checks
+
 ### Added
 
 - **Executive Summary Headline Score**: Overall site health score (2026-01-03)

@@ -295,6 +295,29 @@ Current snapshot of Web Audit Suite implementation status.
 
 ## Recent Enhancements
 
+### January 3, 2026 (Latest)
+
+**Documentation Improvements:**
+
+- **JSON Structure Documentation** (NEW)
+  - Added comprehensive results.json structure documentation to [docs/report-layout.md](docs/report-layout.md)
+  - Documented all 23 top-level arrays and objects with field details and examples
+  - Created "Primary Results File" section (410+ lines) for AI assistant reference
+  - Verified structure accuracy against actual data files
+  - Files: [docs/report-layout.md](docs/report-layout.md:55-465)
+
+- **JSON Verification Pattern** (NEW)
+  - Added 7-step pattern to [LEARNINGS.md](LEARNINGS.md) for documenting JSON structures
+  - Documents 6+ specific documentation errors made during verification process
+  - Critical rule: ALWAYS verify BOTH type (array vs object) AND actual field structure
+  - Pattern prevents hours of debugging data structure mismatches
+  - Files: [LEARNINGS.md](LEARNINGS.md:45-67)
+
+- **Markdown Linting Fixes**
+  - Fixed 262 pre-existing markdown linting errors in [docs/report-layout.md](docs/report-layout.md)
+  - Error types: MD060 (table separators), MD024 (duplicate headings), MD040 (code fences), MD036 (emphasis as heading)
+  - File now passes all markdown linting checks
+
 ### January 3, 2026 (Earlier)
 
 **robots.txt Compliance System:**
