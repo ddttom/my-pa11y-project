@@ -542,6 +542,11 @@ All files generated in the output directory (default: `results/`):
 - `combined.log` - All activity logs
 - `error.log` - Error tracking only
 
+### Documentation (Auto-Copied)
+
+- `llm_general_suitability_guide.md` - User guide for understanding LLM suitability scores
+- `report-layout.md` - Technical reference for AI assistants parsing report data
+
 ## Development Guidelines
 
 ### ESLint Configuration

@@ -151,6 +151,26 @@ export async function generateReports(results, urls, outputDir) {
       }
     }
 
+    // Copy documentation files to output directory
+    try {
+      const docsDir = path.join(process.cwd(), 'docs');
+      const docFiles = [
+        { src: 'llm_general_suitability_guide.md', dest: 'llm_general_suitability_guide.md' },
+        { src: 'report-layout.md', dest: 'report-layout.md' },
+      ];
+
+      for (const { src, dest } of docFiles) {
+        const srcPath = path.join(docsDir, src);
+        const destPath = path.join(outputDir, dest);
+        await fs.copyFile(srcPath, destPath);
+        global.auditcore.logger.debug(`Copied ${src} to output directory`);
+      }
+
+      global.auditcore.logger.info('Documentation files copied to output directory');
+    } catch (error) {
+      global.auditcore.logger.warn('Could not copy documentation files:', error.message);
+    }
+
     // Save complete results as JSON (minified for performance)
     await fs.writeFile(
       path.join(outputDir, 'results.json'),
