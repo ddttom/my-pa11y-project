@@ -754,9 +754,18 @@ This project includes custom Claude Code configuration in the `.claude/` directo
 
 ### Custom Skills
 
-Three custom skills are available via the `/` command syntax:
+Four custom skills are available via the `/` command syntax:
 
-1. **`/step-commit`** - Systematic commit workflow
+1. **`/json-audit`** - Comprehensive JSON data structure audit
+   - Verifies results.json structure matches implementation code
+   - Checks all field references in report generation exist in actual data
+   - Audits metric collection functions are called and populate data
+   - Cross-references documentation against actual implementation
+   - Reports all mismatches with file locations and specific fixes
+   - CRITICAL: Run this before modifying report generation code
+   - Prevents "assumed field" errors that cause incorrect reports
+
+2. **`/step-commit`** - Systematic commit workflow
    - Reviews all changes with git status and diff
    - Commits code changes
    - Runs linting and fixes errors
@@ -767,13 +776,13 @@ Three custom skills are available via the `/` command syntax:
    - Prompts to push changes
    - Does NOT add attribution or "Generated with" messages
 
-2. **`/md-fix`** - Markdown linting and auto-fix (for recently modified files)
+3. **`/md-fix`** - Markdown linting and auto-fix (for recently modified files)
    - Runs `npm run lint:md:fix` to auto-fix issues
    - Verifies all issues are resolved
    - Reports remaining issues requiring manual fixes
    - Shows modified files
 
-3. **`/md-lint-all`** - Comprehensive markdown linting (for ALL files)
+4. **`/md-lint-all`** - Comprehensive markdown linting (for ALL files)
    - Scans ALL markdown files in the repository for errors
    - Reports summary of errors by type (MD034, MD024, MD012, etc.)
    - Displays 6 critical markdown linting rules from CLAUDE.md
@@ -785,7 +794,7 @@ Three custom skills are available via the `/` command syntax:
 
 ### Git Hooks
 
-Four git hooks provide workflow reminders:
+Five git hooks provide workflow reminders:
 
 1. **`pre-commit.sh`** - Runs before commits
    - Checks staged markdown files for linting issues
@@ -807,6 +816,14 @@ Four git hooks provide workflow reminders:
    - References CLAUDE.md 'Writing Lint-Free Markdown Files' section
    - Proactively prevents markdown linting errors
 
+5. **`pre-report-generation.sh`** - Runs when report generation files are modified
+   - Displays critical reminder to verify JSON structure BEFORE coding
+   - Lists common "assumed field" mistakes to avoid
+   - Provides jq commands for structure verification
+   - Suggests running `/json-audit` for comprehensive checks
+   - References LEARNINGS.md 'JSON Validation Pattern' section
+   - CRITICAL: Prevents data structure mismatch errors
+
 ### Permissions
 
 The `.claude/settings.local.json` file pre-approves common operations:
@@ -822,10 +839,12 @@ The `.claude/settings.local.json` file pre-approves common operations:
 .claude/
 ├── settings.local.json           # Local permissions configuration
 ├── commands/                      # Command definitions (user-facing)
+│   ├── json-audit.md             # JSON data structure audit description
 │   ├── step-commit.md            # Step-commit workflow description
 │   ├── md-fix.md                 # Markdown fix workflow description
 │   └── md-lint-all.md            # Comprehensive markdown linting description
 ├── skills/                        # Skill definitions (agent instructions)
+│   ├── json-audit.json           # JSON audit agent configuration
 │   ├── step-commit.json          # Step-commit agent configuration
 │   ├── md-fix.json               # Markdown fix agent configuration
 │   └── md-lint-all.json          # Comprehensive markdown linting configuration
@@ -833,7 +852,8 @@ The `.claude/settings.local.json` file pre-approves common operations:
 │   ├── pre-commit.sh             # Pre-commit markdown check
 │   ├── pre-push.sh               # Pre-push documentation check
 │   ├── post-tool-use.sh          # Post-commit workflow reminder
-│   └── post-markdown-write.sh    # Post-markdown-write linting reminder
+│   ├── post-markdown-write.sh    # Post-markdown-write linting reminder
+│   └── pre-report-generation.sh  # Pre-report-generation JSON verification
 └── prompt-master/                # Reserved for future use
 ```
 

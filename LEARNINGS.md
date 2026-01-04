@@ -6,11 +6,13 @@ This is NOT documentation - these are rules learned the hard way when something 
 
 ## Critical Rules
 
-1. **package-lock.json Policy Changed** (2025-12-31): Initially tried to exclude it, but this breaks reproducible builds. Always commit it.
+1. **ALWAYS run /json-audit before modifying report generation code** (2026-01-04): Repeatedly made "assumed field" errors - adding code that references fields that don't exist, or accessing wrong data structures. Created `/json-audit` skill to systematically verify results.json structure matches implementation. MANDATORY: Run `/json-audit` before any changes to src/utils/reportUtils/ files. The hook `pre-report-generation.sh` reminds you but you MUST actually run the audit.
 
-2. **Documentation Sync Required** (2025-12-31): Made changes to PITCH.md without updating BLOG.md and README.md - they drifted apart and contradicted each other. When features change, update ALL synchronized files together: PITCH.md, BLOG.md, CLAUDE.md, README.md.
+2. **package-lock.json Policy Changed** (2025-12-31): Initially tried to exclude it, but this breaks reproducible builds. Always commit it.
 
-3. **LEARNINGS.md is NOT a Changelog** (2025-12-31): Initially wrote LEARNINGS.md like a changelog with "Added feature X" and timestamps. This made it useless for preventing future mistakes. LEARNINGS.md should only contain "Never do X" and "Always do Y" rules discovered when things broke.
+3. **Documentation Sync Required** (2025-12-31): Made changes to PITCH.md without updating BLOG.md and README.md - they drifted apart and contradicted each other. When features change, update ALL synchronized files together: PITCH.md, BLOG.md, CLAUDE.md, README.md.
+
+4. **LEARNINGS.md is NOT a Changelog** (2025-12-31): Initially wrote LEARNINGS.md like a changelog with "Added feature X" and timestamps. This made it useless for preventing future mistakes. LEARNINGS.md should only contain "Never do X" and "Always do Y" rules discovered when things broke.
 
 ## Common Mistakes
 
