@@ -22,6 +22,8 @@ import {
   updateHreflangMetrics,
   updateCanonicalMetrics,
   updateContentMetrics,
+  updateLlmReadabilityMetrics,
+  updateHttpStatusMetrics,
 } from './metricsUpdater.js';
 import {
   updateLLMMetrics,
@@ -303,6 +305,8 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     await updateCanonicalMetrics($, testUrl, results);
     await updateContentMetrics($, results, testUrl);
     await updateLLMMetrics($, results, testUrl);
+    await updateLlmReadabilityMetrics($, results, testUrl);
+    await updateHttpStatusMetrics(headers, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
     metricsToCheck.forEach((metric) => {

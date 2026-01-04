@@ -120,6 +120,9 @@ function createContentAnalysis(testUrl, pageData, jsErrors, internalLinks, pa11y
     pageSize: pageData.pageSize || 0,
     jsErrors: Array.isArray(jsErrors) ? jsErrors.length : 0,
     pa11yIssuesCount: pa11yResult && Array.isArray(pa11yResult.issues) ? pa11yResult.issues.length : 0,
+    structuredData: pageData.structuredData || [],
+    openGraphTags: pageData.openGraphTags || [],
+    twitterTags: pageData.twitterTags || [],
   };
   global.auditcore.logger.debug(`Created content analysis for ${testUrl}`);
   global.auditcore.logger.debug(`Images found: ${analysis.imagesCount}, Images without alt: ${analysis.imagesWithoutAlt}`);

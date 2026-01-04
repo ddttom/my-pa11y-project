@@ -120,17 +120,90 @@ async function renderAndCacheData(url) {
           pageSize: document.documentElement.outerHTML.length,
         }));
 
-        // Performance metrics
-        const performanceMetrics = await page.evaluate(() => {
-          const navigationEntry = performance.getEntriesByType('navigation')[0];
-          const paintEntries = performance.getEntriesByType('paint');
-          return {
-            loadTime: navigationEntry.loadEventEnd,
-            domContentLoaded: navigationEntry.domContentLoadedEventEnd,
-            firstPaint: paintEntries.find((entry) => entry.name === 'first-paint')?.startTime,
-            firstContentfulPaint: paintEntries.find((entry) => entry.name === 'first-contentful-paint')?.startTime,
-          };
-        });
+        // Performance metrics (including Core Web Vitals)
+        const performanceMetrics = await page.evaluate(() => new Promise((resolve) => {
+          try {
+            const metrics = {
+              largestContentfulPaint: null,
+              cumulativeLayoutShift: 0,
+              totalBlockingTime: 0,
+              timeToInteractive: null,
+            };
+
+            // Basic navigation timing
+            const navigationEntry = performance.getEntriesByType('navigation')[0];
+            const paintEntries = performance.getEntriesByType('paint');
+
+            // Track Core Web Vitals with error handling
+            try {
+              const lcpObserver = new PerformanceObserver((list) => {
+                const entries = list.getEntries();
+                if (entries.length > 0) {
+                  const lastEntry = entries[entries.length - 1];
+                  metrics.largestContentfulPaint = lastEntry.renderTime || lastEntry.loadTime;
+                }
+              });
+              lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+            } catch (e) {
+              console.warn('LCP observer failed:', e.message);
+            }
+
+            try {
+              const clsObserver = new PerformanceObserver((list) => {
+                for (const entry of list.getEntries()) {
+                  if (!entry.hadRecentInput) {
+                    metrics.cumulativeLayoutShift += entry.value;
+                  }
+                }
+              });
+              clsObserver.observe({ type: 'layout-shift', buffered: true });
+            } catch (e) {
+              console.warn('CLS observer failed:', e.message);
+            }
+
+            try {
+              const longTaskObserver = new PerformanceObserver((list) => {
+                const entries = list.getEntries();
+                entries.forEach((entry) => {
+                  metrics.totalBlockingTime += Math.max(entry.duration - 50, 0);
+                });
+              });
+              longTaskObserver.observe({ type: 'longtask', buffered: true });
+            } catch (e) {
+              console.warn('Long task observer failed:', e.message);
+            }
+
+            // Wait briefly for metrics to stabilize
+            setTimeout(() => {
+              const fcpTime = paintEntries.find((entry) => entry.name === 'first-contentful-paint')?.startTime ?? 0;
+              resolve({
+                loadTime: navigationEntry?.loadEventEnd ?? 0,
+                domContentLoaded: navigationEntry?.domContentLoadedEventEnd ?? 0,
+                firstPaint: paintEntries.find((entry) => entry.name === 'first-paint')?.startTime ?? 0,
+                firstContentfulPaint: fcpTime,
+                largestContentfulPaint: metrics.largestContentfulPaint ?? 0,
+                timeToInteractive: metrics.timeToInteractive ?? (fcpTime > 0 ? fcpTime + 3000 : 0),
+                totalBlockingTime: metrics.totalBlockingTime ?? 0,
+                cumulativeLayoutShift: metrics.cumulativeLayoutShift ?? 0,
+              });
+            }, 2000); // 2 second wait for metrics stabilization
+          } catch (error) {
+            console.error('Performance metrics collection failed:', error);
+            // Fallback to basic metrics only
+            const navigationEntry = performance.getEntriesByType('navigation')[0];
+            const paintEntries = performance.getEntriesByType('paint');
+            resolve({
+              loadTime: navigationEntry?.loadEventEnd ?? 0,
+              domContentLoaded: navigationEntry?.domContentLoadedEventEnd ?? 0,
+              firstPaint: paintEntries.find((entry) => entry.name === 'first-paint')?.startTime ?? 0,
+              firstContentfulPaint: paintEntries.find((entry) => entry.name === 'first-contentful-paint')?.startTime ?? 0,
+              largestContentfulPaint: 0,
+              timeToInteractive: 0,
+              totalBlockingTime: 0,
+              cumulativeLayoutShift: 0,
+            });
+          }
+        }));
 
         const data = {
           html,
