@@ -162,6 +162,9 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
 - `--include-all-languages`: Include all language variants in analysis
   - Overrides default behavior of only processing /en and /us variants
   - Uses enhanced URL extraction logic with automatic detection
+- `--no-recursive`: Disable recursive crawling (only process sitemap URLs)
+  - Default: recursive crawling enabled
+  - When disabled, only analyzes URLs explicitly listed in sitemap
 
 ### robots.txt Compliance
 
