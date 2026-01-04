@@ -13,6 +13,7 @@ The folder /docs contains prompts in .md format that are useful for extending th
 - **High Performance**: Optimized for speed with concurrent processing
   - Browser pooling: Reuses Puppeteer instances (3-5x faster)
   - Concurrent URL processing: Analyzes multiple pages simultaneously
+  - Adaptive rate limiting: Dynamic throttling for server-friendly crawling
   - 75-85% faster execution time (e.g., 100 URLs: ~45min → ~10min)
 - **SEO Analysis**: Detailed SEO metrics and scoring
 - **Performance Metrics**: Comprehensive page load analysis

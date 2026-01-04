@@ -265,7 +265,7 @@ The tool includes enterprise-grade capabilities for comprehensive website analys
 
 **AI Agent Standards**: Detects emerging AI compatibility standards including llms.txt files and explicit agent visibility controls, positioning businesses ahead of the market curve.
 
-**Enterprise Performance**: Analyzes 100-page sites in approximately 10 minutes through intelligent resource pooling and concurrent processing - 75-85% faster than traditional sequential analysis.
+**Enterprise Performance**: Analyzes 100-page sites in approximately 10 minutes through intelligent resource pooling, concurrent processing, and adaptive rate limiting - 75-85% faster than traditional sequential analysis with automatic server-friendly throttling.
 
 **Intelligent Caching**: Automatic cache staleness detection using HTTP HEAD requests validates cached data freshness by comparing source Last-Modified headers with cache timestamps, ensuring analysis always uses current data without manual cache management.
 
@@ -582,6 +582,7 @@ Book (Methodology) + Tool (Measurement) = Complete Solution
 
 - Browser pooling (3 concurrent browsers) with automatic restart
 - Concurrent URL processing (3x parallelization)
+- Adaptive rate limiting with dynamic throttling and exponential backoff
 - MD5-based caching with staleness detection via HTTP HEAD
 - Cache invalidation based on source Last-Modified headers
 - Incremental processing and resume capability
