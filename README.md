@@ -2,7 +2,9 @@
 
 A comprehensive Node.js tool for analyzing websites across multiple dimensions: SEO, performance, accessibility, security, content quality, and AI agent compatibility.
 
-**Note:** This is a private repository. Access is granted under commercial license terms.
+**License:** Proprietary commercial software. This is a private repository with commercial licensing terms (evaluation, commercial, partnership, agency). See [LICENSE](LICENSE) for details.
+
+**Contact:** <tom@allabout.network> for licensing inquiries.
 
 The folder /docs contains prompts in .md format that are useful for extending this project.
 
