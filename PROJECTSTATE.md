@@ -297,6 +297,21 @@ Current snapshot of Web Audit Suite implementation status.
 
 ### January 4, 2026
 
+**Markdown Linting Automation:**
+
+- Added `/md-lint-all` command skill for repository-wide linting
+- Created `post-markdown-write.sh` hook to remind about linting best practices
+- Displays 6 critical markdown linting rules after markdown file edits
+- Fixed all 45 pre-existing markdown linting errors across repository
+- Updated improvement.md with accurate metrics (16,000+ lines, 18 reports)
+- All markdown files now pass markdownlint validation
+
+**Files:**
+
+- [.claude/commands/md-lint-all.md](.claude/commands/md-lint-all.md) - Command description
+- [.claude/skills/md-lint-all.json](.claude/skills/md-lint-all.json) - Agent configuration
+- [.claude/hooks/post-markdown-write.sh](.claude/hooks/post-markdown-write.sh) - Reminder hook
+
 **Bug Fixes:**
 
 - **AI Files Summary Markdown Linting** (FIXED)

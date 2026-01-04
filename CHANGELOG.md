@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Markdown Linting Automation**: Comprehensive markdown quality assurance system (2026-01-04)
+  - Created `/md-lint-all` command skill for repository-wide linting
+    - Scans ALL markdown files for errors (not just recently modified)
+    - Reports errors by type (MD034, MD024, MD012, MD040, MD060, MD036)
+    - Runs `npm run lint:md:fix` to auto-fix all issues
+    - Verifies all issues resolved and reports remaining manual fixes needed
+    - Shows all modified files
+  - Created `post-markdown-write.sh` hook to remind about linting after edits
+    - Displays 6 critical markdown linting rules from CLAUDE.md
+    - Suggests commands: `npm run lint:md`, `/md-fix`, `/md-lint-all`
+    - References "Writing Lint-Free Markdown Files" section
+    - Proactively prevents future markdown errors
+  - Fixed 45 pre-existing markdown linting errors across 4 files:
+    - BLOG.md: 10 errors (MD036, MD040, MD060)
+    - docs/CI-CD-INTEGRATION.md: 7 errors (MD060)
+    - docs/usermanual.md: 1 error (MD024)
+    - improvement.md: 27+ errors (MD036, MD040, MD060, MD024, MD001, MD032)
+  - Updated improvement.md metrics:
+    - Changed "19 different report generators" → "18 different report types"
+    - Changed "2,234 lines of production code" → "over 16,000 lines of production code"
+    - Added comprehensive report list (15 core + 3 enhanced reports)
+  - Files created:
+    - [.claude/commands/md-lint-all.md](.claude/commands/md-lint-all.md) - Command description
+    - [.claude/skills/md-lint-all.json](.claude/skills/md-lint-all.json) - Agent configuration
+    - [.claude/hooks/post-markdown-write.sh](.claude/hooks/post-markdown-write.sh) - Reminder hook
+  - Files modified:
+    - [CLAUDE.md](CLAUDE.md) - Added `/md-lint-all` documentation and hook reference
+    - [BLOG.md](BLOG.md) - Fixed 10 linting errors
+    - [docs/CI-CD-INTEGRATION.md](docs/CI-CD-INTEGRATION.md) - Fixed 7 table alignment errors
+    - [docs/usermanual.md](docs/usermanual.md) - Fixed 1 duplicate heading
+    - [improvement.md](improvement.md) - Fixed 27+ errors and updated metrics
+
 ### Fixed
 
 - **AI Files Summary Markdown Linting**: Fixed markdownlint errors in generated ai_files_summary.md (2026-01-04)
@@ -62,7 +96,7 @@ All notable changes to this project will be documented in this file.
     - MD036: Emphasis used as headings - added context to prevent interpretation as headings
   - File now passes all markdown linting checks
 
-### Added
+### Added (January 4, 2026)
 
 - **Technology Detection**: Automatic detection of web technologies, frameworks, and libraries (2026-01-04)
   - Detects technologies from homepage JavaScript resources
@@ -353,7 +387,7 @@ All notable changes to this project will be documented in this file.
     - Consolidated metrics initialization: 90% reduction in object allocations
     - Fixed pre-existing import error in `src/utils/results.js`
 
-### Changed
+### Changed (Configuration & Linting)
 
 - **Configuration Consolidation**: Merged `src/config/constants.js` into `src/config/defaults.js`
   - Created a single source of truth for all static configuration and constants
@@ -542,7 +576,7 @@ All notable changes to this project will be documented in this file.
     - Testing status and file structure
     - Deployment and maintenance notes
 
-### Changed
+### Changed (ESLint & Permissions)
 
 - **ESLint Configuration**: Improved ES module import handling
   - Added `node/no-missing-import: 'off'` rule to `.eslintrc.cjs`
@@ -645,7 +679,7 @@ All notable changes to this project will be documented in this file.
   - Only active sitemap generation: `savePerfectedSitemap()` → `v-sitemap.xml`
   - Total dead code removed in cleanup: 473 lines (~15.9 KB)
 
-### Added
+### Added (Console Logs & Reports)
 
 - **Browser Console Log Capture**: Comprehensive Puppeteer console output preservation
   - Automatically captures ALL browser console messages during page rendering
@@ -668,7 +702,7 @@ All notable changes to this project will be documented in this file.
   - Report dependency flow diagram
   - 840+ lines of detailed technical specifications
 
-### Documentation
+### Documentation (JSON & Console Logs)
 
 - **JSON Validation Learning Pattern**: Added critical lesson to LEARNINGS.md (2026-01-03)
   - Documented systematic error pattern: Made 10+ errors by assuming field names without verifying against results.json
@@ -738,14 +772,14 @@ All notable changes to this project will be documented in this file.
   - Added `docs/system.md` for collaboration rules
   - Created clear separation between quick reference (README) and comprehensive docs (User Manual)
 
-### Changed
+### Changed (Default Configuration)
 
 - **Default Sitemap URL**: Changed default sitemap URL to `https://example.com/sitemap.xml`
   - Previously used a project-specific URL
   - Now uses a generic, universally recognized example domain
   - Provides clearer documentation for new users
 
-### Added
+### Added (URL Processing & Logging)
 
 - **URL Normalization**: Two-stage intelligent URL processing to prevent duplicates
   - **Stage 1 (Link Extraction)**: Normalizes URLs during discovery in `pageAnalyzerHelpers.js`
