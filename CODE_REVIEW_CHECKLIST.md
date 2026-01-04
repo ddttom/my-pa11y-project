@@ -15,6 +15,7 @@
 **Why**: 30-50% reduction in I/O time and file sizes
 
 **How to check**:
+
 ```bash
 grep -rn "JSON\.stringify([^,)]*,\s*null,\s*2)" src/ --include="*.js"
 ```
@@ -32,6 +33,7 @@ grep -rn "JSON\.stringify([^,)]*,\s*null,\s*2)" src/ --include="*.js"
 **Why**: Prevent unexpected filtering behavior
 
 **Examples**:
+
 ```javascript
 // ❌ WRONG - ambiguous precedence
 urls.filter(url => url.includes('/en') || url.includes('/us') && !url.includes('/admin'))
@@ -52,6 +54,7 @@ urls.filter(url => (url.includes('/en') || url.includes('/us')) && !url.includes
 **Why**: Prevent variable capture bugs that cause incorrect data processing
 
 **Examples**:
+
 ```javascript
 // ❌ WRONG - captures loop variable 'i'
 for (let i = 0; i < urls.length; i++) {
@@ -83,6 +86,7 @@ await Promise.all(urls.map(async (url) => {
 **Why**: Prevent orphaned processes and incomplete shutdowns
 
 **Pattern**:
+
 ```javascript
 const progressTracker = { quit: false };
 
@@ -114,6 +118,7 @@ for (const batch of batches) {
 **Why**: Clean code, faster builds, avoid confusion
 
 **How to check**:
+
 ```bash
 npm run lint  # With eslint-plugin-unused-imports
 ```
@@ -131,6 +136,7 @@ npm run lint  # With eslint-plugin-unused-imports
 **Why**: Pass markdownlint validation, better readability
 
 **How to check**:
+
 ```bash
 npm run lint:md        # Check for errors
 npm run lint:md:fix    # Auto-fix where possible
@@ -166,6 +172,7 @@ npm run lint:md:fix    # Auto-fix where possible
 **Why**: Prevent "assumed field" errors that generate incorrect reports
 
 **How to check**:
+
 ```bash
 # Inspect results.json structure
 jq 'keys' results/results.json
@@ -233,6 +240,7 @@ jq '.[0].llmMetrics' results/results.json
 **Why**: 3-5x performance improvement for large crawls
 
 **Configuration**: [src/config/defaults.js](src/config/defaults.js)
+
 - `browserPoolSize: 3` - Number of reusable browsers
 - `urlConcurrency: 3` - Concurrent URL processing
 
@@ -250,6 +258,7 @@ jq '.[0].llmMetrics' results/results.json
 **Why**: Ethical scraping, respect site owners' preferences
 
 **Files**:
+
 - [src/utils/robotsFetcher.js](src/utils/robotsFetcher.js)
 - [src/utils/robotsCompliance.js](src/utils/robotsCompliance.js)
 

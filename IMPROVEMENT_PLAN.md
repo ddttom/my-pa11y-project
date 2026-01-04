@@ -252,15 +252,18 @@ Strategic enhancement completed:
    - Line 128: Debug logging - consider removing or keep for debugging (low priority)
 
 **Exception**: Keep pretty-printing for debug/development files only:
+
 - Development mode configuration files
 - Debug output intentionally for human reading
 
 **Expected Impact**:
+
 - 30-50% reduction in I/O time for JSON operations
 - 30-50% smaller file sizes for results.json and historical data
 - Faster cache reads/writes
 
 **Verification**:
+
 ```bash
 # Search for remaining violations
 grep -rn "JSON.stringify([^,)]*,\s*null,\s*2)" src/
@@ -285,6 +288,7 @@ grep -rn "JSON.stringify([^,)]*,\s*null,\s*2)" src/
    - Verify: No orphaned Puppeteer processes
 
 **Code review areas**:
+
 ```javascript
 // urlProcessor.js - Check concurrent batch handling
 async processUrlsConcurrently(urls, options) {
@@ -300,6 +304,7 @@ async processUrlsConcurrently(urls, options) {
 ```
 
 **Fix requirements**:
+
 - Check `quit` flag after each batch completion
 - Break out of batch loop immediately on quit
 - Clean up browser pool gracefully
@@ -312,12 +317,14 @@ async processUrlsConcurrently(urls, options) {
 **File to audit**: [src/utils/reportUtils/aiFileReports.js](src/utils/reportUtils/aiFileReports.js)
 
 **Known risks**:
+
 - Line 173: `markdown += **URL**: <${robotsFile.url}>\n\n` - Good (angle brackets)
 - Line 200+: `markdown += '### robots.txt Issues\n\n'` - Check for duplicate headings
 - Check: Are there multiple "Issues" sections without context?
 - Check: Are there multiple "Recommendations" sections?
 
 **Verification**:
+
 ```bash
 # Generate the file and lint it
 npm start -- -s https://example.com --generate-executive-summary
@@ -325,6 +332,7 @@ npx markdownlint results/ai_files_summary.md
 ```
 
 **Fix pattern** (if violations found):
+
 ```javascript
 // BEFORE (MD024 violation)
 markdown += '### Issues\n\n';
@@ -348,6 +356,7 @@ markdown += '### llms.txt Issues\n\n';
 **File to review**: [src/utils/pa11yRunner.js](src/utils/pa11yRunner.js)
 
 **Pattern to check**:
+
 ```javascript
 // UNSAFE pattern (if it exists)
 for (let i = 0; i < urls.length; i++) {
@@ -364,11 +373,13 @@ for (const url of urls) {
 ```
 
 **Investigation**:
+
 - Search for loops with async callbacks
 - Verify proper use of `for...of` or `for await...of`
 - Check array methods (map, forEach) with async functions
 
 **Verification**:
+
 ```bash
 # Search for problematic patterns
 grep -A 5 "for\s*(" src/utils/pa11yRunner.js | grep -i "async"
@@ -381,11 +392,13 @@ grep -A 5 "for\s*(" src/utils/pa11yRunner.js | grep -i "async"
 **Implementation**:
 
 1. Add ESLint plugin:
+
 ```bash
 npm install --save-dev eslint-plugin-unused-imports
 ```
 
-2. Update [.eslintrc.cjs](.eslintrc.cjs):
+1. Update [.eslintrc.cjs](.eslintrc.cjs):
+
 ```javascript
 module.exports = {
   plugins: ['unused-imports'],
@@ -404,17 +417,20 @@ module.exports = {
 };
 ```
 
-3. Run audit:
+1. Run audit:
+
 ```bash
 npm run lint
 ```
 
-4. Auto-fix where possible:
+1. Auto-fix where possible:
+
 ```bash
 npx eslint --fix src/
 ```
 
 **Expected findings**:
+
 - Imports from refactored modules
 - Debug utilities no longer used
 - Deprecated functions
@@ -424,6 +440,7 @@ npx eslint --fix src/
 **Objective**: Clarify which data should be preserved across runs
 
 **Current ambiguity**:
+
 - `--force-delete-cache` preserves `history/` and `baseline.json`
 - But what about screenshots? Console logs? Pa11y results?
 - Should historical comparison data be archived or pruned?
@@ -451,6 +468,7 @@ npx eslint --fix src/
 2. Update cache clearing logic in [src/utils/caching.js](src/utils/caching.js)
 
 3. Add configuration options:
+
    ```javascript
    // defaults.js
    export const CACHE_POLICY = {
@@ -472,11 +490,13 @@ npx eslint --fix src/
 **Current state**: Fixed concurrency (3 URLs at a time)
 
 **Enhancement**:
+
 - Monitor 429 (Too Many Requests) responses
 - Monitor 503 (Service Unavailable) responses
 - Dynamically adjust concurrency: 3 → 2 → 1 → pause
 
 **Implementation sketch**:
+
 ```javascript
 // urlProcessor.js
 class AdaptiveRateLimiter {
@@ -519,11 +539,13 @@ class AdaptiveRateLimiter {
 ```
 
 **Benefits**:
+
 - Respectful scraping (avoids overwhelming servers)
 - Automatic recovery from rate limiting
 - Better success rates for large crawls
 
 **Configuration**:
+
 ```javascript
 // defaults.js
 export const RATE_LIMITING = {
@@ -545,6 +567,7 @@ export const RATE_LIMITING = {
 **Enhancement**: Confidence scores based on multiple signals
 
 **Implementation**:
+
 ```javascript
 // llmMetrics.js
 function calculateAgentFriendlinessScore(pageData) {
@@ -595,11 +618,13 @@ function calculateConfidence(signals) {
 ```
 
 **Benefits**:
+
 - More nuanced recommendations
 - Identifies partially-optimized sites
 - Provides clear improvement roadmap
 
 **Report changes**:
+
 ```csv
 URL,Agent Friendliness Score,Confidence,Priority Improvements
 https://example.com/,72,high,"Add llms.txt (+10), Improve semantic HTML (+7)"
@@ -617,6 +642,7 @@ https://example.com/about,45,medium,"Add structured data (+8), Standardize form 
 **Implementation**:
 
 1. Pre-commit hook addition to [.claude/hooks/pre-commit.sh](.claude/hooks/pre-commit.sh):
+
 ```bash
 #!/bin/bash
 
@@ -645,13 +671,15 @@ if [ $CODE_CHANGES -gt 3 ] && [ $DOC_CHANGES -eq 0 ]; then
 fi
 ```
 
-2. Add documentation audit command:
+1. Add documentation audit command:
+
 ```bash
 # Check for outdated documentation
 npm run audit:docs
 ```
 
-3. Implementation in package.json:
+1. Implementation in package.json:
+
 ```json
 {
   "scripts": {
@@ -660,7 +688,8 @@ npm run audit:docs
 }
 ```
 
-4. Create [scripts/audit-documentation.js](scripts/audit-documentation.js):
+1. Create [scripts/audit-documentation.js](scripts/audit-documentation.js):
+
 ```javascript
 // Check for patterns in code not mentioned in docs
 // Check for docs mentioning removed code
@@ -674,6 +703,7 @@ npm run audit:docs
 Add to CONTRIBUTING.md (or internal team wiki):
 
 **Before Committing**:
+
 - [ ] No `JSON.stringify(x, null, 2)` in production code
 - [ ] Filter conditions with complex logic use parentheses
 - [ ] No async functions inside loops without proper variable capture
@@ -734,23 +764,27 @@ describe('Code Pattern Compliance', () => {
 ## Implementation Roadmap
 
 ### Week 1: Critical Fixes
+
 - [ ] Fix all JSON minification violations (1.1)
 - [ ] Verify quit signal propagation (1.2)
 - [ ] Audit markdown generation (1.3)
 - [ ] Run full test suite to verify no regressions
 
 ### Week 2: Important Improvements
+
 - [ ] Review loop variable capture safety (2.1)
 - [ ] Add unused imports checker (2.2)
 - [ ] Document data management strategy (2.3)
 - [ ] Update CLAUDE.md with clarifications
 
 ### Week 3-4: Strategic Enhancements
+
 - [ ] Implement adaptive rate limiting (3.1)
 - [ ] Implement probabilistic agent detection (3.2)
 - [ ] Enhanced documentation sync process (3.3)
 
 ### Ongoing: Preventive Measures
+
 - [ ] Create code review checklist (4.1)
 - [ ] Add automated pattern tests (4.2)
 - [ ] Train team on battle-tested lessons
@@ -759,16 +793,19 @@ describe('Code Pattern Compliance', () => {
 ## Success Metrics
 
 ### Performance Metrics
+
 - **I/O Time**: 30-50% reduction from JSON minification
 - **File Sizes**: 30-50% smaller results.json and cache files
 - **Memory Usage**: Stable or improved with concurrent processing
 
 ### Quality Metrics
+
 - **Linting**: 100% pass rate on generated markdown
 - **Unused Code**: 0 unused imports detected by ESLint
 - **Documentation Drift**: < 1 week between code and doc updates
 
 ### User Experience Metrics
+
 - **Quit Response Time**: < 1 second from quit signal to full stop
 - **Rate Limit Handling**: Automatic recovery from 429/503 errors
 - **Agent Detection Accuracy**: Confidence scores validated against manual review
@@ -776,22 +813,26 @@ describe('Code Pattern Compliance', () => {
 ## Risk Assessment
 
 ### Low Risk (Safe to implement immediately)
+
 - JSON minification fixes
 - Unused imports removal
 - Documentation updates
 
 ### Medium Risk (Test thoroughly)
+
 - Quit signal propagation changes
 - Adaptive rate limiting
 - Loop variable capture fixes
 
 ### High Risk (Requires careful design)
+
 - Probabilistic agent detection (changes scoring methodology)
 - Data lifecycle management (user expectations)
 
 ## Rollback Plan
 
 For each change:
+
 1. Create feature branch: `improvement/[area]`
 2. Implement with comprehensive tests
 3. Run full regression suite
@@ -803,20 +844,24 @@ For each change:
 ## Appendix: Related Files
 
 ### Core Architecture
+
 - [src/main.js](src/main.js) - Pipeline orchestration
 - [src/utils/urlProcessor.js](src/utils/urlProcessor.js) - Concurrent processing
 - [src/utils/browserPool.js](src/utils/browserPool.js) - Browser management
 
 ### Data Management
+
 - [src/utils/results.js](src/utils/results.js) - Results persistence
 - [src/utils/caching.js](src/utils/caching.js) - Cache management
 - [src/utils/historicalComparison.js](src/utils/historicalComparison.js) - Historical tracking
 
 ### Reporting
+
 - [src/utils/reportUtils/aiFileReports.js](src/utils/reportUtils/aiFileReports.js) - Markdown generation
 - [src/utils/reportUtils/executiveSummary.js](src/utils/reportUtils/executiveSummary.js) - Executive summary
 
 ### Configuration
+
 - [src/config/defaults.js](src/config/defaults.js) - Default settings
 - [src/utils/schemaVersion.js](src/utils/schemaVersion.js) - Schema versioning
 
@@ -831,6 +876,7 @@ For each change:
 ---
 
 **Document Maintenance**:
+
 - Review quarterly
 - Update after each major improvement
 - Archive completed items
