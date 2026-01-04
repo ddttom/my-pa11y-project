@@ -754,7 +754,7 @@ This project includes custom Claude Code configuration in the `.claude/` directo
 
 ### Custom Skills
 
-Two custom skills are available via the `/` command syntax:
+Three custom skills are available via the `/` command syntax:
 
 1. **`/step-commit`** - Systematic commit workflow
    - Reviews all changes with git status and diff
@@ -767,15 +767,25 @@ Two custom skills are available via the `/` command syntax:
    - Prompts to push changes
    - Does NOT add attribution or "Generated with" messages
 
-2. **`/md-fix`** - Markdown linting and auto-fix
+2. **`/md-fix`** - Markdown linting and auto-fix (for recently modified files)
    - Runs `npm run lint:md:fix` to auto-fix issues
    - Verifies all issues are resolved
    - Reports remaining issues requiring manual fixes
    - Shows modified files
 
+3. **`/md-lint-all`** - Comprehensive markdown linting (for ALL files)
+   - Scans ALL markdown files in the repository for errors
+   - Reports summary of errors by type (MD034, MD024, MD012, etc.)
+   - Displays 6 critical markdown linting rules from CLAUDE.md
+   - Runs `npm run lint:md:fix` to auto-fix all issues
+   - Verifies all issues are resolved
+   - Reports remaining issues requiring manual fixes
+   - Shows all modified files
+   - Proactively ensures repository-wide markdown quality
+
 ### Git Hooks
 
-Three git hooks provide workflow reminders:
+Four git hooks provide workflow reminders:
 
 1. **`pre-commit.sh`** - Runs before commits
    - Checks staged markdown files for linting issues
@@ -791,6 +801,12 @@ Three git hooks provide workflow reminders:
    - Reminds about `/step-commit` workflow after manual commits
    - Ensures comprehensive commit practices
 
+4. **`post-markdown-write.sh`** - Runs after Write/Edit on markdown files
+   - Displays 6 critical markdown linting rules
+   - Reminds about linting commands (`npm run lint:md`, `/md-fix`, `/md-lint-all`)
+   - References CLAUDE.md 'Writing Lint-Free Markdown Files' section
+   - Proactively prevents markdown linting errors
+
 ### Permissions
 
 The `.claude/settings.local.json` file pre-approves common operations:
@@ -804,18 +820,21 @@ The `.claude/settings.local.json` file pre-approves common operations:
 
 ```text
 .claude/
-├── settings.local.json       # Local permissions configuration
-├── commands/                  # Command definitions (user-facing)
-│   ├── step-commit.md        # Step-commit workflow description
-│   └── md-fix.md             # Markdown fix workflow description
-├── skills/                    # Skill definitions (agent instructions)
-│   ├── step-commit.json      # Step-commit agent configuration
-│   └── md-fix.json           # Markdown fix agent configuration
-├── hooks/                     # Git hooks for workflow enforcement
-│   ├── pre-commit.sh         # Pre-commit markdown check
-│   ├── pre-push.sh           # Pre-push documentation check
-│   └── post-tool-use.sh      # Post-commit workflow reminder
-└── prompt-master/            # Reserved for future use
+├── settings.local.json           # Local permissions configuration
+├── commands/                      # Command definitions (user-facing)
+│   ├── step-commit.md            # Step-commit workflow description
+│   ├── md-fix.md                 # Markdown fix workflow description
+│   └── md-lint-all.md            # Comprehensive markdown linting description
+├── skills/                        # Skill definitions (agent instructions)
+│   ├── step-commit.json          # Step-commit agent configuration
+│   ├── md-fix.json               # Markdown fix agent configuration
+│   └── md-lint-all.json          # Comprehensive markdown linting configuration
+├── hooks/                         # Git hooks for workflow enforcement
+│   ├── pre-commit.sh             # Pre-commit markdown check
+│   ├── pre-push.sh               # Pre-push documentation check
+│   ├── post-tool-use.sh          # Post-commit workflow reminder
+│   └── post-markdown-write.sh    # Post-markdown-write linting reminder
+└── prompt-master/                # Reserved for future use
 ```
 
 ## Documentation Structure

@@ -30,10 +30,10 @@ The workflow runs automatically on:
 
 Set these as repository secrets or environment variables:
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `STAGING_URL` | Staging site URL for automated runs | No | `https://example.com/sitemap.xml` |
-| `AUDIT_URL_LIMIT` | Number of URLs to audit | No | `10` |
+| Variable           | Description                          | Required | Default                             |
+| ------------------ | ------------------------------------ | -------- | ----------------------------------- |
+| `STAGING_URL`      | Staging site URL for automated runs  | No       | `https://example.com/sitemap.xml`   |
+| `AUDIT_URL_LIMIT`  | Number of URLs to audit              | No       | `10`                                |
 
 **Setting Environment Variables:**
 

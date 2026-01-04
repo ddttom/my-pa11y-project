@@ -307,7 +307,7 @@ $ npm start -- -s https://example.com/sitemap.xml --force-scrape
 ✓  Force-scrape mode enabled via --force-scrape flag
 ```
 
-### Best Practices
+### Best Practices for robots.txt Compliance
 
 1. **Respect robots.txt by default**: Don't use `--force-scrape` unless you have explicit permission
 2. **Review robots.txt first**: Check what's restricted before starting analysis

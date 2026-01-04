@@ -1,6 +1,6 @@
 # Improvement Plan for "The Invisible Users" Book
 
-**Using insights from Web Audit Suite implementation**
+Using insights from Web Audit Suite implementation.
 
 **Created:** 2026-01-03
 **Source:** Analysis of my-pa11y-project repository
@@ -19,7 +19,7 @@ The Web Audit Suite (my-pa11y-project) represents a **production implementation*
 4. **Measurable metrics** that could strengthen the book's business case
 5. **Implementation learnings** that would help readers avoid common mistakes
 
-This document proposes improvements to the book based on 2,234 lines of production code, 19 different report generators, and real-world testing across hundreds of websites.
+This document proposes improvements to the book based on over 16,000 lines of production code, 18 different report types, and real-world testing across hundreds of websites.
 
 ---
 
@@ -60,27 +60,27 @@ This document proposes improvements to the book based on 2,234 lines of producti
 
 ### Synthesis: What the Book Needs
 
-**Dimension 1: Concreteness**
+#### Dimension 1: Concreteness
 
 - Current: Abstract principles ("persistent error messages are better")
 - Needed: Specific implementations with code + scoring rubrics
 
-**Dimension 2: Measurability**
+#### Dimension 2: Measurability
 
 - Current: Qualitative benefits ("improves agent success")
 - Needed: Quantitative metrics (score: low vs high, significantly faster)
 
-**Dimension 3: Validation**
+#### Dimension 3: Validation
 
 - Current: Theoretical frameworks
 - Needed: Production evidence ("tested on many websites", "significantly reduced errors")
 
-**Dimension 4: Complexity Management**
+#### Dimension 4: Complexity Management
 
 - Current: Linear progression from simple to complex
 - Needed: Recognition of real-world trade-offs, edge cases, and failure modes
 
-**Dimension 5: Tool Integration**
+#### Dimension 5: Tool Integration
 
 - Current: Manual implementation guidance
 - Needed: References to validation tools, automated testing, measurement frameworks
@@ -301,8 +301,6 @@ Sites with high robots.txt scores demonstrate professional AI readiness,
 clear policies, and ethical stance. This correlates with significantly higher
 agent trust scores and completion rates.
 
-```
-
 **Why this matters:** The book currently treats robots.txt superficially. This addition provides production-tested implementation guidance with measurable quality criteria.
 
 #### A4. The Served vs Rendered HTML Distinction
@@ -380,7 +378,7 @@ Agent sees: "£149.99" (correct)
 
 ### The Solution: Server-Side Truth
 
-**Pattern: Dual Representation**
+#### Pattern: Dual Representation
 
 Serve HTML that works without JavaScript, then enhance with JavaScript:
 
@@ -432,8 +430,6 @@ Sites with high served scores work for all agent types.
 Sites with low served scores work for only a minority of agent types.
 
 This is the single most important distinction in AI agent compatibility.
-
-```
 
 **Why this matters:** This distinction is mentioned briefly in the book but not emphasized enough. It's the foundational concept that explains why SPAs fail for agents and why progressive enhancement matters.
 
@@ -724,7 +720,7 @@ Just as the book emphasizes that agents need to distinguish between:
 Tools monitoring agent compatibility need to distinguish between:
 
 - **Baseline truth** (reference points, historical continuity)
-- **Transient artifacts** (cache, screenshots, regenerable reports)
+- **Transient artifacts** (cache, screenshots, reenable reports)
 
 **The Anti-Pattern We Hit:**
 
@@ -798,8 +794,6 @@ Sites that maintain historical baselines can track agent compatibility trends
 over time, measure improvement ROI, and enforce quality gates in CI/CD.
 Sites that clear baselines lose this continuity and can't detect regressions.
 
-```
-
 **Why This Improves the Book:**
 The book discusses technical patterns for agent compatibility but doesn't
 address the **operational patterns** needed to monitor, measure, and maintain
@@ -865,8 +859,6 @@ test('error messages remain visible', async () => {
 - ✅ Automated tests pass
 - ✅ Manual validation confirms
 - ✅ High agent success rate
-
-```
 
 **Why this matters:** Readers can implement patterns but can't verify they're working without measurement guidance.
 
@@ -1167,7 +1159,7 @@ Shows how well your robots.txt serves AI agents.
 3. Protect sensitive paths (significant improvement with multiple paths)
 4. Reference llms.txt in comments (moderate improvement)
 
-### Executive Summary
+### Dashboard Executive Summary
 
 High-level overview for stakeholders.
 
@@ -1221,11 +1213,9 @@ The dashboard shows:
 - Business impact correlation
 - Competitive benchmarking (if multiple sites)
 
-```
-
 **Why this matters:** The book references tools abstractly. This document shows readers exactly how to use Web Audit Suite to measure their own progress.
 
-#### C2. "Implementation Cookbook" Document
+### C2. "Implementation Cookbook" Document
 
 **Purpose:** Quick-reference recipes for common patterns
 
@@ -1369,11 +1359,9 @@ function clearError(fieldId) {
 
 [... 10 more recipes ...]
 
-```
-
 **Why this matters:** Readers want copy-paste solutions. This cookbook provides production-tested code they can use immediately.
 
-#### C3. "Competitive Analysis Framework" Document
+### C3. "Competitive Analysis Framework" Document
 
 **Purpose:** Help readers benchmark against competitors
 
@@ -1434,9 +1422,8 @@ Low Agent Readiness (0-40)
     └────────────────────────────────────
     Low Market Share         High Market Share
 
-```
-
 **Strategic Insights:**
+
 - First-mover advantage if you're early
 - Catch-up required if you're behind
 - Maintain lead if you're ahead
@@ -1445,11 +1432,11 @@ Low Agent Readiness (0-40)
 ### Quarterly Tracking
 
 Run this analysis quarterly to track:
+
 - Your progress over time
 - Competitor responses to market
 - Emerging patterns and standards
 - Changing agent behaviors
-```
 
 **Why this matters:** Readers need context for their scores. Competitive benchmarking provides motivation and strategic direction.
 
@@ -1820,14 +1807,14 @@ if (window.AI_ASSISTANT_CONTEXT) {
 
 ### Testing Progressive Enhancement
 
-**Test 1: Disable JavaScript**
+#### Test 1: Disable JavaScript
 
 ```bash
 # Should work perfectly
 curl https://example.com/product/123
 ```
 
-**Test 2: Enable JavaScript**
+#### Test 2: Enable JavaScript
 
 ```javascript
 // Should enhance, not replace
@@ -1845,7 +1832,7 @@ test('enhancement preserves base functionality', async () => {
 });
 ```
 
-**Test 3: Agent Detection**
+#### Test 3: Agent Detection
 
 ```javascript
 // Should work with and without agent context
@@ -1885,8 +1872,6 @@ test('works for regular browsers too', async () => {
 - Enhanced when supported
 - Never broken
 - Always accessible
-
-```
 
 **Why this matters:** Progressive enhancement is the solution but the book doesn't explain how to implement it for agents specifically.
 
@@ -2104,8 +2089,6 @@ Track these metrics:
 - Average recovery time: Fast
 - Recovery abandonment: Low
 
-```
-
 **Why this matters:** The book focuses on preventing errors but doesn't address the reality that errors will happen. Recovery patterns are critical for production systems.
 
 ---
@@ -2119,6 +2102,7 @@ Track these metrics:
 **Locations:**
 
 1. **Chapter 10 introduction:**
+
    ```markdown
    **Testing Your Implementation**
 
@@ -2131,12 +2115,24 @@ Track these metrics:
    web-audit-suite --url https://example.com --full-report
    ```
 
-   The tool generates 19 different reports covering all patterns discussed
-   in this chapter, with quantitative scoring and actionable recommendations.
+   The tool generates 18 different reports covering all patterns discussed
+   in this chapter, with quantitative scoring and actionable recommendations:
 
-   ```
+   **Core Reports (15):**
+   - SEO analysis: seo_report.csv, seo_scores.csv
+   - Performance: performance_analysis.csv
+   - Accessibility: accessibility_report.csv, wcag_report.md
+   - Content: content_quality.csv, image_optimization.csv, link_analysis.csv
+   - Security: security_report.csv
+   - LLM compatibility: llm_general_suitability.csv, llm_frontend_suitability.csv, llm_backend_suitability.csv
+   - AI files: robots_txt_quality.csv, llms_txt_quality.csv, ai_files_summary.md
+
+   **Enhanced Reports (3):**
+   - executive_summary.md, executive_summary.json (--generate-executive-summary)
+   - dashboard.html (--generate-dashboard)
 
 2. **Implementation Checklist header:**
+
    ```markdown
    # Implementation Checklist
 
@@ -2145,7 +2141,7 @@ Track these metrics:
    the tool's reports.
    ```
 
-1. **New appendix:**
+3. **New appendix:**
 
    ```markdown
    # Appendix D: Web Audit Suite Integration
@@ -2527,31 +2523,31 @@ Public directory of certified sites:
 
 ### Risks and Mitigation
 
-**Risk 1: Scope Creep**
+#### Risk 1: Scope Creep
 
 - **Probability:** High
 - **Impact:** Medium (delayed completion)
 - **Mitigation:** Strict phase boundaries, ship Phase 1 before starting Phase 2
 
-**Risk 2: Tool Maintenance Burden**
+#### Risk 2: Tool Maintenance Burden
 
 - **Probability:** Medium
 - **Impact:** High (ongoing cost)
 - **Mitigation:** Open source community, clear deprecation policy, paid support tiers
 
-**Risk 3: Rapid Standards Evolution**
+#### Risk 3: Rapid Standards Evolution
 
 - **Probability:** High
 - **Impact:** Medium (content becomes dated)
 - **Mitigation:** Living document approach, version control, regular updates, disclaimer about experimental patterns
 
-**Risk 4: Reader Overwhelm**
+#### Risk 4: Reader Overwhelm
 
 - **Probability:** Medium
 - **Impact:** Medium (reduced implementation)
 - **Mitigation:** Clear progressive path, "start here" guidance, quick wins emphasized
 
-**Risk 5: Competitive Tools**
+#### Risk 5: Competitive Tools
 
 - **Probability:** Medium
 - **Impact:** Low (differentiation through integration)
