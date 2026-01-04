@@ -170,7 +170,7 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
     markdown += '## robots.txt Analysis\n\n';
 
     const robotsFile = results.robotsTxtAnalysis[0]; // Should only be one file
-    markdown += `**URL**: ${robotsFile.url}\n\n`;
+    markdown += `**URL**: <${robotsFile.url}>\n\n`;
     markdown += `**Exists**: ${robotsFile.exists ? 'Yes' : 'No'}\n\n`;
 
     if (robotsFile.exists) {
@@ -196,7 +196,7 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
       markdown += `- **Structure Quality**: ${analysis.details.structureQuality}\n\n`;
 
       if (analysis.issues && analysis.issues.length > 0) {
-        markdown += '### Issues\n\n';
+        markdown += '### robots.txt Issues\n\n';
         analysis.issues.forEach((issue) => {
           markdown += `- ${issue}\n`;
         });
@@ -204,7 +204,7 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
       }
 
       if (analysis.recommendations && analysis.recommendations.length > 0) {
-        markdown += '### Recommendations\n\n';
+        markdown += '### robots.txt Recommendations\n\n';
         analysis.recommendations.forEach((rec) => {
           markdown += `- ${rec}\n`;
         });
@@ -222,7 +222,7 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
     markdown += '## llms.txt Analysis\n\n';
 
     const llmsFile = results.llmsTxtAnalysis[0]; // Should only be one file
-    markdown += `**URL**: ${llmsFile.url}\n\n`;
+    markdown += `**URL**: <${llmsFile.url}>\n\n`;
     markdown += `**Exists**: ${llmsFile.exists ? 'Yes' : 'No'}\n\n`;
 
     if (llmsFile.exists) {
@@ -246,7 +246,7 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
       markdown += `- **Headings**: ${parsed.headings ? parsed.headings.length : 0} sections\n\n`;
 
       if (analysis.issues && analysis.issues.length > 0) {
-        markdown += '### Issues\n\n';
+        markdown += '### llms.txt Issues\n\n';
         analysis.issues.forEach((issue) => {
           markdown += `- ${issue}\n`;
         });
@@ -254,7 +254,7 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
       }
 
       if (analysis.recommendations && analysis.recommendations.length > 0) {
-        markdown += '### Recommendations\n\n';
+        markdown += '### llms.txt Recommendations\n\n';
         analysis.recommendations.forEach((rec) => {
           markdown += `- ${rec}\n`;
         });
@@ -263,15 +263,15 @@ export async function generateAIFilesSummaryReport(results, outputDir) {
     } else {
       markdown += '**Status**: File not found or inaccessible\n\n';
       markdown += '**Recommendation**: Create a comprehensive llms.txt file following the llmstxt.org specification.\n\n';
-      markdown += 'See: https://llmstxt.org/ for guidance.\n\n';
+      markdown += 'See: <https://llmstxt.org/> for guidance.\n\n';
     }
   }
 
   markdown += '---\n\n';
   markdown += '## Additional Resources\n\n';
-  markdown += '- **llms.txt Specification**: https://llmstxt.org/\n';
-  markdown += '- **The Invisible Users Book**: https://github.com/tomcranstoun/invisible-users\n';
-  markdown += '- **robots.txt Standard**: https://www.robotstxt.org/\n\n';
+  markdown += '- **llms.txt Specification**: <https://llmstxt.org/>\n';
+  markdown += '- **The Invisible Users Book**: <https://github.com/tomcranstoun/invisible-users>\n';
+  markdown += '- **robots.txt Standard**: <https://www.robotstxt.org/>\n';
 
   // Write markdown file
   const fs = await import('fs');
