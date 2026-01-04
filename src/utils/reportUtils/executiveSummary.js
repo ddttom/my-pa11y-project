@@ -21,7 +21,7 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
     const jsonPath = path.join(outputDir, 'executive_summary.json');
 
     await fs.writeFile(mdPath, generateMarkdownSummary(summary, results));
-    await fs.writeFile(jsonPath, JSON.stringify(summary, null, 2));
+    await fs.writeFile(jsonPath, JSON.stringify(summary));
 
     global.auditcore.logger.info('Executive summary report generated successfully');
   } catch (error) {

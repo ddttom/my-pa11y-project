@@ -45,6 +45,23 @@ export const CACHE = {
   SELF_CLEANING_TTL: 900000, // 15 minutes
 };
 
+// Data Lifecycle Management Policy
+// Controls retention of different data types across cache clears
+export const CACHE_POLICY = {
+  // Ephemeral data (deleted on --force-delete-cache)
+  preserveScreenshots: false, // Keep screenshots across cache clears
+  preservePa11yCache: true, // Keep accessibility results (expensive to regenerate)
+
+  // Persistent data management
+  archiveOldReports: true, // Move old reports to archive/ before generating new ones
+  maxHistoryEntries: 10, // Maximum number of historical tracking entries to keep
+  archiveThresholdDays: 30, // Archive reports older than N days
+
+  // Storage optimization
+  cleanupOrphanedFiles: true, // Remove cache files with no matching results entry
+  compressOldHistory: false, // Compress historical entries older than threshold (future)
+};
+
 // Sitemap Configuration
 export const SITEMAP = {
   MAX_URLS_PER_FILE: 50000,
@@ -354,6 +371,17 @@ export const defaultOptions = {
   // Performance optimization options
   browserPoolSize: 3, // Number of concurrent browser instances in pool
   urlConcurrency: 3, // Number of URLs to process concurrently
+
+  // Adaptive rate limiting configuration
+  rateLimiting: {
+    enabled: true, // Enable adaptive rate limiting
+    initialConcurrency: 3, // Starting concurrency level
+    minConcurrency: 1, // Minimum concurrency (never go below this)
+    maxConcurrency: 5, // Maximum concurrency (never exceed this)
+    backoffMultiplier: 2, // Exponential backoff multiplier
+    recoveryThreshold: 10, // Successful requests before increasing concurrency
+    errorThreshold: 2, // Consecutive rate limit errors before reducing
+  },
 
   // Pa11y specific configuration
   pa11y: {

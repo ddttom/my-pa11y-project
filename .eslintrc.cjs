@@ -12,13 +12,24 @@ module.exports = {
     sourceType: 'module',
     requireConfigFile: false,
   },
+  plugins: ['unused-imports'],
   rules: {
     'import/extensions': ['error', { js: 'always' }],
     'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
     'no-param-reassign': [2, { props: false }],
     'no-console': 'off',
     'max-len': 'off',
-    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    'no-unused-vars': 'off', // Disabled in favor of unused-imports/no-unused-vars
+    'unused-imports/no-unused-imports': 'error',
+    'unused-imports/no-unused-vars': [
+      'warn',
+      {
+        vars: 'all',
+        varsIgnorePattern: '^_',
+        args: 'after-used',
+        argsIgnorePattern: '^_',
+      },
+    ],
     'no-underscore-dangle': 'off',
     'linebreak-style': 'off',
     'no-process-exit': 'off',

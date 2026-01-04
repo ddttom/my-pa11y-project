@@ -425,6 +425,72 @@ function shouldSkipLanguageVariant(url)
 
 **Important**: `--force-delete-cache` preserves historical tracking data and baseline for regression detection. Only the cache directory and old report files are deleted.
 
+### Data Lifecycle Management
+
+The tool manages different types of data with varying persistence requirements. Understanding these categories helps optimize storage and performance.
+
+#### Data Categories
+
+**EPHEMERAL (Deleted on `--force-delete-cache`)**:
+
+- **Rendered HTML Cache** (`{outputDir}/.cache/rendered/`) - JavaScript-executed HTML
+- **Served HTML Cache** (`{outputDir}/.cache/served/`) - Raw server HTML
+- **Console Logs** (`{outputDir}/.cache/rendered/*.log`) - Browser console output
+- **Screenshots** (`{outputDir}/.cache/screenshots/`) - Page screenshots (iPad viewport)
+- **Temporary Analysis Data** - Intermediate processing files
+
+**Rationale**: These files are large, regeneratable, and only needed during active analysis. Clearing them saves significant disk space without losing critical data.
+
+**PERSISTENT (Preserved across cache clears)**:
+
+- **Historical Tracking** (`{outputDir}/history/`) - Timestamped results for comparison
+- **Baseline Results** (`{outputDir}/baseline.json`) - Regression detection baseline
+- **Final Reports** (`{outputDir}/*.csv`, `*.md`) - Generated analysis reports
+- **Activity Logs** (`{outputDir}/combined.log`) - Operational audit trail
+- **Error Logs** (`{outputDir}/error.log`) - Error tracking and debugging
+- **Summary Data** (`{outputDir}/summary.json`) - Site-wide metrics
+
+**Rationale**: These files contain unique insights, trends, or audit requirements that cannot be easily regenerated.
+
+**ARCHIVABLE (Optional retention via configuration)**:
+
+- **Pa11y Cache** - Accessibility test results (expensive to regenerate)
+- **Screenshot Archives** - Historical screenshots for visual regression
+- **Old Report Versions** - Previous report snapshots
+
+**Rationale**: Valuable but space-intensive. Retention configurable based on needs.
+
+#### Configuration
+
+Future enhancement (Priority 3): Add configurable retention policies in `defaults.js`:
+
+```javascript
+export const CACHE_POLICY = {
+  preserveScreenshots: false,        // Keep screenshots across cache clears
+  preservePa11yCache: true,          // Keep accessibility results (expensive)
+  archiveOldReports: true,           // Move old reports to archive/
+  maxHistoryEntries: 10,             // Limit historical tracking entries
+  archiveThresholdDays: 30,          // Archive reports older than N days
+};
+```
+
+#### Cache Management Best Practices
+
+1. **Regular Cleanup**: Run `--force-delete-cache` periodically to reclaim disk space
+2. **Selective Caching**: Use `--no-cache` for fresh baseline establishment
+3. **Historical Pruning**: Manually remove old `history/` entries if needed
+4. **Archive Strategy**: Move old reports to separate archive directory before cleanup
+
+#### Storage Estimates
+
+Typical storage usage for 100-page site analysis:
+
+- Ephemeral cache: 50-150 MB (HTML, screenshots, logs)
+- Persistent data: 5-20 MB (reports, history, logs)
+- Per-run overhead: ~500 KB (results.json, summary.json)
+
+Example: 10 historical runs = ~200 MB ephemeral + ~50 MB persistent
+
 ### Resume Capability
 
 The tool can resume from existing `results.json` if found, skipping data collection phase and going straight to report generation.

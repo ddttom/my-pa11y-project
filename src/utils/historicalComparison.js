@@ -23,7 +23,7 @@ export async function storeHistoricalResult(results, outputDir) {
     results,
   };
 
-  await fs.writeFile(historyFile, JSON.stringify(historicalEntry, null, 2));
+  await fs.writeFile(historyFile, JSON.stringify(historicalEntry));
   global.auditcore.logger.info(`Stored historical result: ${historyFile}`);
 
   return historyFile;
@@ -440,7 +440,7 @@ export async function establishBaseline(outputDir, timestamp = null) {
   }
 
   const baselineFile = path.join(outputDir, 'baseline.json');
-  await fs.writeFile(baselineFile, JSON.stringify(baselineResult, null, 2));
+  await fs.writeFile(baselineFile, JSON.stringify(baselineResult));
 
   global.auditcore.logger.info(`Established baseline from ${baselineResult.timestamp}`);
   return baselineFile;

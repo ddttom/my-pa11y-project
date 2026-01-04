@@ -11,6 +11,7 @@ import analyzePerformance from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
 import { writeToInvalidUrlFile } from './urlUtils.js';
 import { checkRobotsCompliance } from './robotsCompliance.js';
+import { createRateLimiter } from './rateLimiter.js';
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,
@@ -37,6 +38,11 @@ export class UrlProcessor {
       pa11y: [],
       failedUrls: [],
     };
+    // Initialize adaptive rate limiter if enabled
+    this.rateLimiter = createRateLimiter(options);
+    if (this.rateLimiter) {
+      global.auditcore.logger.info('✅ Adaptive rate limiting enabled');
+    }
   }
 
   /**
@@ -118,6 +124,15 @@ export class UrlProcessor {
         updateUrlMetrics(testUrl, this.options.baseUrl, html, statusCode, this.results, global.auditcore.logger);
         updateResponseCodeMetrics(statusCode, this.results, global.auditcore.logger);
         updateExternalResourcesMetrics(pageData, this.results, testUrl);
+
+        // Handle rate limiting with adaptive rate limiter
+        if (this.rateLimiter) {
+          const shouldContinue = this.rateLimiter.onResponse(statusCode);
+          if (!shouldContinue) {
+            global.auditcore.logger.warn(`Rate limit threshold exceeded for ${testUrl}, applying backoff`);
+            await this.rateLimiter.applyBackoff();
+          }
+        }
 
         if (statusCode === 200) {
           global.auditcore.logger.info(`Successfully received 200 status for ${testUrl}`);
@@ -339,7 +354,12 @@ export class UrlProcessor {
         break;
       }
 
-      const batch = urls.slice(i, i + concurrency);
+      // Use dynamic concurrency from rate limiter if enabled
+      const currentConcurrency = this.rateLimiter
+        ? this.rateLimiter.getConcurrency()
+        : concurrency;
+
+      const batch = urls.slice(i, i + currentConcurrency);
       const startIndex = i;
 
       const batchPromises = batch.map(async ({ url, lastmod }, batchIndex) => {
@@ -363,6 +383,11 @@ export class UrlProcessor {
 
       // Wait for current batch to complete before starting next batch
       await Promise.allSettled(batchPromises);
+    }
+
+    // Log rate limiter statistics if enabled
+    if (this.rateLimiter) {
+      this.rateLimiter.logStats();
     }
 
     return this.results;

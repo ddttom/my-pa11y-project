@@ -879,7 +879,7 @@ async function saveDiagnostics(results, outputDir) {
       results: cleanResults,
     };
 
-    await fs.writeFile(filePath, JSON.stringify(diagnosticsData, null, 2));
+    await fs.writeFile(filePath, JSON.stringify(diagnosticsData));
     global.auditcore.logger.info(`Full diagnostics saved to ${filePath}`);
   } catch (error) {
     global.auditcore.logger.error('Error saving diagnostics:', error);
@@ -899,7 +899,7 @@ async function saveRawPa11yResult(results, outputDir) {
     if (!results || !results.pa11y || !Array.isArray(results.pa11y)) {
       global.auditcore.logger.warn('Pa11y results are missing or not in the expected format');
       global.auditcore.logger.debug(`results: ${JSON.stringify(results)}`);
-      await fs.writeFile(filePath, JSON.stringify([], null, 2));
+      await fs.writeFile(filePath, JSON.stringify([]));
       global.auditcore.logger.debug(`Empty pa11y results saved to ${filePath}`);
       return;
     }
@@ -923,7 +923,7 @@ async function saveRawPa11yResult(results, outputDir) {
 
     global.auditcore.logger.debug(`Processed ${pa11yResults.length} valid Pa11y results`);
 
-    await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
+    await fs.writeFile(filePath, JSON.stringify(pa11yResults));
     global.auditcore.logger.info(`Raw pa11y results saved to ${filePath}`);
   } catch (error) {
     global.auditcore.logger.error('Error saving raw pa11y results:', error);
