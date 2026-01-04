@@ -256,6 +256,13 @@ If data is missing from `results.json`, re-run the analysis phase, don't add dat
 ```text
 web-audit-suite/
 ├── index.js                 # Entry point, CLI parsing, logger setup
+├── package.json             # Node.js package configuration
+├── LICENSE                  # Proprietary commercial license
+├── README.md                # Project overview and business guide
+├── CLAUDE.md                # AI assistant instructions (this file)
+├── CHANGELOG.md             # Version history and changes
+├── LEARNINGS.md             # Critical rules learned from mistakes
+├── PROJECTSTATE.md          # Current implementation status snapshot
 ├── src/
 │   ├── main.js             # Orchestrates 3-phase pipeline
 │   ├── config/
@@ -296,10 +303,19 @@ web-audit-suite/
 │   ├── wcag_report.md      # Accessibility report
 │   ├── combined.log        # Activity logs
 │   └── error.log           # Error logs
-└── docs/                    # Extension prompts and documentation
+├── docs/                    # Extension prompts and documentation
+└── .claude/                 # Claude Code configuration
+    ├── settings.local.json  # Pre-approved permissions
+    ├── commands/            # Command definitions (user-facing)
+    ├── skills/              # Skill definitions (agent instructions)
+    └── hooks/               # Git hooks for workflow enforcement
 ```
 
-**Key Change**: All output files (cache, reports, logs, screenshots) are now consolidated within the output directory for easier management. The cache is stored in `{outputDir}/.cache/` instead of the project root.
+**Key Changes**:
+
+- All output files (cache, reports, logs, screenshots) are now consolidated within the output directory for easier management. The cache is stored in `{outputDir}/.cache/` instead of the project root.
+- **LICENSE**: Changed from ISC open-source license to proprietary commercial license. This is a private repository with commercial licensing terms (evaluation, commercial, partnership, agency).
+- **CONTRIBUTING.md**: Removed as this is a private commercial repository, not open for public contributions.
 
 ## Global State
 
