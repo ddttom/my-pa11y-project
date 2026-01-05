@@ -10,7 +10,8 @@ Web Audit Suite is a comprehensive website analysis tool that generates detailed
 - **Security**: HTTPS configuration, security headers (HSTS, CSP, X-Frame-Options)
 - **Content Quality**: Content freshness, uniqueness, media richness, structure
 - **LLM Suitability**: AI agent compatibility analysis for both served and rendered HTML
-- **LLMS.txt**: Automatically detects and processes `llms.txt` at the domain root for AI agent compatibility checks.
+- **Technology Detection**: Automatic identification of CMS, frameworks, libraries, analytics tools, and CDNs
+- **Base Domain Auto-Discovery**: Automatically includes homepage and `llms.txt` in analysis for comprehensive AI agent compatibility checks
 
 ## Getting Started
 
@@ -65,6 +66,17 @@ npm start -- -s https://example.com/sitemap.xml \
 
 # Use custom thresholds
 npm start -- -s https://example.com/sitemap.xml --thresholds ./custom-thresholds.json
+
+# Regression detection with baseline
+npm start -- -s https://example.com/sitemap.xml \
+  --enable-history \
+  --establish-baseline
+
+# Pattern extraction from high-scoring pages
+npm start -- -s https://example.com/sitemap.xml \
+  --extract-patterns \
+  --pattern-score-threshold 75
+
 npm start -- -s https://example.com/sitemap.xml -l 10 -o test-results
 # Review reports in test-results directory
 # When satisfied, run full analysis:
@@ -104,10 +116,15 @@ You can configure the application using a `.env` file or environment variables. 
 - **Limits**: `LIMIT`, `COUNT`
 - **Features (true/false)**:
   - `ENABLE_HISTORY`
+  - `ESTABLISH_BASELINE`
+  - `EXTRACT_PATTERNS`
   - `GENERATE_DASHBOARD`
   - `GENERATE_EXECUTIVE_SUMMARY`
   - `INCLUDE_ALL_LANGUAGES`
   - `NO_RECURSIVE`
+  - `FORCE_SCRAPE` (default: `false`)
+- **Pattern Extraction**: `PATTERN_SCORE_THRESHOLD` (default: 70)
+- **Baseline**: `BASELINE_TIMESTAMP` (ISO timestamp)
 - **Cache**: `CACHE_ONLY`, `NO_CACHE`, `FORCE_DELETE_CACHE`
 - **Other**: `NO_PUPPETEER`, `THRESHOLDS_FILE`
 
@@ -117,7 +134,11 @@ Example `.env`:
 SITEMAP_URL=https://example.com/sitemap.xml
 LOG_LEVEL=info
 ENABLE_HISTORY=true
+ESTABLISH_BASELINE=true
+EXTRACT_PATTERNS=true
+PATTERN_SCORE_THRESHOLD=75
 GENERATE_DASHBOARD=true
+GENERATE_EXECUTIVE_SUMMARY=true
 ```
 
 For detailed configuration documentation, see [Configuration Guide](CONFIGURATION.md).
@@ -141,12 +162,27 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
 - `--include-all-languages`: Include all language variants in analysis
   - Overrides default behavior of only processing /en and /us variants
   - Uses enhanced URL extraction logic with automatic detection
+- `--no-recursive`: Disable recursive crawling (only process sitemap URLs)
+  - Default: recursive crawling enabled
+  - When disabled, only analyzes URLs explicitly listed in sitemap
+
+### robots.txt Compliance
+
+- `--force-scrape`: Bypass robots.txt restrictions (use with caution)
+  - Default: respect robots.txt directives
+  - Can also be set via `FORCE_SCRAPE=true` in .env
+  - When disabled (default), the tool will:
+    - Fetch robots.txt before any crawling begins
+    - Check compliance before processing each URL
+    - Prompt user when a URL is blocked by robots.txt
+    - Allow runtime override via interactive prompts
 
 ### Cache Control
 
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear cache before starting
+- `--no-puppeteer`: Bypass Puppeteer execution (use cached data only)
+- `--force-delete-cache`: Clear cache and old reports (preserves history/ and baseline.json)
 
 ### Enhanced Features
 
@@ -154,6 +190,16 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
   - Stores timestamped results in `history/` directory
   - Enables comparison with previous runs
   - Tracks trends over time
+- `--establish-baseline`: Establish current results as baseline for regression detection
+  - Requires `--enable-history` flag
+  - Creates `baseline.json` as reference point
+  - Future runs will compare against this baseline
+  - Optional: `--baseline-timestamp <timestamp>` to use specific historical result
+- `--extract-patterns`: Extract successful patterns from high-scoring pages
+  - Analyzes pages with scores ≥70/100 (configurable)
+  - Generates `pattern_library.md` with working examples
+  - Six categories: structured data, semantic HTML, forms, errors, state, llms.txt
+  - Optional: `--pattern-score-threshold <number>` to adjust minimum score
 - `--generate-dashboard`: Generate interactive HTML dashboard with charts
   - Visual analytics with embedded charts
   - Performance, accessibility, SEO, content, and LLM metrics
@@ -167,6 +213,117 @@ For detailed configuration documentation, see [Configuration Guide](CONFIGURATIO
 - `--thresholds <file>`: Path to custom thresholds configuration (JSON)
   - Customize pass/fail criteria for all metrics
   - See [Configuration Guide](CONFIGURATION.md) for details
+
+## robots.txt Compliance and Ethical Scraping
+
+Web Audit Suite includes a comprehensive robots.txt compliance system to ensure ethical and respectful web scraping practices.
+
+### How It Works
+
+1. **Phase 0: robots.txt Fetching**
+   - Before any URL crawling begins, the tool fetches robots.txt from the target site
+   - Parses directives for the `WebAuditSuite/1.0` user agent and wildcard (`*`) rules
+   - Logs a summary of discovered rules, user agents, and sitemaps
+
+2. **Compliance Checking**
+   - Before processing each URL, the tool checks if it's allowed by robots.txt
+   - Implements the robots exclusion standard with:
+     - Wildcard pattern matching (`*`)
+     - End-of-path markers (`$`)
+     - Longest-match-wins precedence
+     - Allow rules take precedence over Disallow rules of equal specificity
+
+3. **Interactive User Prompts**
+   - When a URL is blocked by robots.txt, you'll see a prompt with these options:
+     - `[y]` Scrape this URL only (override for single URL)
+     - `[a]` Enable force-scrape mode (bypass all subsequent robots.txt checks)
+     - `[n]` Skip this URL and continue
+     - `[q]` Quit the analysis
+   - The first blocked URL shows a detailed explanation
+   - Subsequent blocks show abbreviated prompts
+
+4. **Force-Scrape Mode**
+   - Can be enabled at startup via `--force-scrape` flag or `FORCE_SCRAPE=true` in .env
+   - Can be enabled mid-session by selecting `[a]` when prompted
+   - When enabled, all robots.txt checks are bypassed
+   - State changes are prominently logged
+
+### Example Scenarios
+
+#### Scenario 1: Site allows scraping
+
+```bash
+$ npm start -- -s https://example.com/sitemap.xml
+
+✓ robots.txt compliance ENABLED (default)
+Phase 0: Fetching robots.txt for compliance checking...
+✓ robots.txt fetched and parsed successfully
+robots.txt summary:
+  - User agents declared: 2 (*, GPTBot)
+  - Total rules: 5
+  - Sitemaps: 1
+```
+
+#### Scenario 2: Site blocks some URLs
+
+```bash
+Phase 2: Processing URLs...
+
+⚠️  robots.txt RESTRICTION DETECTED
+
+The URL is blocked by robots.txt:
+  URL: https://example.com/admin/dashboard
+  Rule: /admin
+
+Options:
+  [y] Scrape this URL anyway (override for this URL only)
+  [a] Scrape all URLs (enable force-scrape mode for remainder of session)
+  [n] Skip this URL and continue
+  [q] Quit the analysis
+
+Your choice (y/a/n/q): n
+✓ Skipping this URL
+```
+
+#### Scenario 3: Enabling force-scrape mode mid-session
+
+```bash
+Your choice (y/a/n/q): a
+✓ Force-scrape mode ENABLED - all robots.txt restrictions will be bypassed
+   This setting will persist for the remainder of this session
+
+⚠️  User enabled force-scrape mode - robots.txt restrictions will be bypassed for remainder of session
+```
+
+#### Scenario 4: Using force-scrape from startup
+
+```bash
+$ npm start -- -s https://example.com/sitemap.xml --force-scrape
+
+⚠️  WARNING: robots.txt COMPLIANCE DISABLED
+    Force scrape mode is ENABLED
+    This bypasses robots.txt restrictions and may violate site policies
+    Use with caution and only with explicit permission
+✓  Force-scrape mode enabled via --force-scrape flag
+```
+
+### Best Practices for robots.txt Compliance
+
+1. **Respect robots.txt by default**: Don't use `--force-scrape` unless you have explicit permission
+2. **Review robots.txt first**: Check what's restricted before starting analysis
+3. **Use selective overrides**: If only a few URLs are blocked, use `[y]` to override individually
+4. **Get permission**: For sites with strict robots.txt, contact the site owner before enabling force-scrape
+5. **Monitor logs**: The tool logs all compliance checks and state changes for audit trails
+
+### Related Reports
+
+The tool also generates quality analysis reports for robots.txt and llms.txt files:
+
+- `robots_txt_quality.csv`: Quality score and analysis of robots.txt for AI agent compatibility
+- `llms_txt_quality.csv`: Quality score and analysis of llms.txt for AI agent guidance
+- `ai_files_summary.md`: Human-readable summary of both files
+
+See the AI File Quality Reports section below for details.
 
 ## Generated Reports
 
@@ -455,6 +612,7 @@ Generated when corresponding CLI flags are used:
 
 - `executive_summary.md` - Executive summary report (--generate-executive-summary)
   - Overall status across all categories
+  - Technology stack detection (CMS, frameworks, libraries, analytics, CDNs)
   - Key findings and recommendations
   - Pass/fail status with configurable thresholds
   - Comparison with previous run (if history enabled)
@@ -470,6 +628,21 @@ Generated when corresponding CLI flags are used:
   - Comparison tables showing changes over time
   - Pass/fail summary tables
 
+- `regression_report.md` - Regression analysis report (--enable-history)
+  - Automatic when baseline exists
+  - Critical regressions (>30% degradation)
+  - Warning regressions (>15% degradation)
+  - Info changes (notable differences)
+  - Actionable recommendations with immediate and short-term actions
+  - Performance, accessibility, SEO, and LLM metrics tracking
+
+- `pattern_library.md` - Pattern library report (--extract-patterns)
+  - Successful patterns from high-scoring pages (≥70/100)
+  - Six pattern categories with real-world examples
+  - Priority and effort levels for each pattern
+  - Implementation recommendations
+  - Examples: structured data, semantic HTML, forms, error handling, state management, llms.txt
+
 ### Historical Data
 
 Created when `--enable-history` is used:
@@ -477,6 +650,11 @@ Created when `--enable-history` is used:
 - `history/` directory - Timestamped historical results
   - `results-<timestamp>.json` - Complete results from each run
   - Enables comparative analysis and trend tracking
+
+- `baseline.json` - Established baseline (--establish-baseline)
+  - Reference point for regression detection
+  - Created from current or historical result
+  - Used for future comparisons to detect quality changes
 
 ### Sitemaps
 
@@ -499,15 +677,25 @@ Created when `--enable-history` is used:
 
 The tool maintains a cache to improve performance:
 
-- Cache location: `.cache` directory (automatically created)
-- Cache format: JSON files
+- Cache location: `{outputDir}/.cache/` directory (automatically created)
+- Cache subdirectories: `rendered/`, `served/`, `screenshots/`
+- Cache format: JSON files and HTML snapshots
 - Cache naming: MD5 hash of URLs
 
 ### Cache Control Options
 
 - `--cache-only`: Use only cached data
 - `--no-cache`: Disable caching
-- `--force-delete-cache`: Clear existing cache
+- `--force-delete-cache`: Clear cache and old reports while preserving historical data
+
+**Important**: The `--force-delete-cache` flag intelligently clears:
+
+- ✅ Cache directory (`.cache/`) - Rendered HTML, served HTML, screenshots
+- ✅ Old report files - CSVs, JSON reports, markdown files, logs
+- ✅ **PRESERVES** `history/` directory - Historical tracking data for trend analysis
+- ✅ **PRESERVES** `baseline.json` - Regression detection baseline
+
+This ensures you can clear stale cache without losing valuable historical tracking or regression baselines needed for CI/CD pipelines and quality monitoring.
 
 ## Network Error Handling
 
@@ -559,6 +747,151 @@ This filtering applies to:
 - URL extraction from sitemaps
 - Report generation
 - Content analysis
+
+## Base Domain Auto-Discovery
+
+The tool automatically ensures comprehensive AI agent compatibility analysis by adding priority URLs to the processing queue:
+
+### Automatic URL Addition
+
+When analyzing any website, the tool automatically adds:
+
+1. **Base Domain URL** (e.g., `https://example.com/`)
+   - Ensures homepage is always analyzed
+   - Critical for overall site assessment
+   - Works even when passing a sitemap URL or specific page URL
+
+2. **llms.txt URL** (e.g., `https://example.com/llms.txt`)
+   - Checks for AI agent guidance file (see [llmstxt.org](https://llmstxt.org/))
+   - Essential for LLM suitability scoring
+   - Worth 10 points in served score (ESSENTIAL_SERVED metric)
+
+### Priority Processing
+
+- Both URLs are inserted at the **beginning** of the processing queue
+- Guarantees analysis even with strict count limits (e.g., `-c 10`)
+- No configuration required - works automatically
+
+### Example Behavior
+
+```bash
+# Even when limiting to 10 URLs, base domain and llms.txt are included
+npm start -- -s https://example.com/sitemap.xml -c 10
+
+# Output includes:
+# 1. https://example.com/ (base domain - added automatically)
+# 2. https://example.com/llms.txt (added automatically)
+# 3-10. First 8 URLs from sitemap
+```
+
+### Benefits
+
+- **Complete Coverage**: Never miss homepage analysis
+- **AI Compatibility**: Always checks for llms.txt guidance file
+- **Flexible Input**: Works with sitemap URLs, page URLs, or any valid URL
+- **Zero Configuration**: Automatic detection and addition
+
+## Technology Detection
+
+The tool automatically detects web technologies, frameworks, and libraries used on the homepage. This information is included in the executive summary report when using the `--generate-executive-summary` flag.
+
+### What's Detected
+
+**Content Management Systems:**
+
+- Adobe Experience Manager Edge Delivery Services (EDS)
+- WordPress
+- Drupal
+- Shopify
+- Wix
+- Webflow
+- Squarespace
+- Joomla
+
+**JavaScript Frameworks:**
+
+- React
+- Vue.js
+- Angular
+- Svelte
+- Next.js
+- Nuxt.js
+
+**JavaScript Libraries:**
+
+- jQuery
+- Lodash
+- Moment.js
+- D3.js
+- Chart.js
+- GSAP
+- Alpine.js
+- HTMX
+- Three.js
+
+**Analytics & Tracking:**
+
+- Google Analytics
+- Adobe Analytics
+- Matomo
+- Hotjar
+- Mixpanel
+- Segment
+
+**Content Delivery Networks:**
+
+- Cloudflare CDN
+- Akamai
+- Fastly
+- Amazon CloudFront
+
+### Detection Process
+
+1. **Automatic Analysis**: The tool analyzes JavaScript resources loaded on the homepage
+2. **Pattern Matching**: Detects technologies based on URL patterns (e.g., `cdn.example.com/jquery.js`)
+3. **Confidence Levels**: Each detection includes a confidence rating (high or medium)
+4. **Executive Summary Integration**: Results appear in the Technology Stack section
+
+### Adobe EDS Detection
+
+Adobe Edge Delivery Services is detected via multiple specific patterns:
+
+- `scripts/aem.js` file presence
+- `.hlx.page` or `.hlx.live` domains
+- `franklin` references in URLs
+- `/clientlibs/` directory usage
+- `/libs/granite/` or `/libs/cq/` paths
+
+Confidence is "high" if `aem.js` or `.hlx` domains are found, otherwise "medium".
+
+### Example Output
+
+The executive summary includes a Technology Stack section:
+
+```markdown
+## Technology Stack
+
+**Content Management System:**
+
+- ✅ Adobe Experience Manager Edge Delivery Services (high confidence)
+
+**JavaScript Frameworks:** React, Vue.js
+
+**JavaScript Libraries:** jQuery, D3.js
+
+**Analytics & Tracking:** Google Analytics
+
+**Content Delivery Networks:** Cloudflare
+
+*Detected from 247 resources on https://example.com/*
+```
+
+### Technology Detection Benefits
+
+- **Technology Inventory**: Understand what technologies power the site
+- **Dependency Tracking**: Identify critical third-party dependencies
+- **Architecture Insights**: See frameworks and libraries in use
+- **Migration Planning**: Know what needs to be replaced during migrations
 
 ## Troubleshooting
 
@@ -736,6 +1069,169 @@ npm start -- -s https://example.com/sitemap.xml --include-all-languages -o all-l
    - Add data attributes to tables
    - Add button disabled explanations
    - Add auth state attributes
+
+## Advanced Features
+
+### Regression Detection
+
+Automated quality gate enforcement to prevent quality regressions.
+
+**Setup:**
+
+```bash
+# Step 1: Enable history and establish baseline on main branch
+npm start -- -s https://production.com/sitemap.xml \
+  --enable-history \
+  --establish-baseline
+
+# Step 2: Future runs automatically detect regressions
+npm start -- -s https://production.com/sitemap.xml --enable-history
+```
+
+**Features:**
+
+- **Baseline Establishment**: Mark current or historical results as reference point
+- **Automatic Detection**: Compare all runs against baseline
+- **Severity Classification**:
+  - Critical (🚨): >30% degradation - fails builds in CI/CD
+  - Warning (⚠️): >15% degradation - requires review
+  - Info (ℹ️): Notable changes worth reviewing
+- **Comprehensive Checks**:
+  - Performance: Load time, LCP, FCP, CLS
+  - Accessibility: Error count increases
+  - SEO: Score drops
+  - LLM: Compatibility score decreases
+  - URL Count: Significant changes
+
+**Output:**
+
+The `regression_report.md` file contains:
+
+- Summary of regressions by severity
+- Critical regressions requiring immediate action
+- Warning regressions to review
+- Info changes for awareness
+- Immediate action recommendations
+- Short-term improvement suggestions
+
+**Console Output:**
+
+```bash
+🚨 CRITICAL REGRESSIONS DETECTED: 2 critical issue(s) found
+Review regression_report.md for details
+```
+
+**Use Cases:**
+
+- CI/CD quality gates
+- Prevent production regressions
+- Deployment validation
+- Performance monitoring across releases
+
+### Pattern Extraction
+
+Learn from successful implementations by extracting patterns from high-scoring pages.
+
+**Setup:**
+
+```bash
+# Extract patterns from pages scoring ≥70/100
+npm start -- -s https://example.com/sitemap.xml \
+  --extract-patterns \
+  --pattern-score-threshold 70
+```
+
+**Features:**
+
+- **High-Scoring Analysis**: Identifies pages with excellent AI agent compatibility
+- **Six Pattern Categories**:
+  1. **Structured Data**: JSON-LD, Schema.org implementations
+  2. **Semantic HTML**: Proper use of main, nav, header, article, section
+  3. **Form Patterns**: Standard field naming, autocomplete attributes
+  4. **Error Handling**: Persistent error messages, aria-live
+  5. **State Management**: Validation state, loading state, agent visibility
+  6. **llms.txt**: AI agent guidance file implementations
+- **Real-World Examples**: Up to 5 working examples per category
+- **Priority & Effort Levels**: Critical/High priority, Low/Moderate effort
+- **Actionable Recommendations**: Implementation guidance for each pattern
+
+**Output:**
+
+The `pattern_library.md` file contains:
+
+- Pattern name and description
+- Priority and effort assessment
+- Real-world examples from your site
+- Implementation recommendations
+- Expected impact on scores
+
+**Console Output:**
+
+```bash
+✅ Pattern extraction complete: 15 high-scoring pages analyzed
+Pattern library saved to pattern_library.md
+```
+
+**Use Cases:**
+
+- Learn from successful pages on your own site
+- Identify working patterns in production
+- Guide development of new features
+- Create internal best practices documentation
+- Training and knowledge sharing
+
+### CI/CD Integration
+
+Automate quality checks in your development pipeline.
+
+**Quick Start:**
+
+```bash
+# Copy GitHub Actions workflow template
+cp .github/workflows/audit-ci.yml.template .github/workflows/audit-ci.yml
+
+# Configure secrets in GitHub (Settings → Secrets → Actions)
+AUDIT_SITE_URL: https://staging.example.com
+
+# Update repository reference and commit
+git add .github/workflows/audit-ci.yml
+git commit -m "Add Web Audit Suite CI integration"
+git push
+```
+
+**Features:**
+
+- **Automated Runs**: On push, PR, or manual trigger
+- **Baseline Management**: Automatic caching and restoration
+- **Regression Detection**: Fail builds on critical regressions
+- **PR Comments**: Automatic feedback on pull requests
+- **Artifact Management**: Download reports for review
+- **Multi-Environment**: Separate configs for staging/production
+
+**Supported Platforms:**
+
+- GitHub Actions (full template provided)
+- GitLab CI (example configuration)
+- Jenkins (example Jenkinsfile)
+
+**Documentation:**
+
+See [.github/CI_CD_INTEGRATION.md](../.github/CI_CD_INTEGRATION.md) for complete setup guide including:
+
+- Step-by-step instructions
+- Configuration options
+- Failure thresholds
+- Troubleshooting
+- Best practices
+- Advanced scenarios (scheduled runs, multiple environments, notifications)
+
+**Use Cases:**
+
+- Quality gates for pull requests
+- Automated deployment validation
+- Continuous production monitoring
+- Performance regression prevention
+- Accessibility compliance tracking
 
 ## Support
 

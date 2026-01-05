@@ -180,6 +180,99 @@ Track website changes over time with comparative analysis.
 - Measure impact of SEO optimizations
 - Validate deployment changes
 
+### Regression Detection
+
+Automated quality gate enforcement with baseline comparison.
+
+**Enable with**: `--enable-history` and `--establish-baseline`
+
+**Features**:
+
+- **Baseline Establishment**: Mark specific results as reference points
+- **Severity Classification**: Critical (>30%), Warning (>15%), Info
+- **Comprehensive Checks**:
+  - Performance regressions (load time, LCP, FCP, CLS)
+  - Accessibility regressions (error count increases)
+  - SEO score drops
+  - LLM compatibility decreases
+  - URL count changes
+- **Actionable Reports**: Markdown reports with immediate and short-term actions
+- **CI/CD Ready**: Automatic build failure on critical regressions
+- **Alerting**: Console warnings for regressions with severity levels
+
+**Output Files**:
+
+- `baseline.json` - Established baseline for comparison
+- `regression_report.md` - Detailed regression analysis with recommendations
+
+**Use Cases**:
+
+- Prevent quality regressions in production
+- CI/CD quality gates
+- Automated deployment validation
+- Performance monitoring over releases
+- Accessibility compliance maintenance
+
+**Example Workflow**:
+
+```bash
+# Establish baseline on main branch
+npm start -- -s https://production.com/sitemap.xml \
+  --enable-history \
+  --establish-baseline
+
+# Future runs detect regressions
+npm start -- -s https://production.com/sitemap.xml --enable-history
+# Output: 🚨 CRITICAL REGRESSIONS DETECTED: 2 critical issue(s) found
+```
+
+### Pattern Extraction
+
+Learn from high-scoring pages to identify successful implementations.
+
+**Enable with**: `--extract-patterns`
+
+**Features**:
+
+- **High-Scoring Page Analysis**: Identifies pages scoring ≥70/100 (configurable)
+- **Six Pattern Categories**:
+  - Structured Data (JSON-LD, Schema.org)
+  - Semantic HTML (main, nav, header, article, section)
+  - Form Patterns (standard field naming, autocomplete)
+  - Error Handling (persistent errors, aria-live)
+  - State Management (data attributes for validation, loading)
+  - llms.txt Implementation
+- **Real-World Examples**: Up to 5 working examples per category
+- **Priority & Effort Levels**: Critical/High priority, Low/Moderate effort
+- **Implementation Recommendations**: Actionable guidance for each pattern
+
+**Configuration**:
+
+- `--pattern-score-threshold <number>`: Minimum score (default: 70)
+
+**Output Files**:
+
+- `pattern_library.md` - Comprehensive pattern library with examples
+
+**Use Cases**:
+
+- Learn from successful implementations
+- Identify working patterns in production
+- Guide new feature development
+- Training and documentation
+- Best practice identification
+
+**Example Workflow**:
+
+```bash
+# Extract patterns from high-scoring pages
+npm start -- -s https://example.com/sitemap.xml \
+  --extract-patterns \
+  --pattern-score-threshold 75
+
+# Output: ✅ Pattern extraction complete: 15 high-scoring pages analyzed
+```
+
 ### Executive Summary
 
 Single-page overview with key insights and actionable recommendations.
@@ -388,12 +481,69 @@ Complete configuration reference and guides.
 
 ### CI/CD Integration
 
-Perfect for automated quality checks:
+Production-ready automation for continuous quality monitoring.
+
+**Comprehensive Guide**: See [.github/CI_CD_INTEGRATION.md](../.github/CI_CD_INTEGRATION.md)
+
+**GitHub Actions Template**: [.github/workflows/audit-ci.yml.template](../.github/workflows/audit-ci.yml.template)
+
+**Features**:
+
+- **Automated Audits**: Run on push, PR, or manual dispatch
+- **Baseline Management**: Automatic baseline caching and restoration
+- **Regression Detection**: Fail builds on critical regressions
+- **PR Commenting**: Automatic comments with metrics and status
+- **Artifact Management**: Upload reports for review
+- **Multi-Environment**: Support for staging and production
+- **Scheduled Runs**: Nightly or weekly audits
+- **Notification Integration**: Slack, email, etc.
+
+**Supported Platforms**:
+
+- **GitHub Actions**: Full workflow template provided
+- **GitLab CI**: Example `.gitlab-ci.yml` configuration
+- **Jenkins**: Example `Jenkinsfile` pipeline
+
+**Quick Start (GitHub Actions)**:
+
+```bash
+# Copy workflow template
+cp .github/workflows/audit-ci.yml.template .github/workflows/audit-ci.yml
+
+# Set repository secrets
+# AUDIT_SITE_URL: https://staging.example.com
+
+# Update repository reference in workflow
+# Push to enable automated audits
+git add .github/workflows/audit-ci.yml
+git commit -m "Add Web Audit Suite CI integration"
+git push
+```
+
+**Baseline Management in CI**:
+
+```yaml
+# GitHub Actions - Establish baseline on main branch
+- name: Establish Baseline
+  if: github.ref == 'refs/heads/main'
+  run: |
+    npm start -- \
+      -s $SITE_URL \
+      --enable-history \
+      --establish-baseline
+
+# Save baseline to cache
+- name: Save Baseline
+  uses: actions/cache@v3
+  with:
+    path: results/baseline.json
+    key: audit-baseline-${{ github.ref_name }}
+```
 
 **Exit Codes**:
 
-- `0` - Success
-- `1` - Failure (validation errors, processing errors)
+- `0` - Success, no critical regressions
+- `1` - Failure (critical regressions or processing errors)
 
 **Example CI Script**:
 
@@ -404,17 +554,26 @@ export LOG_LEVEL=warn
 
 npm start -- \
   -s $SITEMAP_URL \
+  --enable-history \
   --generate-executive-summary \
   --thresholds ./ci-thresholds.json
 
-if [ $? -ne 0 ]; then
-  echo "Audit failed"
+# Check for critical regressions
+if grep -q "🚨 CRITICAL REGRESSIONS DETECTED" audit.log; then
+  echo "Critical regressions detected - failing build"
+  cat results/regression_report.md
   exit 1
 fi
-
-# Parse results and fail if critical issues
-node scripts/check-results.js results/executive_summary.json
 ```
+
+**Use Cases**:
+
+- Automated quality gates for PRs
+- Prevent regressions before deployment
+- Continuous monitoring of production sites
+- Scheduled site health checks
+- Multi-environment testing (staging, production)
+- Deployment validation
 
 ### Docker Support
 

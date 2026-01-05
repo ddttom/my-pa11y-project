@@ -12,9 +12,66 @@
 
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import BrowserPool from './browserPool.js';
 
 // Add stealth plugin to avoid detection
 puppeteer.use(StealthPlugin());
+
+// Global browser pool instance
+let browserPool = null;
+
+/**
+ * Initialize the browser pool
+ * @param {Object} options - Pool configuration options
+ */
+export async function initializeBrowserPool(options = {}) {
+  if (browserPool) {
+    global.auditcore.logger.warn('Browser pool already initialized');
+    return browserPool;
+  }
+
+  const poolSize = options.poolSize || global.auditcore?.options?.browserPoolSize || 3;
+  const launchOptions = {
+    headless: 'new',
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--window-size=1920,1080',
+      '--disable-blink-features=AutomationControlled',
+    ],
+    ...options.launchOptions,
+  };
+
+  browserPool = new BrowserPool({
+    poolSize,
+    launchOptions,
+  });
+
+  await browserPool.initialize();
+  global.auditcore.logger.info('Browser pool initialized successfully');
+  return browserPool;
+}
+
+/**
+ * Get the browser pool instance
+ */
+export function getBrowserPool() {
+  return browserPool;
+}
+
+/**
+ * Shutdown the browser pool
+ */
+export async function shutdownBrowserPool() {
+  if (browserPool) {
+    await browserPool.shutdown();
+    browserPool = null;
+    global.auditcore.logger.info('Browser pool shutdown complete');
+  }
+}
 
 /**
  * Checks if error is a Cloudflare challenge
@@ -70,21 +127,89 @@ function isNetworkError(error) {
 }
 
 /**
+ * Helper function to configure a page with anti-detection measures
+ * @private
+ */
+async function configurePageForStealth(page) {
+  // Randomize browser fingerprint
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => false,
+    });
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['en-US', 'en'],
+    });
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => [1, 2, 3],
+    });
+  });
+
+  // Set realistic headers and settings
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    Referer: 'https://www.google.com/',
+    Connection: 'keep-alive',
+  });
+
+  // Randomize viewport and mouse movements
+  await page.setViewport({
+    width: 1920 + Math.floor(Math.random() * 100),
+    height: 1080 + Math.floor(Math.random() * 100),
+    deviceScaleFactor: 1,
+    hasTouch: false,
+    isLandscape: false,
+  });
+}
+
+/**
  * Executes a Puppeteer operation with enhanced configuration
  *
  * Implements:
+ * - Browser pooling for performance (reuses browser instances)
  * - Stealth mode to avoid detection
  * - Randomized browser fingerprint
  * - Realistic user behavior simulation
- * - Automatic browser cleanup
+ * - Automatic cleanup
  *
  * @param {Function} operation - Puppeteer operation to execute
  * @param {string} operationName - Name of operation for logging
- * @param {Object} options - Puppeteer launch options
+ * @param {Object} options - Puppeteer launch options (ignored if pool is active)
  * @returns {Promise<any>} Operation result
  * @throws {Error} If operation fails
  */
 async function executePuppeteerOperation(operation, operationName, options = {}) {
+  // If browser pool is initialized, use it for better performance
+  if (browserPool) {
+    return browserPool.execute(async (browser) => {
+      let page;
+      try {
+        page = await browser.newPage();
+        await configurePageForStealth(page);
+
+        // Add random delays to mimic human behavior
+        const randomDelay = (min, max) => new Promise((resolve) => { setTimeout(resolve, Math.random() * (max - min) + min); });
+
+        // Execute the operation with random delays
+        await randomDelay(500, 1500);
+        const result = await operation(page);
+        await randomDelay(500, 1500);
+
+        return result;
+      } catch (error) {
+        global.auditcore.logger.error(`Puppeteer operation failed during ${operationName}:`, error);
+        throw error;
+      } finally {
+        if (page) {
+          await page.close();
+        }
+      }
+    });
+  }
+
+  // Fallback: launch a new browser if pool is not initialized (backward compatibility)
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -102,38 +227,7 @@ async function executePuppeteerOperation(operation, operationName, options = {})
     });
 
     const page = await browser.newPage();
-
-    // Randomize browser fingerprint
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, 'webdriver', {
-        get: () => false,
-      });
-      Object.defineProperty(navigator, 'languages', {
-        get: () => ['en-US', 'en'],
-      });
-      Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3],
-      });
-    });
-
-    // Set realistic headers and settings
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      Referer: 'https://www.google.com/',
-      Connection: 'keep-alive',
-    });
-
-    // Randomize viewport and mouse movements
-    await page.setViewport({
-      width: 1920 + Math.floor(Math.random() * 100),
-      height: 1080 + Math.floor(Math.random() * 100),
-      deviceScaleFactor: 1,
-      hasTouch: false,
-      isLandscape: false,
-    });
+    await configurePageForStealth(page);
 
     // Add random delays to mimic human behavior
     const randomDelay = (min, max) => new Promise((resolve) => { setTimeout(resolve, Math.random() * (max - min) + min); });

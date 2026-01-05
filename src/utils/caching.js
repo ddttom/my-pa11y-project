@@ -9,13 +9,20 @@ import puppeteer from 'puppeteer';
 import { calculateSeoScore } from './seoScoring.js';
 import { isValidUrl } from './urlUtils.js';
 
-const CACHE_DIR = path.join(process.cwd(), '.cache');
+/**
+ * Get cache directory from global options
+ * Cache is now stored in {outputDir}/.cache for consolidated structure
+ */
+function getCacheDir() {
+  return global.auditcore.options.cacheDir || path.join(process.cwd(), '.cache');
+}
 
 function generateCacheKey(url) {
   return crypto.createHash('md5').update(url).digest('hex');
 }
 
 async function ensureCacheDir(options = {}) {
+  const CACHE_DIR = getCacheDir();
   try {
     if (options.forceDeleteCache) {
       global.auditcore.logger.debug(`Force delete cache option detected. Attempting to delete cache directory: ${CACHE_DIR}`);
@@ -37,7 +44,51 @@ async function ensureCacheDir(options = {}) {
   }
 }
 
+/**
+ * Check if cache is stale by comparing source Last-Modified with cache timestamp
+ * @param {string} url - URL to check
+ * @param {string} cacheTimestamp - ISO timestamp when cache was created
+ * @returns {Promise<boolean>} True if cache is stale and should be invalidated
+ */
+async function isCacheStale(url, cacheTimestamp) {
+  try {
+    // Make HEAD request to get Last-Modified header without downloading content
+    const response = await axios.head(url, {
+      timeout: 5000,
+      validateStatus: (status) => status >= 200 && status < 500, // Accept any non-5xx response
+    });
+
+    const lastModified = response.headers['last-modified'];
+    if (!lastModified) {
+      // No Last-Modified header - can't determine staleness, assume fresh
+      global.auditcore.logger.debug(`No Last-Modified header for ${url}, assuming cache is fresh`);
+      return false;
+    }
+
+    const sourceModifiedDate = new Date(lastModified);
+    const cacheDate = new Date(cacheTimestamp);
+
+    // Cache is stale if source was modified after cache was created
+    const isStale = sourceModifiedDate > cacheDate;
+
+    if (isStale) {
+      global.auditcore.logger.info(
+        `Cache stale for ${url}: source modified ${sourceModifiedDate.toISOString()}, cache created ${cacheDate.toISOString()}`,
+      );
+    } else {
+      global.auditcore.logger.debug(`Cache fresh for ${url}`);
+    }
+
+    return isStale;
+  } catch (error) {
+    // If HEAD request fails, assume cache is fresh to avoid unnecessary re-fetches
+    global.auditcore.logger.debug(`HEAD request failed for ${url}: ${error.message}, assuming cache is fresh`);
+    return false;
+  }
+}
+
 async function getCachedData(url) {
+  const CACHE_DIR = getCacheDir();
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
   global.auditcore.logger.debug(`Attempting to read cache from: ${cachePath}`);
@@ -59,6 +110,17 @@ async function getCachedData(url) {
       }
     }
 
+    // Check if cache is stale by comparing with source Last-Modified
+    if (parsedData.lastCrawled) {
+      const isStale = await isCacheStale(url, parsedData.lastCrawled);
+      if (isStale) {
+        global.auditcore.logger.info(`Cache invalidated for ${url} - source has been modified`);
+        // Delete stale cache files
+        await invalidateCache(url);
+        return null;
+      }
+    }
+
     return parsedData;
   } catch (error) {
     if (error.code !== 'ENOENT') {
@@ -70,7 +132,35 @@ async function getCachedData(url) {
   }
 }
 
+/**
+ * Invalidate (delete) cache files for a given URL
+ * @param {string} url - URL to invalidate cache for
+ */
+async function invalidateCache(url) {
+  const CACHE_DIR = getCacheDir();
+  const cacheKey = generateCacheKey(url);
+
+  const filesToDelete = [
+    path.join(CACHE_DIR, `${cacheKey}.json`),
+    path.join(CACHE_DIR, 'served', `${cacheKey}.html`),
+    path.join(CACHE_DIR, 'rendered', `${cacheKey}.html`),
+    path.join(CACHE_DIR, 'rendered', `${cacheKey}.log`),
+  ];
+
+  for (const filePath of filesToDelete) {
+    try {
+      await fs.unlink(filePath);
+      global.auditcore.logger.debug(`Deleted stale cache file: ${filePath}`);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        global.auditcore.logger.debug(`Could not delete ${filePath}: ${error.message}`);
+      }
+    }
+  }
+}
+
 async function setCachedData(url, data) {
+  const CACHE_DIR = getCacheDir();
   const cacheKey = generateCacheKey(url);
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
   global.auditcore.logger.debug(`Attempting to write cache to: ${cachePath}`);
@@ -86,6 +176,8 @@ async function setCachedData(url, data) {
 }
 
 async function fetchDataWithoutPuppeteer(url) {
+  // Get cache directory once for all cache operations
+  const CACHE_DIR = getCacheDir();
   try {
     global.auditcore.logger.debug(`Fetching data without Puppeteer for ${url}`);
     const response = await axios.get(url);
@@ -183,6 +275,7 @@ async function fetchDataWithoutPuppeteer(url) {
     try {
       const cacheKey = generateCacheKey(url);
       const servedPath = path.join(CACHE_DIR, 'served', `${cacheKey}.html`);
+      await fs.mkdir(path.dirname(servedPath), { recursive: true });
       await fs.writeFile(servedPath, html, 'utf8');
       global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
     } catch (error) {
@@ -202,7 +295,7 @@ async function getOrRenderData(url, options = {}) {
   // If cache is false (from --no-cache), then noCache should be true
   const noCache = options.noCache || !cache;
 
-  global.auditcore.logger.debug(`getOrRenderData called for ${url} with options: ${JSON.stringify(options)}`);
+  global.auditcore.logger.debug(`getOrRenderData called for ${url}`);
 
   if (!noCache) {
     const cachedData = await getCachedData(url);
@@ -239,6 +332,8 @@ async function getOrRenderData(url, options = {}) {
 
 async function renderAndCacheData(url) {
   global.auditcore.logger.debug(`Rendering and caching data for ${url}`);
+  // Get cache directory once for all cache operations
+  const CACHE_DIR = getCacheDir();
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -611,8 +706,8 @@ async function renderAndCacheData(url) {
       };
     });
 
-    // Take screenshot of the viewport
-    const screenshotDir = path.join(process.cwd(), 'ss');
+    // Take screenshot of the viewport - consolidated in output directory
+    const screenshotDir = path.join(CACHE_DIR, 'screenshots');
     try {
       await fs.access(screenshotDir);
       global.auditcore.logger.debug(`Screenshot directory already exists: ${screenshotDir}`);
@@ -627,7 +722,8 @@ async function renderAndCacheData(url) {
     }
 
     const screenshotFilename = `${url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_ipad.png`;
-    await page.screenshot({ path: `./ss/${screenshotFilename}`, fullPage: false });
+    const screenshotPath = path.join(screenshotDir, screenshotFilename);
+    await page.screenshot({ path: screenshotPath, fullPage: false });
 
     await browser.close();
 
@@ -655,6 +751,7 @@ async function renderAndCacheData(url) {
     try {
       const cacheKey = generateCacheKey(url);
       const renderedPath = path.join(CACHE_DIR, 'rendered', `${cacheKey}.html`);
+      await fs.mkdir(path.dirname(renderedPath), { recursive: true });
       await fs.writeFile(renderedPath, html, 'utf8');
       global.auditcore.logger.debug(`Rendered HTML saved to: ${renderedPath}`);
     } catch (error) {
@@ -665,6 +762,7 @@ async function renderAndCacheData(url) {
     try {
       const cacheKey = generateCacheKey(url);
       const servedPath = path.join(CACHE_DIR, 'served', `${cacheKey}.html`);
+      await fs.mkdir(path.dirname(servedPath), { recursive: true });
       await fs.writeFile(servedPath, servedHtml, 'utf8');
       global.auditcore.logger.debug(`Served HTML saved to: ${servedPath}`);
     } catch (error) {
@@ -675,6 +773,7 @@ async function renderAndCacheData(url) {
     try {
       const cacheKey = generateCacheKey(url);
       const consoleLogPath = path.join(CACHE_DIR, 'rendered', `${cacheKey}.log`);
+      await fs.mkdir(path.dirname(consoleLogPath), { recursive: true });
       const logContent = consoleMessages.length > 0
         ? consoleMessages.join('\n')
         : '// No console output captured';

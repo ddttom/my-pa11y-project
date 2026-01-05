@@ -6,10 +6,12 @@
 
 import { getOrRenderData, setCachedData } from './caching.js';
 import { processUrl } from './pageAnalyzer.js';
-import { updateUrlMetrics, updateResponseCodeMetrics } from './metricsUpdater.js';
+import { updateUrlMetrics, updateResponseCodeMetrics, updateExternalResourcesMetrics } from './metricsUpdater.js';
 import analyzePerformance from './performanceAnalyzer.js';
 import { calculateSeoScore } from './seoScoring.js';
 import { writeToInvalidUrlFile } from './urlUtils.js';
+import { checkRobotsCompliance } from './robotsCompliance.js';
+import { createRateLimiter } from './rateLimiter.js';
 
 const DEFAULT_CONFIG = {
   maxRetries: 3,
@@ -36,6 +38,11 @@ export class UrlProcessor {
       pa11y: [],
       failedUrls: [],
     };
+    // Initialize adaptive rate limiter if enabled
+    this.rateLimiter = createRateLimiter(options);
+    if (this.rateLimiter) {
+      global.auditcore.logger.info('✅ Adaptive rate limiting enabled');
+    }
   }
 
   /**
@@ -49,13 +56,55 @@ export class UrlProcessor {
   async processUrl(testUrl, lastmod, index, totalTests) {
     // Log the initial state and input parameters
     global.auditcore.logger.info(`Initiating processing for URL at index ${index + 1} of ${totalTests}: ${testUrl}`);
-    global.auditcore.logger.debug(`Last modified date: ${lastmod}, Configuration: ${JSON.stringify(this.options)}`);
+    global.auditcore.logger.debug(`Last modified date: ${lastmod}`);
 
     // Early validation check
     if (!testUrl) {
       global.auditcore.logger.error(`Undefined or invalid URL provided at index ${index + 1}`);
       this.results.failedUrls.push({ url: 'undefined', error: 'Invalid or undefined URL' });
       return;
+    }
+
+    // Check robots.txt compliance BEFORE processing
+    if (global.auditcore.robotsTxtData || !global.auditcore.forceScrape) {
+      const complianceResult = await checkRobotsCompliance(
+        global.auditcore.robotsTxtData,
+        testUrl,
+        global.auditcore.forceScrape,
+        global.auditcore.isFirstBlockedUrl,
+      );
+
+      // Update force-scrape state if user enabled it
+      if (complianceResult.updatedForceScrape && !global.auditcore.forceScrape) {
+        global.auditcore.forceScrape = true;
+        global.auditcore.logger.warn('⚠️  Force-scrape mode ENABLED by user - all subsequent robots.txt checks will be bypassed');
+      }
+
+      // Mark that we've checked at least one URL (no longer the first)
+      if (global.auditcore.isFirstBlockedUrl && !complianceResult.allowed) {
+        global.auditcore.isFirstBlockedUrl = false;
+      }
+
+      // Handle quit signal
+      if (complianceResult.quit) {
+        global.auditcore.logger.error('Analysis aborted by user due to robots.txt restrictions');
+        throw new Error('USER_QUIT_ROBOTS_TXT');
+      }
+
+      // Skip this URL if not allowed and user declined override
+      if (!complianceResult.allowed) {
+        global.auditcore.logger.info(`Skipping ${testUrl} due to robots.txt restrictions`);
+        this.results.failedUrls.push({
+          url: testUrl,
+          error: 'Blocked by robots.txt (user declined override)',
+        });
+        return;
+      }
+
+      // Log if URL was allowed
+      if (complianceResult.reason) {
+        global.auditcore.logger.debug(`robots.txt check: ${complianceResult.reason}`);
+      }
     }
 
     for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
@@ -74,6 +123,16 @@ export class UrlProcessor {
         global.auditcore.logger.debug(`Data retrieved for ${testUrl}. Status code: ${statusCode}`);
         updateUrlMetrics(testUrl, this.options.baseUrl, html, statusCode, this.results, global.auditcore.logger);
         updateResponseCodeMetrics(statusCode, this.results, global.auditcore.logger);
+        updateExternalResourcesMetrics(pageData, this.results, testUrl);
+
+        // Handle rate limiting with adaptive rate limiter
+        if (this.rateLimiter) {
+          const shouldContinue = this.rateLimiter.onResponse(statusCode);
+          if (!shouldContinue) {
+            global.auditcore.logger.warn(`Rate limit threshold exceeded for ${testUrl}, applying backoff`);
+            await this.rateLimiter.applyBackoff();
+          }
+        }
 
         if (statusCode === 200) {
           global.auditcore.logger.info(`Successfully received 200 status for ${testUrl}`);
@@ -259,13 +318,76 @@ export class UrlProcessor {
       return [];
     }
 
-    global.auditcore.logger.info(`Processing ${urls.length} URLs`);
+    global.auditcore.logger.info(`Processing ${urls.length} URLs sequentially`);
     const totalTests = urls.length;
 
     for (let i = 0; i < totalTests; i++) {
       const { url, lastmod } = urls[i];
       console.info(`Starting processing of URL ${i + 1} of ${totalTests}: ${url}`);
       await this.processUrl(url, lastmod, i, totalTests);
+    }
+
+    return this.results;
+  }
+
+  /**
+   * Processes an array of URLs concurrently with configurable concurrency.
+   * @param {Array} urls - The URLs to process.
+   * @param {number} concurrency - Maximum number of concurrent operations (default: 3).
+   * @returns {Promise<Object>} The results of processing all URLs.
+   */
+  async processUrlsConcurrently(urls, concurrency = 3) {
+    if (!Array.isArray(urls) || urls.length === 0) {
+      global.auditcore.logger.warn('No URLs to process');
+      return [];
+    }
+
+    global.auditcore.logger.info(`Processing ${urls.length} URLs with concurrency ${concurrency}`);
+    const totalTests = urls.length;
+    const progressTracker = { completed: 0, quit: false }; // Use object to avoid no-loop-func issue
+
+    // Process URLs in batches based on concurrency
+    for (let i = 0; i < urls.length; i += concurrency) {
+      // Check if user requested quit
+      if (progressTracker.quit) {
+        global.auditcore.logger.warn('Processing terminated by user');
+        break;
+      }
+
+      // Use dynamic concurrency from rate limiter if enabled
+      const currentConcurrency = this.rateLimiter
+        ? this.rateLimiter.getConcurrency()
+        : concurrency;
+
+      const batch = urls.slice(i, i + currentConcurrency);
+      const startIndex = i;
+
+      const batchPromises = batch.map(async ({ url, lastmod }, batchIndex) => {
+        const globalIndex = startIndex + batchIndex;
+        try {
+          console.info(`Starting processing of URL ${globalIndex + 1} of ${totalTests}: ${url}`);
+          await this.processUrl(url, lastmod, globalIndex, totalTests);
+          progressTracker.completed++;
+          global.auditcore.logger.info(`Progress: ${progressTracker.completed}/${totalTests} URLs completed`);
+        } catch (error) {
+          // Handle user quit signal
+          if (error.message === 'USER_QUIT_ROBOTS_TXT') {
+            progressTracker.quit = true;
+            global.auditcore.logger.warn('User chose to quit due to robots.txt restrictions');
+            return; // Exit this URL processing
+          }
+          global.auditcore.logger.error(`Error processing URL ${url}:`, error);
+          progressTracker.completed++;
+        }
+      });
+
+      // Wait for current batch to complete before starting next batch
+      await Promise.allSettled(batchPromises);
+    }
+
+    // Log rate limiter statistics if enabled
+    if (this.rateLimiter) {
+      this.rateLimiter.logStats();
     }
 
     return this.results;
@@ -279,8 +401,9 @@ export class UrlProcessor {
    */
   async processUrls(urls, recursive = false) {
     if (!recursive) {
-      // Original behavior: process only initial URLs
-      return this.processUrlsSequentially(urls);
+      // Use concurrent processing for better performance
+      const concurrency = this.options.urlConcurrency || 3;
+      return this.processUrlsConcurrently(urls, concurrency);
     }
 
     // Recursive mode: queue-based processing
@@ -302,8 +425,9 @@ export class UrlProcessor {
     }
 
     let index = 0;
+    let userQuit = false;
 
-    while (urlQueue.length > 0) {
+    while (urlQueue.length > 0 && !userQuit) {
       // Check if we've reached the absolute limit (if set)
       if (this.options.limit > 0 && processedUrls.size >= this.options.limit) {
         global.auditcore.logger.info(`Reached configured limit of ${this.options.limit} URLs. Stopping recursive crawl.`);
@@ -325,8 +449,19 @@ export class UrlProcessor {
       console.info(`Processing URL ${totalProcessed} (${totalQueued} in queue): ${url}`);
 
       // Process this URL
-      await this.processUrl(url, lastmod, index, totalProcessed);
-      index++;
+      try {
+        await this.processUrl(url, lastmod, index, totalProcessed);
+        index++;
+      } catch (error) {
+        // Handle user quit signal
+        if (error.message === 'USER_QUIT_ROBOTS_TXT') {
+          global.auditcore.logger.warn('User chose to quit due to robots.txt restrictions');
+          userQuit = true;
+          break;
+        }
+        // Other errors are already logged by processUrl
+        index++;
+      }
 
       // Extract newly discovered URLs from this page's internal links
       const discoveredUrls = this.extractDiscoveredUrls(url, baseUrl, processedUrls);

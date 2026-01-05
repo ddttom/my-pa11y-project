@@ -1,6 +1,6 @@
 # Are AI Agents Failing on Your Website? Here's How to Find Out
 
-**A comprehensive measurement tool for the invisible visitors reshaping web traffic**
+A comprehensive measurement tool for the invisible visitors reshaping web traffic.
 
 ---
 
@@ -127,7 +127,7 @@ This is what your page looks like after JavaScript runs - what browser-based age
 </form>
 ```
 
-**Web Audit Suite Score: 38/100 (Poor)**
+### Web Audit Suite Score: 38/100 (Poor)
 
 **Issues Identified:**
 
@@ -176,7 +176,7 @@ This is what your page looks like after JavaScript runs - what browser-based age
 </main>
 ```
 
-**Web Audit Suite Score: 92/100 (Excellent)**
+### Web Audit Suite Score: 92/100 (Excellent)
 
 **Improvements:**
 
@@ -337,9 +337,9 @@ Every report includes:
 
 **Example output row:**
 
-| URL | Served Score | Rendered Score | Essential Issues | Top Recommendation |
-|-----|--------------|----------------|------------------|--------------------|
-| /products/tent | 65 | 73 | 2 | Add Schema.org product data |
+| URL              | Served Score | Rendered Score | Essential Issues | Top Recommendation              |
+| ---------------- | ------------ | -------------- | ---------------- | ------------------------------- |
+| /products/tent   | 65           | 73             | 2                | Add Schema.org product data     |
 
 **Translation:** Works okay for agents (65/100) but missing structured data hurts discoverability. Fix: Add 10 lines of JSON-LD. Expected impact: +15 points, better agent recommendations.
 
@@ -373,7 +373,7 @@ npm start -- -s https://yoursite.com/sitemap.xml -o full-audit
 
 All reports are saved in the output directory (default: `results/`):
 
-```
+```text
 results/
 ├── seo_report.csv
 ├── performance_analysis.csv
@@ -567,7 +567,7 @@ Perfect complement:
 - Which issues to fix first
 - How to track improvement
 
-**Together = Complete Solution**
+### Together = Complete Solution
 
 - Learn the methodology from the book
 - Measure your site with the tool

@@ -28,8 +28,8 @@ security, and critically - AI agent compatibility.
 - AI agent compatibility scoring based on proven methodology
 - Distinguishes served HTML (all agents) from rendered HTML (browser agents)
 - Prioritizes essential fixes over speculative improvements
-- Generates 11 detailed reports including 3 LLM suitability reports
-- Built on open-source foundation with proprietary scoring algorithms
+- Generates 13 detailed reports including 3 LLM suitability reports
+- Proprietary commercial software with comprehensive licensing options
 
 **Market Opportunity:**
 
@@ -228,53 +228,52 @@ Based on "The Invisible Users" methodology by Tom Cranstoun:
 
 **Result:** Clear prioritization of what to fix first
 
-### Output: 11 Actionable Reports
+### Output: 13 Actionable Reports
 
 **Format:** CSV (machine-readable) + Markdown (human-readable)
 
-1. `seo_report.csv` - Page-level SEO analysis
-2. `performance_analysis.csv` - Core Web Vitals
-3. `seo_scores.csv` - Detailed scoring breakdown
-4. `accessibility_report.csv` - WCAG compliance data
-5. `wcag_report.md` - Human-readable accessibility report
-6. `image_optimization.csv` - Image analysis
-7. `link_analysis.csv` - Link structure quality
-8. `content_quality.csv` - Content analysis
-9. `security_report.csv` - Security headers
-10. **`llm_general_suitability.csv`** - Overall AI compatibility
-11. **`llm_frontend_suitability.csv`** - Frontend patterns
-12. **`llm_backend_suitability.csv`** - Backend patterns
+1. **`executive_summary.md`** - High-level stakeholder report with headline score and cache staleness status
+2. **`executive_summary.json`** - Machine-readable executive summary
+3. `seo_report.csv` - Page-level SEO analysis
+4. `performance_analysis.csv` - Core Web Vitals
+5. `seo_scores.csv` - Detailed scoring breakdown
+6. `accessibility_report.csv` - WCAG compliance data
+7. `wcag_report.md` - Human-readable accessibility report
+8. `image_optimization.csv` - Image analysis
+9. `link_analysis.csv` - Link structure quality
+10. `content_quality.csv` - Content analysis
+11. `security_report.csv` - Security headers
+12. **`llm_general_suitability.csv`** - Overall AI compatibility
+13. **`llm_frontend_suitability.csv`** - Frontend patterns
+14. **`llm_backend_suitability.csv`** - Backend patterns
 
 Plus: `results.json` (single source of truth), sitemaps, comprehensive logs
 
-### Latest Features (December 2025)
+**Executive Summary Features:**
 
-#### 1. llms.txt Detection
+- Overall site health score (Performance + Accessibility + SEO + LLM)
+- robots.txt compliance status
+- Cache staleness capability reporting (indicates if site provides HTTP Last-Modified headers)
+- Key findings with severity prioritization (Critical/Medium/Low)
+- Actionable recommendations ranked by impact
 
-The tool now detects and validates llms.txt files - a new standard for AI agent guidance similar to robots.txt. This feature:
+### Production-Ready Features
 
-- Detects llms.txt references via `<link>` tags, `<a>` tags, and `<meta>` tags
-- Worth 10 points in served score (ESSENTIAL_SERVED category)
-- Critical for ALL agent types (CLI and browser-based)
-- Provides recommendations when missing
-- Learn more: <https://llmstxt.org/>
+The tool includes enterprise-grade capabilities for comprehensive website analysis:
 
-#### 2. data-agent-visible Attribute
+**Complete Coverage**: Automatically analyzes homepages and checks for AI agent guidance files (llms.txt) without manual configuration, ensuring no critical pages are missed even when limiting analysis scope.
 
-Tracks explicit agent visibility control, allowing developers to:
+**AI Agent Standards**: Detects emerging AI compatibility standards including llms.txt files and explicit agent visibility controls, positioning businesses ahead of the market curve.
 
-- Mark content as visible or hidden to AI agents
-- Track usage patterns across sites
-- Get recommendations for implementation
-- ESSENTIAL_RENDERED category (browser agents)
-- Helps developers control what agents see vs decorative elements
+**Enterprise Performance**: Analyzes 100-page sites in approximately 10 minutes through intelligent resource pooling, concurrent processing, and adaptive rate limiting - 75-85% faster than traditional sequential analysis with automatic server-friendly throttling.
 
-#### 3. Markdown Linting Integration
+**Intelligent Caching**: Automatic cache staleness detection using HTTP HEAD requests validates cached data freshness by comparing source Last-Modified headers with cache timestamps, ensuring analysis always uses current data without manual cache management.
 
-- Added comprehensive markdown linting configuration
-- Ensures documentation quality and consistency
-- Auto-fix capability for common issues
-- Line length limits and formatting standards
+**Quality Gates**: Built-in regression detection with baseline establishment, severity classification, and CI/CD-ready exit codes automatically prevents quality degradation in production deployments.
+
+**Pattern Learning**: Extracts successful implementation patterns from high-scoring pages across 6 categories (structured data, semantic HTML, forms, error handling, state management, llms.txt), providing real-world examples for rapid implementation.
+
+**Proven Methodology**: Based on "The Invisible Users" book, with scoring algorithms that prioritize essential fixes over speculative improvements, giving teams clear implementation roadmaps.
 
 ---
 
@@ -331,19 +330,25 @@ Tracks explicit agent visibility control, allowing developers to:
 
 ✅ **Comprehensive Analysis**
 
-- 11 detailed report generators
+- 13 detailed report generators
 - 3 LLM suitability reports
+- Executive summary with headline score
 - Puppeteer-based rendering
 - Pa11y accessibility integration
 - Cloudflare bypass capability
 
 ✅ **Production-Ready Features**
 
-- Caching system for performance
+- Intelligent caching with automatic staleness detection
+- Browser pooling and concurrent processing (75-85% faster)
 - Resume capability from results.json
 - Language variant filtering
 - Graceful shutdown handling
 - Comprehensive logging
+- Regression detection with baseline establishment
+- Pattern extraction from high-scoring pages
+- CI/CD integration with GitHub Actions template
+- Historical tracking and trend analysis
 
 ✅ **Complete Documentation**
 
@@ -509,7 +514,7 @@ Book (Methodology) + Tool (Measurement) = Complete Solution
 ✅ **Prioritizes essential vs speculative patterns**
 ✅ **Based on published, peer-reviewed methodology**
 ✅ **Combines traditional metrics + AI compatibility**
-✅ **11 reports in one analysis run**
+✅ **13 reports in one analysis run**
 ✅ **Open architecture for extensions**
 
 ### Market Timing
@@ -575,17 +580,29 @@ Book (Methodology) + Tool (Measurement) = Complete Solution
 
 **Performance Optimization:**
 
-- MD5-based caching system
-- Puppeteer browser reuse
-- Incremental processing
-- Resume from interruption
+- Browser pooling (3 concurrent browsers) with automatic restart
+- Concurrent URL processing (3x parallelization)
+- Adaptive rate limiting with dynamic throttling and exponential backoff
+- MD5-based caching with staleness detection via HTTP HEAD
+- Cache invalidation based on source Last-Modified headers
+- Incremental processing and resume capability
+- 75-85% faster than sequential analysis
 
 **Scalability:**
 
 - Handles sites with 1000+ pages
-- Configurable concurrency
-- Memory-efficient processing
+- Configurable concurrency and browser pool size
+- Memory-efficient processing with automatic browser restarts
 - Batch mode support
+- CI/CD-ready with regression detection
+
+**Quality Assurance:**
+
+- Baseline establishment for regression detection
+- Severity classification (Critical >30%, Warning >15%)
+- Pattern extraction from high-scoring pages
+- Automated quality gates with exit codes
+- Historical tracking and trend analysis
 
 **Extensibility:**
 
@@ -805,7 +822,7 @@ analysis regardless.
 **Risk:** Large platforms (Google, Microsoft) release free tools
 
 **Mitigation:** We can pivot to enterprise/agency market with white-label. Our
-tool is more comprehensive (11 reports). We have implementation methodology
+tool is more comprehensive (13 reports). We have implementation methodology
 from book.
 
 **Risk:** Market adopts competing standard for AI agent compatibility
@@ -840,11 +857,12 @@ site monitoring.
 
 **Technology Assets:**
 
-- Production-ready tool with substantial development investment
-- Private repository with complete source code
-- Comprehensive documentation
+- Production-ready proprietary tool with substantial development investment
+- Private repository with complete source code under commercial license
+- Comprehensive documentation and implementation guides
 - Proven methodology from published book
-- 11 specialized report generators
+- 13 specialized report generators including executive summary
+- Licensed for evaluation, commercial, partnership, and agency deployment
 
 **Market Position:**
 
@@ -972,7 +990,7 @@ site monitoring.
 ✅ Comprehensive documentation
 ✅ Testing on real production sites
 ✅ Understanding of both human and agent requirements
-✅ 11 specialized reports
+✅ 13 specialized reports including executive summary
 ✅ Served vs rendered HTML distinction
 ✅ Clear implementation roadmap
 
@@ -1052,7 +1070,7 @@ Progressive customer acquisition through multiple channels:
 Email: <tom@allabout.network>
 Web: [allabout.network](https://allabout.network)
 Book: "The Invisible Users: Designing the Web for AI Agents and Everyone Else"
-Tool: Web Audit Suite (Private repository - access upon partnership)
+Tool: Web Audit Suite (Proprietary commercial software - licensed access upon partnership)
 
 ---
 
@@ -1101,7 +1119,7 @@ get slightly better experience. Top priority: Add Schema.org structured data.
 | **WCAG Compliance**            | ✅              | ❌          | ✅            | ❌          |
 | **Performance Metrics**        | ✅              | ❌          | ❌            | ✅          |
 | **Security Headers**           | ✅              | ❌          | ❌            | ❌          |
-| **Comprehensive Reports**      | 11 reports      | 3-5 reports | 2-3 reports   | 2-3 reports |
+| **Comprehensive Reports**      | 13 reports      | 3-5 reports | 2-3 reports   | 2-3 reports |
 | **Prioritization Framework**   | ✅              | ❌          | ❌            | ❌          |
 
 ### Appendix D: Case Study - E-commerce Site

@@ -116,12 +116,12 @@ async function setupPerformanceObservers(page) {
       }
 
       resolve({
-        largestContentfulPaint: metrics.largestContentfulPaint,
-        cumulativeLayoutShift: metrics.cumulativeLayoutShift,
-        totalBlockingTime: metrics.totalBlockingTime,
-        timeToInteractive: metrics.timeToInteractive,
-        firstPaint: metrics.firstPaint,
-        firstContentfulPaint: metrics.firstContentfulPaint,
+        largestContentfulPaint: metrics.largestContentfulPaint ?? 0,
+        cumulativeLayoutShift: metrics.cumulativeLayoutShift ?? 0,
+        totalBlockingTime: metrics.totalBlockingTime ?? 0,
+        timeToInteractive: metrics.timeToInteractive ?? 0,
+        firstPaint: metrics.firstPaint ?? 0,
+        firstContentfulPaint: metrics.firstContentfulPaint ?? 0,
       });
     }, stabilizationTime);
   }));

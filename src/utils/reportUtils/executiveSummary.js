@@ -1,5 +1,8 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import { calculateServedScore, calculateRenderedScore } from '../llmMetrics.js';
+import { detectTechnologies } from '../technologyDetection.js';
 
 /**
  * Generates an executive summary report with high-level insights
@@ -11,14 +14,14 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
   try {
     global.auditcore.logger.info('Generating executive summary report...');
 
-    const summary = buildExecutiveSummary(results, comparison);
+    const summary = await buildExecutiveSummary(results, comparison);
 
     // Generate both markdown and JSON formats
     const mdPath = path.join(outputDir, 'executive_summary.md');
     const jsonPath = path.join(outputDir, 'executive_summary.json');
 
-    await fs.writeFile(mdPath, generateMarkdownSummary(summary));
-    await fs.writeFile(jsonPath, JSON.stringify(summary, null, 2));
+    await fs.writeFile(mdPath, generateMarkdownSummary(summary, results));
+    await fs.writeFile(jsonPath, JSON.stringify(summary));
 
     global.auditcore.logger.info('Executive summary report generated successfully');
   } catch (error) {
@@ -30,16 +33,19 @@ export async function generateExecutiveSummary(results, outputDir, comparison = 
 /**
  * Builds the executive summary data structure
  */
-function buildExecutiveSummary(results, comparison) {
+async function buildExecutiveSummary(results, comparison) {
+  const technologies = detectTechnologies(results);
+
   const summary = {
     generatedAt: new Date().toISOString(),
     site: extractSiteName(results),
-    overview: buildOverview(results),
+    overview: await buildOverview(results),
     performance: buildPerformanceSummary(results, comparison?.performance),
     accessibility: buildAccessibilitySummary(results, comparison?.accessibility),
     seo: buildSeoSummary(results, comparison?.seo),
     content: buildContentSummary(results, comparison?.content),
     llmSuitability: buildLLMSummary(results, comparison?.llm),
+    technologies,
     keyFindings: buildKeyFindings(results),
     recommendations: buildRecommendations(results),
     comparison: comparison ? buildComparisonSummary(comparison) : null,
@@ -52,6 +58,17 @@ function buildExecutiveSummary(results, comparison) {
  * Extract site name from results
  */
 function extractSiteName(results) {
+  // Try to get from performanceAnalysis first (current structure)
+  if (results.performanceAnalysis && results.performanceAnalysis.length > 0) {
+    try {
+      const url = new URL(results.performanceAnalysis[0].url);
+      return url.hostname;
+    } catch {
+      // Fall through to next attempt
+    }
+  }
+
+  // Fallback to legacy urls array structure
   if (results.urls && results.urls.length > 0) {
     try {
       const url = new URL(results.urls[0].url);
@@ -60,17 +77,92 @@ function extractSiteName(results) {
       return 'Unknown Site';
     }
   }
+
   return 'Unknown Site';
+}
+
+/**
+ * Generate cache key from URL (matches caching.js implementation)
+ */
+function generateCacheKey(url) {
+  return crypto.createHash('md5').update(url).digest('hex');
+}
+
+/**
+ * Check if site provides date information for cache staleness
+ */
+async function checkCacheStalenessCapability(results) {
+  try {
+    const outputDir = global.auditcore?.options?.outputDir || 'results';
+    const cacheDir = path.join(outputDir, '.cache');
+
+    // Get first URL to check
+    const performanceData = results.performanceAnalysis || results.urls || [];
+    if (performanceData.length === 0) {
+      return {
+        capable: false,
+        reason: 'No URLs analyzed',
+      };
+    }
+
+    const firstUrl = performanceData[0].url;
+    const cacheKey = generateCacheKey(firstUrl);
+    const cachePath = path.join(cacheDir, `${cacheKey}.json`);
+
+    // Try to read cache file
+    const cacheData = await fs.readFile(cachePath, 'utf8');
+    const cache = JSON.parse(cacheData);
+
+    // Check for Last-Modified header
+    if (cache.headers && cache.headers['last-modified']) {
+      return {
+        capable: true,
+        method: 'HTTP Last-Modified header',
+      };
+    }
+
+    // Note: JSON-LD date fields would require parsing HTML, which is expensive
+    // For now, we only check HTTP headers since that's what the cache staleness feature uses
+
+    return {
+      capable: false,
+      reason: 'No Last-Modified header found in HTTP response',
+    };
+  } catch (error) {
+    // If we can't read cache, assume unknown
+    return {
+      capable: null,
+      reason: 'Unable to determine (cache not available)',
+    };
+  }
 }
 
 /**
  * Build overview section
  */
-function buildOverview(results) {
+async function buildOverview(results) {
+  // Count total pages from performanceAnalysis (current structure) or legacy urls array
+  const totalPages = (results.performanceAnalysis || results.urls || []).length;
+
+  // Check if site provides date information for cache staleness checking
+  const cacheCapability = await checkCacheStalenessCapability(results);
+
+  let cacheStalenessNote;
+  if (cacheCapability.capable === true) {
+    cacheStalenessNote = `✅ Site provides ${cacheCapability.method} - cache staleness checking will work`;
+  } else if (cacheCapability.capable === false) {
+    cacheStalenessNote = `⚠️ ${cacheCapability.reason} - cache staleness checking will not work`;
+  } else {
+    cacheStalenessNote = `ℹ️ ${cacheCapability.reason}`;
+  }
+
   return {
-    totalPages: (results.urls || []).length,
+    totalPages,
     analysisDate: new Date().toISOString().split('T')[0],
     schemaVersion: results.schemaVersion || '1.0.0',
+    robotsComplianceEnabled: !global.auditcore?.options?.forceScrape,
+    cacheStalenessNote,
+    cacheStalenessCapable: cacheCapability.capable,
   };
 }
 
@@ -89,20 +181,41 @@ function buildPerformanceSummary(results, comparisonData) {
   const avgFCP = average(metrics.map((m) => m.firstContentfulPaint || 0));
   const avgCLS = average(metrics.map((m) => m.cumulativeLayoutShift || 0));
 
-  // Score based on thresholds
+  // Check which metrics are actually collected (non-zero values indicate real data)
+  const hasLCP = metrics.some((m) => m.largestContentfulPaint && m.largestContentfulPaint > 0);
+  const hasCLS = metrics.some((m) => m.cumulativeLayoutShift !== undefined && m.cumulativeLayoutShift !== null);
+
+  // Score based on thresholds - only score metrics that are actually collected
   let score = 0;
+  let maxPossibleScore = 0;
+
+  // Load time (always collected)
+  maxPossibleScore += 25;
   if (avgLoadTime < 1000) score += 25;
   else if (avgLoadTime < 2000) score += 20;
   else if (avgLoadTime < 3000) score += 15;
 
-  if (avgLCP < 2500) score += 25;
-  else if (avgLCP < 4000) score += 15;
+  // LCP (only score if collected)
+  if (hasLCP) {
+    maxPossibleScore += 25;
+    if (avgLCP < 2500) score += 25;
+    else if (avgLCP < 4000) score += 15;
+  }
 
+  // FCP (always collected)
+  maxPossibleScore += 25;
   if (avgFCP < 1800) score += 25;
   else if (avgFCP < 3000) score += 15;
 
-  if (avgCLS < 0.1) score += 25;
-  else if (avgCLS < 0.25) score += 15;
+  // CLS (only score if collected)
+  if (hasCLS) {
+    maxPossibleScore += 25;
+    if (avgCLS < 0.1) score += 25;
+    else if (avgCLS < 0.25) score += 15;
+  }
+
+  // Normalize score to 0-100 based on metrics actually collected
+  score = Math.round((score / maxPossibleScore) * 100);
 
   const status = score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : score >= 25 ? 'Fair' : 'Needs Improvement';
 
@@ -186,7 +299,7 @@ function buildSeoSummary(results, comparisonData) {
     return { status: 'No data', score: 0 };
   }
 
-  const avgScore = average(metrics.map((m) => m.totalScore || 0));
+  const avgScore = average(metrics.map((m) => m.score || 0));
   const status = avgScore >= 90 ? 'Excellent' : avgScore >= 80 ? 'Very Good' : avgScore >= 70 ? 'Good' : avgScore >= 60 ? 'Fair' : 'Needs Improvement';
 
   const summary = {
@@ -216,7 +329,8 @@ function buildContentSummary(results, comparisonData) {
   }
 
   const avgWordCount = average(metrics.map((m) => m.wordCount || 0));
-  const avgHeadings = average(metrics.map((m) => m.headingCount || 0));
+  // Calculate total heading count from h1Count, h2Count, h3Count
+  const avgHeadings = average(metrics.map((m) => (m.h1Count || 0) + (m.h2Count || 0) + (m.h3Count || 0)));
   const pagesWithLowContent = metrics.filter((m) => (m.wordCount || 0) < 300).length;
 
   const summary = {
@@ -245,16 +359,30 @@ function buildLLMSummary(results, comparisonData) {
     return { status: 'No data', servedScore: 0, renderedScore: 0 };
   }
 
-  const avgServedScore = average(metrics.map((m) => m.servedScore || 0));
-  const avgRenderedScore = average(metrics.map((m) => m.renderedScore || 0));
+  // Calculate scores on-the-fly from metrics (they're not stored in results.json)
+  const servedScores = metrics.map((m) => calculateServedScore(m));
+  const renderedScores = metrics.map((m) => calculateRenderedScore(m));
+
+  const avgServedScore = average(servedScores);
+  const avgRenderedScore = average(renderedScores);
 
   const status = avgServedScore >= 70 ? 'Good' : avgServedScore >= 50 ? 'Fair' : 'Needs Improvement';
+
+  // Check if llms.txt file exists globally
+  const llmsAnalysisExists = (results.llmsTxtAnalysis || []).some((a) => a.exists);
+
+  // Count pages with explicit llms.txt references OR the actual llms.txt file
+  const pagesWithExplicitRefs = metrics.filter((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta).length;
+  const hasLlmsTxtFile = metrics.some((m) => m.url.endsWith('/llms.txt'));
 
   const summary = {
     status,
     servedScore: Math.round(avgServedScore),
     renderedScore: Math.round(avgRenderedScore),
-    pagesWithLLMsTxt: metrics.filter((m) => m.hasLlmsTxt).length,
+    // Count explicit references + file (if analyzed)
+    pagesWithLLMsTxt: pagesWithExplicitRefs + (hasLlmsTxtFile ? 1 : 0),
+    // Add flag to indicate if file exists globally (even if not in metrics)
+    hasLLMsTxtFile: llmsAnalysisExists || hasLlmsTxtFile,
   };
 
   if (comparisonData) {
@@ -305,7 +433,7 @@ function buildKeyFindings(results) {
   // SEO findings
   const seoMetrics = results.seoScores || [];
   if (seoMetrics.length > 0) {
-    const avgScore = average(seoMetrics.map((m) => m.totalScore || 0));
+    const avgScore = average(seoMetrics.map((m) => m.score || 0));
     if (avgScore < 70) {
       findings.push({
         category: 'SEO',
@@ -326,15 +454,65 @@ function buildKeyFindings(results) {
     });
   }
 
-  // LLM findings
+  // LLM findings - check if llms.txt exists
+  // First check if there's a dedicated llms.txt file analysis
+  const llmsAnalysisExists = (results.llmsTxtAnalysis || []).some((a) => a.exists);
+
+  // If no dedicated llms.txt, check if pages reference it
   const llmMetrics = results.llmMetrics || [];
-  const pagesWithoutLLMsTxt = llmMetrics.filter((m) => !m.hasLlmsTxt).length;
-  if (pagesWithoutLLMsTxt === llmMetrics.length && llmMetrics.length > 0) {
+  const hasLLMsTxtReference = llmMetrics.some((m) => m.llmsTxt?.metrics?.hasLLMsTxtReference || m.llmsTxt?.metrics?.hasLLMsTxtMeta || m.url.endsWith('/llms.txt'));
+
+  // Only report missing if neither the file nor references exist
+  if (!llmsAnalysisExists && !hasLLMsTxtReference && llmMetrics.length > 0) {
     findings.push({
       category: 'LLM Suitability',
       severity: 'Low',
       finding: 'No llms.txt file detected - consider adding for better AI agent compatibility',
     });
+  }
+
+  // robots.txt quality findings
+  const robotsAnalysis = results.robotsTxtAnalysis || [];
+  if (robotsAnalysis.length > 0) {
+    const robotsData = robotsAnalysis[0];
+    if (robotsData.exists && robotsData.analysis) {
+      const { score, quality } = robotsData.analysis;
+      if (score < 60) {
+        findings.push({
+          category: 'AI Compatibility',
+          severity: score < 40 ? 'Medium' : 'Low',
+          finding: `robots.txt quality is ${quality} (${score}/100) - needs improvement for AI agent compatibility`,
+        });
+      }
+    } else if (!robotsData.exists) {
+      findings.push({
+        category: 'AI Compatibility',
+        severity: 'Low',
+        finding: 'robots.txt file not found - recommended for guiding AI agent access',
+      });
+    }
+  }
+
+  // llms.txt quality findings
+  const llmsAnalysis = results.llmsTxtAnalysis || [];
+  if (llmsAnalysis.length > 0) {
+    const llmsData = llmsAnalysis[0];
+    if (llmsData.exists && llmsData.analysis) {
+      const { score, quality } = llmsData.analysis;
+      if (score < 70) {
+        findings.push({
+          category: 'AI Compatibility',
+          severity: score < 50 ? 'Medium' : 'Low',
+          finding: `llms.txt quality is ${quality} (${score}/100) - consider improving for better AI agent guidance`,
+        });
+      }
+    } else if (!llmsData.exists) {
+      findings.push({
+        category: 'AI Compatibility',
+        severity: 'Low',
+        finding: 'llms.txt file not found - recommended for comprehensive AI agent guidance (see llmstxt.org)',
+      });
+    }
   }
 
   return findings;
@@ -375,9 +553,9 @@ function buildRecommendations(results) {
     });
   }
 
-  // SEO recommendations
-  const seoMetrics = results.seoScores || [];
-  const pagesWithoutMeta = seoMetrics.filter((m) => !m.metaDescription || m.metaDescription.length === 0).length;
+  // SEO recommendations - check contentAnalysis for meta descriptions
+  const contentMetricsForSeo = results.contentAnalysis || [];
+  const pagesWithoutMeta = contentMetricsForSeo.filter((m) => !m.metaDescription || m.metaDescription.length === 0).length;
   if (pagesWithoutMeta > 0) {
     recommendations.push({
       category: 'SEO',
@@ -397,15 +575,66 @@ function buildRecommendations(results) {
     });
   }
 
-  // LLM recommendations
+  // LLM recommendations - calculate scores on-the-fly (not stored in results.json)
   const llmMetrics = results.llmMetrics || [];
-  const avgServedScore = average(llmMetrics.map((m) => m.servedScore || 0));
-  if (avgServedScore < 50) {
-    recommendations.push({
-      category: 'LLM Suitability',
-      priority: 'Low',
-      recommendation: 'Improve semantic HTML structure and add structured data for better AI agent compatibility',
-    });
+  if (llmMetrics.length > 0) {
+    const servedScores = llmMetrics.map((m) => calculateServedScore(m));
+    const avgServedScore = average(servedScores);
+    if (avgServedScore < 50) {
+      recommendations.push({
+        category: 'LLM Suitability',
+        priority: 'Low',
+        recommendation: 'Improve semantic HTML structure and add structured data for better AI agent compatibility',
+      });
+    }
+  }
+
+  // robots.txt recommendations
+  const robotsAnalysis = results.robotsTxtAnalysis || [];
+  if (robotsAnalysis.length > 0) {
+    const robotsData = robotsAnalysis[0];
+    if (robotsData.exists && robotsData.analysis) {
+      const { score, recommendations: robotsRecs } = robotsData.analysis;
+      if (score < 60 && robotsRecs && robotsRecs.length > 0) {
+        // Get top recommendation
+        const topRec = robotsRecs[0];
+        recommendations.push({
+          category: 'AI Compatibility',
+          priority: score < 40 ? 'Medium' : 'Low',
+          recommendation: `robots.txt: ${topRec}`,
+        });
+      }
+    } else if (!robotsData.exists) {
+      recommendations.push({
+        category: 'AI Compatibility',
+        priority: 'Low',
+        recommendation: 'Create a robots.txt file with AI-specific user agents (GPTBot, ClaudeBot) and sitemap references',
+      });
+    }
+  }
+
+  // llms.txt recommendations
+  const llmsAnalysis = results.llmsTxtAnalysis || [];
+  if (llmsAnalysis.length > 0) {
+    const llmsData = llmsAnalysis[0];
+    if (llmsData.exists && llmsData.analysis) {
+      const { score, recommendations: llmsRecs } = llmsData.analysis;
+      if (score < 70 && llmsRecs && llmsRecs.length > 0) {
+        // Get top recommendation
+        const topRec = llmsRecs[0];
+        recommendations.push({
+          category: 'AI Compatibility',
+          priority: score < 50 ? 'Medium' : 'Low',
+          recommendation: `llms.txt: ${topRec}`,
+        });
+      }
+    } else if (!llmsData.exists) {
+      recommendations.push({
+        category: 'AI Compatibility',
+        priority: 'Low',
+        recommendation: 'Create a comprehensive llms.txt file following llmstxt.org specification with access guidelines and content restrictions',
+      });
+    }
   }
 
   return recommendations;
@@ -455,18 +684,38 @@ function buildComparisonSummary(comparison) {
 /**
  * Generate markdown format of the summary
  */
-function generateMarkdownSummary(summary) {
+function generateMarkdownSummary(summary, results) {
   let md = '# Executive Summary\n\n';
   md += `**Site:** ${summary.site}\n`;
   md += `**Generated:** ${new Date(summary.generatedAt).toLocaleString()}\n`;
-  md += `**Pages Analyzed:** ${summary.overview.totalPages}\n\n`;
+  md += `**Pages Analyzed:** ${summary.overview.totalPages}\n`;
+
+  // Add robots.txt compliance status
+  const complianceIcon = summary.overview.robotsComplianceEnabled ? '✅' : '⚠️';
+  const complianceText = summary.overview.robotsComplianceEnabled
+    ? 'Enabled (respecting robots.txt directives)'
+    : 'Disabled (force-scrape mode active)';
+  md += `**robots.txt Compliance:** ${complianceIcon} ${complianceText}\n`;
+
+  // Add cache staleness note
+  if (summary.overview.cacheStalenessNote) {
+    md += `**Cache Staleness:** ${summary.overview.cacheStalenessNote}\n`;
+  }
+  md += '\n';
+
+  // Calculate headline score by averaging all category scores
+  const headlineScore = Math.round(
+    (summary.performance.score + summary.accessibility.score + summary.seo.score + summary.llmSuitability.servedScore) / 4,
+  );
+  const headlineStatus = headlineScore >= 80 ? 'Excellent' : headlineScore >= 70 ? 'Good' : headlineScore >= 60 ? 'Fair' : headlineScore >= 40 ? 'Needs Improvement' : 'Critical';
+  md += `## Overall Score: ${headlineScore}/100 (${headlineStatus})\n\n`;
 
   md += '---\n\n';
 
   // Overview
   md += '## Overall Status\n\n';
   md += '| Category | Status | Score |\n';
-  md += '|----------|--------|-------|\n';
+  md += '| -------- | ------ | ----- |\n';
   md += `| Performance | ${summary.performance.status} | ${summary.performance.score}/100 |\n`;
   md += `| Accessibility | ${summary.accessibility.status} | ${summary.accessibility.score}/100 |\n`;
   md += `| SEO | ${summary.seo.status} | ${summary.seo.score}/100 |\n`;
@@ -522,11 +771,100 @@ function generateMarkdownSummary(summary) {
   md += `- **Status:** ${summary.llmSuitability.status}\n`;
   md += `- **Served Score:** ${summary.llmSuitability.servedScore}/100\n`;
   md += `- **Rendered Score:** ${summary.llmSuitability.renderedScore}/100\n`;
-  md += `- **Pages with llms.txt:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
+
+  // Show llms.txt file status and page references
+  if (summary.llmSuitability.hasLLMsTxtFile) {
+    md += '- **llms.txt File:** ✅ Present\n';
+    if (summary.llmSuitability.pagesWithLLMsTxt > 0) {
+      md += `- **Pages Referencing llms.txt:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
+    }
+  } else {
+    md += '- **llms.txt File:** ❌ Not Found\n';
+    md += `- **Pages with llms.txt References:** ${summary.llmSuitability.pagesWithLLMsTxt}\n`;
+  }
+
   if (summary.llmSuitability.trend) {
     md += `- **Trend (Served):** ${summary.llmSuitability.trend.servedScore > 0 ? '📈' : '📉'} ${summary.llmSuitability.trend.servedScore.toFixed(1)}%\n`;
   }
   md += '\n';
+
+  // Technology Stack section
+  if (summary.technologies && summary.technologies.detected) {
+    md += '## Technology Stack\n\n';
+
+    const tech = summary.technologies;
+    const { byCategory, summary: techSummary } = tech;
+
+    // CMS (including Adobe EDS with special highlighting)
+    if (byCategory.CMS && byCategory.CMS.length > 0) {
+      md += '**Content Management System:**\n\n';
+      byCategory.CMS.forEach((t) => {
+        const confidenceIcon = t.confidence === 'high' ? '✅' : '🟡';
+        md += `- ${confidenceIcon} ${t.name}`;
+        if (t.confidence) {
+          md += ` (${t.confidence} confidence)`;
+        }
+        md += '\n';
+      });
+      md += '\n';
+    }
+
+    // Frameworks
+    if (techSummary.frameworks.length > 0) {
+      md += `**JavaScript Frameworks:** ${techSummary.frameworks.join(', ')}\n\n`;
+    }
+
+    // Libraries
+    if (techSummary.libraries.length > 0) {
+      md += `**JavaScript Libraries:** ${techSummary.libraries.join(', ')}\n\n`;
+    }
+
+    // Analytics
+    if (techSummary.analytics.length > 0) {
+      md += `**Analytics & Tracking:** ${techSummary.analytics.join(', ')}\n\n`;
+    }
+
+    // CDNs
+    if (techSummary.cdns.length > 0) {
+      md += `**Content Delivery Networks:** ${techSummary.cdns.join(', ')}\n\n`;
+    }
+
+    md += `*Detected from ${tech.totalResources} resources on ${tech.baseDomain}*\n\n`;
+  }
+
+  // AI Compatibility section (robots.txt and llms.txt)
+  const robotsAnalysis = results.robotsTxtAnalysis || [];
+  const llmsAnalysis = results.llmsTxtAnalysis || [];
+
+  if (robotsAnalysis.length > 0 || llmsAnalysis.length > 0) {
+    md += '## AI File Compatibility\n\n';
+
+    // robots.txt status
+    if (robotsAnalysis.length > 0) {
+      const robotsData = robotsAnalysis[0];
+      if (robotsData.exists && robotsData.analysis) {
+        const { score, quality } = robotsData.analysis;
+        const icon = score >= 80 ? '✅' : score >= 60 ? '🟡' : '🟠';
+        md += `- **robots.txt:** ${icon} ${quality} (${score}/100)\n`;
+      } else {
+        md += '- **robots.txt:** ❌ Not found\n';
+      }
+    }
+
+    // llms.txt status
+    if (llmsAnalysis.length > 0) {
+      const llmsData = llmsAnalysis[0];
+      if (llmsData.exists && llmsData.analysis) {
+        const { score, quality } = llmsData.analysis;
+        const icon = score >= 85 ? '✅' : score >= 70 ? '🟡' : '🟠';
+        md += `- **llms.txt:** ${icon} ${quality} (${score}/100)\n`;
+      } else {
+        md += '- **llms.txt:** ❌ Not found\n';
+      }
+    }
+
+    md += '\nSee `ai_files_summary.md` for detailed analysis and recommendations.\n\n';
+  }
 
   // Key findings
   if (summary.keyFindings.length > 0) {
@@ -571,7 +909,7 @@ function generateMarkdownSummary(summary) {
   }
 
   md += '---\n\n';
-  md += `*Generated by Web Audit Suite v${summary.overview.schemaVersion}*\n`;
+  md += `Generated by Web Audit Suite v${summary.overview.schemaVersion}\n`;
 
   return md;
 }

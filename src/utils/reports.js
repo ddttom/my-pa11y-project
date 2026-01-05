@@ -15,9 +15,17 @@ import {
   generateFrontendLLMReport,
   generateBackendLLMReport,
 } from './reportUtils/llmReports.js';
+import {
+  generateRobotsTxtReport,
+  generateLlmsTxtReport,
+  generateAIFilesSummaryReport,
+} from './reportUtils/aiFileReports.js';
 import { generateExecutiveSummary } from './reportUtils/executiveSummary.js';
 import { generateDashboard } from './reportUtils/dashboardGenerator.js';
-import { compareWithPrevious, generateTrendData } from './historicalComparison.js';
+import {
+  compareWithPrevious, generateTrendData, detectRegressions, generateRegressionReport,
+} from './historicalComparison.js';
+import { extractPatterns } from './patternExtraction.js';
 
 /**
  * Main function to generate all reports
@@ -43,10 +51,16 @@ export async function generateReports(results, urls, outputDir) {
     await generateFrontendLLMReport(results, outputDir);
     await generateBackendLLMReport(results, outputDir);
 
+    // Generate AI files quality reports (robots.txt and llms.txt)
+    await generateRobotsTxtReport(results, outputDir);
+    await generateLlmsTxtReport(results, outputDir);
+    await generateAIFilesSummaryReport(results, outputDir);
+
     // Check if enhanced features are enabled
     const { options } = global.auditcore;
     let comparison = null;
     let trendData = null;
+    let regressionAnalysis = null;
 
     // Generate comparison with previous run if historical tracking is enabled
     if (options.enableHistory) {
@@ -67,6 +81,30 @@ export async function generateReports(results, urls, outputDir) {
         }
       } catch (error) {
         global.auditcore.logger.warn('Could not generate trend data:', error.message);
+      }
+
+      // Detect regressions against baseline
+      try {
+        regressionAnalysis = await detectRegressions(results, outputDir);
+        await generateRegressionReport(regressionAnalysis, outputDir);
+
+        if (regressionAnalysis.hasBaseline) {
+          if (regressionAnalysis.hasCriticalRegressions) {
+            global.auditcore.logger.error(
+              `🚨 CRITICAL REGRESSIONS DETECTED: ${regressionAnalysis.regressions.filter((r) => r.severity === 'critical').length} critical issue(s) found`,
+            );
+            global.auditcore.logger.error('Review regression_report.md for details');
+          } else if (regressionAnalysis.hasWarningRegressions) {
+            global.auditcore.logger.warn(
+              `⚠️ Warning regressions detected: ${regressionAnalysis.regressions.filter((r) => r.severity === 'warning').length} issue(s) found`,
+            );
+            global.auditcore.logger.warn('Review regression_report.md for details');
+          } else if (regressionAnalysis.regressions.length === 0) {
+            global.auditcore.logger.info('✅ No regressions detected - all metrics stable or improved');
+          }
+        }
+      } catch (error) {
+        global.auditcore.logger.warn('Could not detect regressions:', error.message);
       }
     }
 
@@ -90,10 +128,53 @@ export async function generateReports(results, urls, outputDir) {
       }
     }
 
-    // Save complete results as JSON
+    // Extract patterns from high-scoring pages if enabled
+    if (options.extractPatterns) {
+      try {
+        const threshold = options.patternScoreThreshold || 70;
+        const extractionResult = await extractPatterns(results, outputDir, {
+          minServedScore: threshold,
+          minRenderedScore: threshold,
+          maxExamples: 5,
+        });
+
+        if (extractionResult.success) {
+          global.auditcore.logger.info(
+            `✅ Pattern extraction complete: ${extractionResult.pagesAnalyzed} high-scoring pages analyzed`,
+          );
+          global.auditcore.logger.info('Pattern library saved to pattern_library.md');
+        } else {
+          global.auditcore.logger.warn(`⚠️ Pattern extraction: ${extractionResult.message}`);
+        }
+      } catch (error) {
+        global.auditcore.logger.error('Error extracting patterns:', error);
+      }
+    }
+
+    // Copy documentation files to output directory
+    try {
+      const docsDir = path.join(process.cwd(), 'docs');
+      const docFiles = [
+        { src: 'llm_general_suitability_guide.md', dest: 'llm_general_suitability_guide.md' },
+        { src: 'report-layout.md', dest: 'report-layout.md' },
+      ];
+
+      for (const { src, dest } of docFiles) {
+        const srcPath = path.join(docsDir, src);
+        const destPath = path.join(outputDir, dest);
+        await fs.copyFile(srcPath, destPath);
+        global.auditcore.logger.debug(`Copied ${src} to output directory`);
+      }
+
+      global.auditcore.logger.info('Documentation files copied to output directory');
+    } catch (error) {
+      global.auditcore.logger.warn('Could not copy documentation files:', error.message);
+    }
+
+    // Save complete results as JSON (minified for performance)
     await fs.writeFile(
       path.join(outputDir, 'results.json'),
-      JSON.stringify(results, null, 2),
+      JSON.stringify(results),
     );
 
     global.auditcore.logger.info('All reports generated successfully');

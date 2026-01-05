@@ -125,7 +125,7 @@ export async function writeToInvalidUrlFile(invalidUrl) {
       invalidUrls.push(invalidUrl);
       return fs.writeFile(
         invalidUrlsPath,
-        JSON.stringify(invalidUrls, null, 2),
+        JSON.stringify(invalidUrls),
       );
     })
     .catch((error) => {

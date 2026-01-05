@@ -116,22 +116,57 @@ export async function getUrlsFromSitemap(url, limit = -1) {
       }
     }
 
-    // Automatically add llms.txt if not present
+    // Automatically add base domain, robots.txt, and llms.txt if not present
+    // Add them at the BEGINNING so they're not cut off by count limits
     try {
       const inputUrlObj = new URL(url);
+      const baseUrl = `${inputUrlObj.origin}/`;
+      const robotsTxtUrl = `${inputUrlObj.origin}/robots.txt`;
       const llmsTxtUrl = `${inputUrlObj.origin}/llms.txt`;
-      const exists = urls.some((u) => u.url === llmsTxtUrl);
-      if (!exists) {
-        global.auditcore.logger.info(`Automatically adding ${llmsTxtUrl} to processing list`);
-        urls.push({
+      const priorityUrls = [];
+
+      // Add base domain if not present
+      const baseExists = urls.some((u) => u.url === baseUrl || u.url === inputUrlObj.origin);
+      if (!baseExists) {
+        global.auditcore.logger.info(`Automatically adding base domain ${baseUrl} to processing list (priority)`);
+        priorityUrls.push({
+          url: baseUrl,
+          lastmod: new Date().toISOString(),
+          changefreq: 'daily',
+          priority: 1.0,
+        });
+      }
+
+      // Add robots.txt if not present
+      const robotsExists = urls.some((u) => u.url === robotsTxtUrl);
+      if (!robotsExists) {
+        global.auditcore.logger.info(`Automatically adding ${robotsTxtUrl} to processing list (priority)`);
+        priorityUrls.push({
+          url: robotsTxtUrl,
+          lastmod: new Date().toISOString(),
+          changefreq: 'daily',
+          priority: 0.9,
+        });
+      }
+
+      // Add llms.txt if not present
+      const llmsExists = urls.some((u) => u.url === llmsTxtUrl);
+      if (!llmsExists) {
+        global.auditcore.logger.info(`Automatically adding ${llmsTxtUrl} to processing list (priority)`);
+        priorityUrls.push({
           url: llmsTxtUrl,
           lastmod: new Date().toISOString(),
           changefreq: 'daily',
           priority: 0.8,
         });
       }
+
+      // Insert priority URLs at the beginning
+      if (priorityUrls.length > 0) {
+        urls.unshift(...priorityUrls);
+      }
     } catch (error) {
-      global.auditcore.logger.debug(`Could not add llms.txt: ${error.message}`);
+      global.auditcore.logger.debug(`Could not add base domain, robots.txt, or llms.txt: ${error.message}`);
     }
 
     // Filter and validate URLs

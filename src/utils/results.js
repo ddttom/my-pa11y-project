@@ -2,13 +2,61 @@ import fs from 'fs/promises';
 import path from 'path';
 import { formatCsv } from './csvFormatter.js';
 import {
-  seoScoreThresholds,
-  performanceThresholds,
-  contentThresholds,
-  urlThresholds,
-  titleThresholds,
-  metaDescriptionThresholds,
-} from '../config/options.js';
+  SEO_SCORE,
+  PERFORMANCE_LIMITS,
+  CONTENT_LIMITS,
+  SEO_LIMITS,
+} from '../config/defaults.js';
+
+// Map defaults to expected threshold object structure for backward compatibility
+const seoScoreThresholds = {
+  excellent: SEO_SCORE.EXCELLENT,
+  veryGood: SEO_SCORE.VERY_GOOD,
+  good: SEO_SCORE.GOOD,
+  fair: SEO_SCORE.FAIR,
+  needsImprovement: SEO_SCORE.NEEDS_IMPROVEMENT,
+};
+
+const performanceThresholds = {
+  loadTime: {
+    excellent: PERFORMANCE_LIMITS.LOAD_TIME.EXCELLENT,
+    good: PERFORMANCE_LIMITS.LOAD_TIME.GOOD,
+    fair: PERFORMANCE_LIMITS.LOAD_TIME.FAIR,
+  },
+  domContentLoaded: {
+    excellent: PERFORMANCE_LIMITS.DOM_CONTENT_LOADED.EXCELLENT,
+    good: PERFORMANCE_LIMITS.DOM_CONTENT_LOADED.GOOD,
+    fair: PERFORMANCE_LIMITS.DOM_CONTENT_LOADED.FAIR,
+  },
+  firstPaint: {
+    excellent: PERFORMANCE_LIMITS.FIRST_PAINT.EXCELLENT,
+    good: PERFORMANCE_LIMITS.FIRST_PAINT.GOOD,
+    fair: PERFORMANCE_LIMITS.FIRST_PAINT.FAIR,
+  },
+  firstContentfulPaint: {
+    excellent: PERFORMANCE_LIMITS.FIRST_CONTENTFUL_PAINT.EXCELLENT,
+    good: PERFORMANCE_LIMITS.FIRST_CONTENTFUL_PAINT.GOOD,
+    fair: PERFORMANCE_LIMITS.FIRST_CONTENTFUL_PAINT.FAIR,
+  },
+};
+
+const contentThresholds = {
+  lowWordCount: CONTENT_LIMITS.LOW_WORD_COUNT,
+};
+
+const urlThresholds = {
+  maxLength: SEO_LIMITS.URL_MAX_LENGTH,
+};
+
+const titleThresholds = {
+  minLength: SEO_LIMITS.TITLE_MIN_LENGTH,
+  maxLength: SEO_LIMITS.TITLE_MAX_LENGTH,
+};
+
+const metaDescriptionThresholds = {
+  minLength: SEO_LIMITS.META_DESC_MIN_LENGTH,
+  maxLength: SEO_LIMITS.META_DESC_MAX_LENGTH,
+};
 
 // Utility function for percentage calculation
 function calculatePercentage(value, total, decimalPlaces = 2) {
@@ -831,7 +879,7 @@ async function saveDiagnostics(results, outputDir) {
       results: cleanResults,
     };
 
-    await fs.writeFile(filePath, JSON.stringify(diagnosticsData, null, 2));
+    await fs.writeFile(filePath, JSON.stringify(diagnosticsData));
     global.auditcore.logger.info(`Full diagnostics saved to ${filePath}`);
   } catch (error) {
     global.auditcore.logger.error('Error saving diagnostics:', error);
@@ -851,7 +899,7 @@ async function saveRawPa11yResult(results, outputDir) {
     if (!results || !results.pa11y || !Array.isArray(results.pa11y)) {
       global.auditcore.logger.warn('Pa11y results are missing or not in the expected format');
       global.auditcore.logger.debug(`results: ${JSON.stringify(results)}`);
-      await fs.writeFile(filePath, JSON.stringify([], null, 2));
+      await fs.writeFile(filePath, JSON.stringify([]));
       global.auditcore.logger.debug(`Empty pa11y results saved to ${filePath}`);
       return;
     }
@@ -875,7 +923,7 @@ async function saveRawPa11yResult(results, outputDir) {
 
     global.auditcore.logger.debug(`Processed ${pa11yResults.length} valid Pa11y results`);
 
-    await fs.writeFile(filePath, JSON.stringify(pa11yResults, null, 2));
+    await fs.writeFile(filePath, JSON.stringify(pa11yResults));
     global.auditcore.logger.info(`Raw pa11y results saved to ${filePath}`);
   } catch (error) {
     global.auditcore.logger.error('Error saving raw pa11y results:', error);

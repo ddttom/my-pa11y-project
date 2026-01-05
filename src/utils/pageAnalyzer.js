@@ -22,10 +22,18 @@ import {
   updateHreflangMetrics,
   updateCanonicalMetrics,
   updateContentMetrics,
+  updateLlmReadabilityMetrics,
+  updateHttpStatusMetrics,
 } from './metricsUpdater.js';
 import {
   updateLLMMetrics,
 } from './llmMetrics.js';
+import {
+  processRobotsTxt,
+} from './robotsTxtParser.js';
+import {
+  processLlmsTxt,
+} from './llmsTxtParser.js';
 
 async function processUrl(url, html, jsErrors, baseUrl, results, headers, pageData, config, cachedPa11yResult = null) {
   if (!url) {
@@ -117,6 +125,47 @@ async function analyzePageContent({
 
     // Validate and normalize URLs first
     const { testUrl: validTestUrl, baseUrl: validBaseUrl } = validateInput(testUrl, html, baseUrl);
+
+    // Special handling for robots.txt and llms.txt files
+    if (validTestUrl.endsWith('/robots.txt')) {
+      global.auditcore.logger.info(`Detected robots.txt file: ${validTestUrl}`);
+      const robotsAnalysis = await processRobotsTxt(validTestUrl, html);
+
+      // Store robots.txt analysis in results
+      if (!results.robotsTxtAnalysis) results.robotsTxtAnalysis = [];
+      results.robotsTxtAnalysis.push(robotsAnalysis);
+
+      global.auditcore.logger.info(`robots.txt quality score: ${robotsAnalysis.analysis.score}/${robotsAnalysis.analysis.maxScore} (${robotsAnalysis.analysis.quality})`);
+
+      // Return minimal analysis for robots.txt (skip Pa11y and full page analysis)
+      const duration = calculateDuration(startTime);
+      return {
+        url: validTestUrl,
+        duration,
+        type: 'robots.txt',
+        analysis: robotsAnalysis,
+      };
+    }
+
+    if (validTestUrl.endsWith('/llms.txt')) {
+      global.auditcore.logger.info(`Detected llms.txt file: ${validTestUrl}`);
+      const llmsAnalysis = await processLlmsTxt(validTestUrl, html);
+
+      // Store llms.txt analysis in results
+      if (!results.llmsTxtAnalysis) results.llmsTxtAnalysis = [];
+      results.llmsTxtAnalysis.push(llmsAnalysis);
+
+      global.auditcore.logger.info(`llms.txt quality score: ${llmsAnalysis.analysis.score}/${llmsAnalysis.analysis.maxScore} (${llmsAnalysis.analysis.quality})`);
+
+      // Return minimal analysis for llms.txt (skip Pa11y and full page analysis)
+      const duration = calculateDuration(startTime);
+      return {
+        url: validTestUrl,
+        duration,
+        type: 'llms.txt',
+        analysis: llmsAnalysis,
+      };
+    }
 
     const $ = cheerio.load(html);
     global.auditcore.logger.debug(`Cheerio loaded for ${validTestUrl}`);
@@ -212,36 +261,39 @@ async function runPa11yAnalysis(testUrl, html, config) {
   }
 }
 
+/**
+ * Initialize metrics structure for a URL (consolidated for performance)
+ * @param {Object} results - Results object to initialize
+ * @param {string} testUrl - URL to initialize metrics for
+ */
+function initializeMetricsForUrl(results, testUrl) {
+  const metricTypes = [
+    'urlMetrics',
+    'responseCodeMetrics',
+    'titleMetrics',
+    'metaDescriptionMetrics',
+    'h1Metrics',
+    'h2Metrics',
+    'imageMetrics',
+    'linkMetrics',
+    'securityMetrics',
+    'hreflangMetrics',
+    'canonicalMetrics',
+    'contentMetrics',
+  ];
+
+  // Initialize all metric objects at root level
+  metricTypes.forEach((metricType) => {
+    results[metricType] = results[metricType] || {};
+    results[metricType][testUrl] = results[metricType][testUrl] || {};
+  });
+}
+
 async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
   global.auditcore.logger.info(`[START] Running metrics analysis for ${testUrl}`);
   try {
-    // Initialize all metric objects
-    results.urlMetrics = results.urlMetrics || {};
-    results.responseCodeMetrics = results.responseCodeMetrics || {};
-    results.titleMetrics = results.titleMetrics || {};
-    results.metaDescriptionMetrics = results.metaDescriptionMetrics || {};
-    results.h1Metrics = results.h1Metrics || {};
-    results.h2Metrics = results.h2Metrics || {};
-    results.imageMetrics = results.imageMetrics || {};
-    results.linkMetrics = results.linkMetrics || {};
-    results.securityMetrics = results.securityMetrics || {};
-    results.hreflangMetrics = results.hreflangMetrics || {};
-    results.canonicalMetrics = results.canonicalMetrics || {};
-    results.contentMetrics = results.contentMetrics || {};
-
-    // Initialize metric objects for this specific URL
-    results.urlMetrics[testUrl] = results.urlMetrics[testUrl] || {};
-    results.responseCodeMetrics[testUrl] = results.responseCodeMetrics[testUrl] || {};
-    results.titleMetrics[testUrl] = results.titleMetrics[testUrl] || {};
-    results.metaDescriptionMetrics[testUrl] = results.metaDescriptionMetrics[testUrl] || {};
-    results.h1Metrics[testUrl] = results.h1Metrics[testUrl] || {};
-    results.h2Metrics[testUrl] = results.h2Metrics[testUrl] || {};
-    results.imageMetrics[testUrl] = results.imageMetrics[testUrl] || {};
-    results.linkMetrics[testUrl] = results.linkMetrics[testUrl] || {};
-    results.securityMetrics[testUrl] = results.securityMetrics[testUrl] || {};
-    results.hreflangMetrics[testUrl] = results.hreflangMetrics[testUrl] || {};
-    results.canonicalMetrics[testUrl] = results.canonicalMetrics[testUrl] || {};
-    results.contentMetrics[testUrl] = results.contentMetrics[testUrl] || {};
+    // Initialize all metrics in one pass (performance optimization)
+    initializeMetricsForUrl(results, testUrl);
 
     await updateTitleMetrics($, results, testUrl);
     await updateMetaDescriptionMetrics($, results, testUrl);
@@ -253,6 +305,8 @@ async function runMetricsAnalysis($, testUrl, baseUrl, headers, results) {
     await updateCanonicalMetrics($, testUrl, results);
     await updateContentMetrics($, results, testUrl);
     await updateLLMMetrics($, results, testUrl);
+    await updateLlmReadabilityMetrics($, results, testUrl);
+    await updateHttpStatusMetrics(headers, results, testUrl);
 
     const metricsToCheck = ['titleMetrics', 'metaDescriptionMetrics', 'h1Metrics', 'h2Metrics', 'imageMetrics', 'linkMetrics', 'securityMetrics', 'hreflangMetrics', 'canonicalMetrics', 'contentMetrics'];
     metricsToCheck.forEach((metric) => {

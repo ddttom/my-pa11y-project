@@ -139,42 +139,6 @@ export async function updateContentMetrics($, results, testUrl) {
   global.auditcore.logger.debug(`[END] Updating content metrics for ${testUrl}`);
 }
 
-export function updateSpecificUrlMetrics($, results, testUrl) {
-  const targetSubstring = 'main--allaboutv2--ddttom.hlx.live';
-  const matches = [];
-
-  // Helper to check and add matches
-  const checkAttribute = (element, attributeName, tagName) => {
-    const value = $(element).attr(attributeName);
-    if (value && value.includes(targetSubstring)) {
-      matches.push({
-        pageUrl: testUrl,
-        foundUrl: value,
-        elementType: tagName,
-        attribute: attributeName,
-      });
-    }
-  };
-
-  // Check <a> tags (href)
-  $('a').each((i, el) => checkAttribute(el, 'href', 'a'));
-
-  // Check <link> tags (href)
-  $('link').each((i, el) => checkAttribute(el, 'href', 'link'));
-
-  // Check tags with src attribute
-  const srcTags = ['script', 'img', 'iframe', 'source', 'track', 'video', 'audio', 'embed', 'input'];
-  srcTags.forEach((tag) => {
-    $(tag).each((i, el) => checkAttribute(el, 'src', tag));
-  });
-
-  if (matches.length > 0) {
-    results.specificUrlMetrics = results.specificUrlMetrics || [];
-    results.specificUrlMetrics.push(...matches);
-    global.auditcore.logger.info(`Found ${matches.length} occurrences of ${targetSubstring} on ${testUrl}`);
-  }
-}
-
 /**
  * Aggregates external resources across all pages
  * @param {Object} pageData - Page data containing externalResources array

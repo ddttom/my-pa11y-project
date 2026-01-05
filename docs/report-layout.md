@@ -11,10 +11,10 @@ This document provides a comprehensive technical reference for all report struct
 
 ## Report Overview
 
-The tool generates **15+ reports** in CSV format (plus XML, Markdown, JSON, and HTML files):
+The tool generates **18+ reports** in CSV format (plus XML, Markdown, JSON, and HTML files):
 
 | Report File | Primary Key | Record Type | Aggregation Level |
-|-------------|-------------|-------------|-------------------|
+| ----------- | ----------- | ----------- | ----------------- |
 | `seo_report.csv` | URL | Per-page | Page-level |
 | `performance_analysis.csv` | URL | Per-page | Page-level |
 | `accessibility_report.csv` | URL | Per-page | Page-level |
@@ -23,6 +23,9 @@ The tool generates **15+ reports** in CSV format (plus XML, Markdown, JSON, and 
 | `seo_scores.csv` | URL | Per-page | Page-level |
 | `llm_readability_report.csv` | URL | Per-page | Page-level |
 | `http_status_report.csv` | URL | Per-page | Page-level |
+| `robots_txt_quality.csv` | URL | Per-file | File-level |
+| `llms_txt_quality.csv` | URL | Per-file | File-level |
+| `ai_files_summary.md` | - | Site-wide | Site-wide |
 | `image_optimization.csv` | Page URL + Image URL | Per-image | Image-level |
 | `link_analysis.csv` | Source URL + Target URL | Per-link | Link-level |
 | `all_resources_report.csv` | Resource URL | Per-resource | Site-wide |
@@ -49,6 +52,525 @@ The following reports are generated when specific CLI flags are used:
 
 ---
 
+## Primary Results File (`results.json`)
+
+**Purpose**: Single source of truth containing all collected data from analysis phase
+**Type**: JSON
+**Location**: `<output-dir>/results.json`
+**Aggregation Level**: Site-wide
+
+### Overview
+
+The `results.json` file is the **master data store** from which all CSV and markdown reports are generated. This architecture ensures:
+
+- **Single Source of Truth**: All report data originates from this file
+- **Report Regeneration**: Reports can be regenerated without re-crawling
+- **Data Consistency**: All reports reflect the same dataset
+- **Historical Comparison**: File can be archived for trend analysis
+
+**CRITICAL FOR AI ASSISTANTS**: When adding or modifying report generation code, ALWAYS verify field names against this file structure first. See LEARNINGS.md for the 5-step validation pattern.
+
+### Top-Level Structure
+
+The file contains 23 top-level arrays and objects:
+
+```json
+{
+  "schemaVersion": "1.2.0",
+  "canonicalMetrics": [],
+  "contentAnalysis": [],
+  "contentMetrics": {},
+  "failedUrls": [],
+  "h1Metrics": {},
+  "h2Metrics": {},
+  "hreflangMetrics": {},
+  "imageMetrics": {},
+  "internalLinks": [],
+  "linkMetrics": {},
+  "llmMetrics": [],
+  "llmsTxtAnalysis": {},
+  "metaDescriptionMetrics": {},
+  "originalSitemapUrls": [],
+  "pa11y": [],
+  "performanceAnalysis": [],
+  "responseCodeMetrics": {},
+  "robotsTxtAnalysis": {},
+  "securityMetrics": [],
+  "seoScores": [],
+  "titleMetrics": {},
+  "urlMetrics": {}
+}
+```
+
+### Schema Version
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `schemaVersion` | String | Data structure version (e.g., "1.2.0") |
+
+### Array Fields (Per-Page Data)
+
+#### contentAnalysis[]
+
+Comprehensive page content metrics. Each object represents one analyzed page.
+
+**Key Fields**:
+
+| Field | Type | Description | Nullable |
+| ----- | ---- | ----------- | -------- |
+| `url` | String | Fully qualified page URL | No |
+| `wordCount` | Integer | Total words on page | No |
+| `h1Count` | Integer | Number of H1 elements | No |
+| `h2Count` | Integer | Number of H2 elements | No |
+| `h3Count` | Integer | Number of H3 elements | No |
+| `imagesCount` | Integer | Total images on page | No |
+| `images` | Array | Array of image objects (see imageMetrics) | No |
+| `imagesWithoutAlt` | Integer | Images missing alt text | No |
+| `internalLinksCount` | Integer | Same-domain links | No |
+| `externalLinksCount` | Integer | Cross-domain links | No |
+| `title` | String | Page title tag content | Yes |
+| `metaDescription` | String | Meta description content | Yes |
+| `h1` | String | First H1 text content | Yes |
+| `hasResponsiveMetaTag` | Boolean | Viewport meta tag present | No |
+| `scriptsCount` | Integer | Number of script tags | No |
+| `stylesheetsCount` | Integer | Number of stylesheet links | No |
+| `htmlLang` | String | HTML lang attribute value | Yes |
+| `canonicalUrl` | String | Canonical URL if specified | Yes |
+| `formsCount` | Integer | Number of forms on page | No |
+| `tablesCount` | Integer | Number of tables on page | No |
+| `pageSize` | Integer | HTML size in bytes | No |
+| `jsErrors` | Integer | JavaScript errors detected | No |
+| `pa11yIssuesCount` | Integer | Total accessibility issues | No |
+
+**Example**:
+
+```json
+{
+  "url": "https://example.com/",
+  "wordCount": 519,
+  "h1Count": 1,
+  "h2Count": 5,
+  "h3Count": 5,
+  "imagesCount": 14,
+  "images": [],
+  "imagesWithoutAlt": 14,
+  "internalLinksCount": 3,
+  "externalLinksCount": 0,
+  "title": "Example Page Title",
+  "metaDescription": "Example description...",
+  "h1": "Main Heading",
+  "hasResponsiveMetaTag": true,
+  "scriptsCount": 7,
+  "stylesheetsCount": 10,
+  "htmlLang": "en",
+  "canonicalUrl": "https://example.com/",
+  "formsCount": 0,
+  "tablesCount": 0,
+  "pageSize": 23217,
+  "jsErrors": 2,
+  "pa11yIssuesCount": 0
+}
+```
+
+**Used By**: `content_quality.csv`, `seo_report.csv`
+
+#### performanceAnalysis[]
+
+Performance metrics and Core Web Vitals for each page.
+
+**Key Fields**:
+
+| Field | Type | Unit | Description |
+| ----- | ---- | ---- | ----------- |
+| `url` | String | - | Fully qualified page URL |
+| `loadTime` | Integer | ms | Total page load time |
+| `firstContentfulPaint` | Integer | ms | FCP metric |
+| `firstPaint` | Integer | ms | First Paint metric |
+| `domContentLoaded` | Integer | ms | DOMContentLoaded event |
+| `lastmod` | String | ISO 8601 | Last-Modified header value |
+
+**Used By**: `performance_analysis.csv`
+
+#### seoScores[]
+
+Calculated SEO scores with detailed breakdowns.
+
+**Top-Level Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `url` | String | Fully qualified page URL |
+| `score` | Integer | Total SEO score (0-100) |
+| `lastmod` | String | Last-Modified header value |
+| `details` | Object | Nested scoring breakdown |
+
+**Details Object Structure**:
+
+The `details` object contains category-specific scores:
+
+```json
+{
+  "titleOptimization": { "score": 15, "maxScore": 15, "issues": [] },
+  "metaDescriptionOptimization": { "score": 10, "maxScore": 10, "issues": [] },
+  "h1Optimization": { "score": 10, "maxScore": 10, "issues": [] },
+  "contentLength": { "score": 10, "maxScore": 10, "issues": [] },
+  "contentQuality": { "score": 10, "maxScore": 10, "issues": [] },
+  "imageOptimization": { "score": 5, "maxScore": 10, "issues": ["Some images missing alt text"] },
+  "internalLinking": { "score": 5, "maxScore": 5, "issues": [] },
+  "pageSpeed": { "score": 10, "maxScore": 10, "issues": [] },
+  "mobileOptimization": { "score": 5, "maxScore": 5, "issues": [] },
+  "structuredData": { "score": 5, "maxScore": 5, "issues": [] },
+  "socialMediaTags": { "score": 5, "maxScore": 5, "issues": [] },
+  "urlStructure": { "score": 5, "maxScore": 5, "issues": [] },
+  "securityFactors": { "score": 0, "maxScore": 5, "issues": ["Missing HSTS header"] }
+}
+```
+
+Each category has:
+
+- `score`: Points awarded for this category
+- `maxScore`: Maximum possible points
+- `issues`: Array of issues preventing full score
+
+**Used By**: `seo_scores.csv`, `executive_summary.json`
+
+#### llmMetrics[]
+
+LLM agent suitability metrics for both served and rendered HTML states.
+
+**Top-Level Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `url` | String | Fully qualified page URL |
+| `semanticHTML` | Object | Semantic HTML element analysis |
+| `formFields` | Object | Form field naming and structure |
+| `structuredData` | Object | Schema.org structured data |
+| `llmsTxt` | Object | llms.txt file detection |
+| `robotsTxt` | Object | robots.txt compliance |
+| `htmlSource` | Object | HTML source accessibility |
+| `errorHandling` | Object | Error message persistence |
+| `buttonStates` | Object | Button state visibility |
+| `authenticationState` | Object | Auth state attributes |
+| `dataAttributes` | Object | Agent visibility controls |
+| `tableData` | Object | Table data attributes |
+| `apiEndpoints` | Object | API endpoint documentation |
+| `formAutocomplete` | Object | Form autocomplete attributes |
+| `captchaProtection` | Object | CAPTCHA detection |
+
+**Metric Category Structure**:
+
+Each category object has:
+
+```json
+{
+  "importance": "essential_served|essential_rendered|nice_to_have",
+  "metrics": {
+    // Category-specific metrics
+  }
+}
+```
+
+**Example - semanticHTML**:
+
+```json
+{
+  "importance": "essential_served",
+  "metrics": {
+    "hasMain": true,
+    "hasNav": false,
+    "hasHeader": true,
+    "hasFooter": true,
+    "hasArticle": false,
+    "navCount": 0,
+    "articleCount": 0,
+    "divCount": 64
+  }
+}
+```
+
+**Example - formFields**:
+
+```json
+{
+  "importance": "essential_served",
+  "metrics": {
+    "formCount": 0,
+    "totalInputs": 0,
+    "standardNamedFields": 0,
+    "fieldsWithLabels": 0,
+    "standardNameRatio": 1,
+    "labelRatio": 1
+  }
+}
+```
+
+**Example - llmsTxt**:
+
+```json
+{
+  "importance": "essential_served",
+  "metrics": {
+    "hasLLMsTxtReference": false,
+    "hasLLMsTxtMeta": false,
+    "llmsTxtUrl": null
+  }
+}
+```
+
+**Importance Levels**:
+
+- `essential_served`: Critical for ALL agents (CLI, API, browser) - highest weight
+- `essential_rendered`: Critical for browser agents only - medium weight
+- `nice_to_have`: Speculative improvements - lowest weight
+
+**Used By**: `llm_general_suitability.csv`, `llm_frontend_suitability.csv`, `llm_backend_suitability.csv`
+
+#### pa11y[]
+
+WCAG accessibility violations detected by Pa11y.
+
+**Top-Level Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `pageUrl` | String | Fully qualified page URL |
+| `documentTitle` | String | Page title at time of test |
+| `issues` | Array | Array of issue objects |
+
+**Issue Object Structure**:
+
+Each issue in the `issues` array contains:
+
+```json
+{
+  "code": "WCAG2AA.Principle1.Guideline1_4.1_4_3.G18.Fail",
+  "type": "error",
+  "typeCode": 1,
+  "severity": "error",
+  "message": "Description of issue",
+  "context": "<div>HTML context</div>",
+  "selector": "#element > .class",
+  "runner": "htmlcs",
+  "runnerExtras": {},
+  "guideline": "WCAG2AA.Principle1.Guideline1_4.1_4_3",
+  "guidelineDescription": "Guideline text",
+  "remediation": "How to fix the issue",
+  "wcagLevel": "AA",
+  "requiresManualCheck": false
+}
+```
+
+**Issue Severity Levels**:
+
+- `error`: WCAG violations that must be fixed
+- `warning`: Potential issues requiring review
+- `notice`: Best practice suggestions
+
+**Used By**: `accessibility_report.csv`, `wcag_report.md`, `executive_summary.json`
+
+#### internalLinks[]
+
+Individual link records for link analysis.
+
+**Key Fields**:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `source` | String | Source page URL |
+| `target` | String | Target URL |
+| `anchorText` | String | Link text content |
+| `isInternal` | Boolean | Whether link is same-domain |
+| `statusCode` | Integer | HTTP response code of target |
+
+**Used By**: `link_analysis.csv`
+
+#### failedUrls[]
+
+URLs that could not be processed during analysis.
+
+**Structure**:
+
+```json
+{
+  "url": "https://example.com/failed",
+  "error": "Error message description",
+  "timestamp": "2026-01-03T19:03:09.868Z"
+}
+```
+
+**Used By**: Error reporting, audit logs
+
+#### originalSitemapUrls[]
+
+Initial URLs discovered from sitemap before filtering.
+
+**Structure**: Array of URL strings
+
+```json
+[
+  "https://example.com/page1",
+  "https://example.com/page2"
+]
+```
+
+**Used By**: `missing_sitemap_urls.csv`, sitemap validation
+
+### Metric Objects (Aggregated Data)
+
+These objects contain site-wide aggregated statistics:
+
+#### contentMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `averageWordCount` | Number | Mean words per page |
+| `averageHeadings` | Number | Mean heading count |
+| `pagesWithLowContent` | Integer | Pages below word threshold |
+
+#### titleMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `totalPages` | Integer | Pages analyzed |
+| `pagesWithTitle` | Integer | Pages with title tags |
+| `averageTitleLength` | Number | Mean title length |
+
+#### h1Metrics, h2Metrics
+
+Similar structure for heading statistics.
+
+#### imageMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `totalImages` | Integer | Total images across site |
+| `imagesWithoutAlt` | Integer | Images missing alt text |
+| `averageImagesPerPage` | Number | Mean images per page |
+
+#### metaDescriptionMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `pagesWithMetaDescription` | Integer | Pages with meta descriptions |
+| `averageDescriptionLength` | Number | Mean description length |
+
+#### responseCodeMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `200` | Integer | Count of successful responses |
+| `404` | Integer | Count of not found errors |
+| `500` | Integer | Count of server errors |
+
+#### linkMetrics
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `totalInternalLinks` | Integer | Total same-domain links |
+| `totalExternalLinks` | Integer | Total cross-domain links |
+| `brokenLinks` | Integer | Links returning errors |
+
+#### securityMetrics
+
+Security headers analysis indexed by URL.
+
+**Structure**: Object with URL keys mapping to security header status
+
+```json
+{
+  "https://example.com/": {
+    "https": 1,
+    "hasHsts": 1,
+    "hasCsp": 0,
+    "hasXFrameOptions": 0,
+    "hasXContentTypeOptions": 0
+  }
+}
+```
+
+**Field Descriptions** (for each URL):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `https` | Integer | 1 if HTTPS, 0 if HTTP |
+| `hasHsts` | Integer | 1 if HTTP Strict Transport Security present, 0 if not |
+| `hasCsp` | Integer | 1 if Content Security Policy present, 0 if not |
+| `hasXFrameOptions` | Integer | 1 if X-Frame-Options present, 0 if not |
+| `hasXContentTypeOptions` | Integer | 1 if X-Content-Type-Options present, 0 if not |
+
+**Used By**: `security_report.csv`
+
+#### canonicalMetrics, hreflangMetrics, urlMetrics
+
+Similar aggregated statistics for canonical URLs, hreflang tags, and URL structures.
+
+### File Analysis Arrays
+
+#### robotsTxtAnalysis[]
+
+Analysis of robots.txt file quality and AI agent compatibility.
+
+**Structure**: Array with one object per robots.txt file found
+
+```json
+{
+  "url": "https://example.com/robots.txt",
+  "exists": true,
+  "quality": {
+    "score": 25,
+    "hasUserAgent": true,
+    "hasSpecificAgents": false,
+    "hasSitemap": true
+  },
+  "recommendations": [
+    "Add specific user-agent declarations for AI crawlers"
+  ]
+}
+```
+
+**Used By**: `robots_txt_quality.csv`, `ai_files_summary.md`
+
+#### llmsTxtAnalysis[]
+
+Analysis of llms.txt file quality and structure.
+
+**Structure**: Array with one object per llms.txt file found
+
+```json
+{
+  "url": "https://example.com/llms.txt",
+  "exists": true,
+  "quality": {
+    "score": 58,
+    "hasH1": false,
+    "hasDescription": true,
+    "hasSections": true
+  },
+  "recommendations": [
+    "Add H1 heading as first element (# Site Name)"
+  ]
+}
+```
+
+**Used By**: `llms_txt_quality.csv`, `ai_files_summary.md`
+
+### Usage Notes
+
+1. **Report Generation**: All report generation functions MUST read from this file, never fetch new data
+2. **Field Verification**: Before accessing fields, verify they exist in the actual file structure (see LEARNINGS.md)
+3. **Data Types**: Check sample values to understand actual data types (e.g., numeric strings vs numbers)
+4. **Missing Data**: Handle null/undefined values gracefully - not all fields are guaranteed
+5. **Schema Evolution**: Check `schemaVersion` field when parsing older files
+
+### Related Documentation
+
+- Individual CSV report structures: See sections 1-13 below
+- Executive Summary JSON: See section 15
+- LEARNINGS.md: 5-step validation pattern for preventing data structure mismatches
+
+---
+
 ## 1. SEO Report (`seo_report.csv`)
 
 **Purpose**: Basic SEO metrics for each analyzed page
@@ -58,7 +580,7 @@ The following reports are generated when specific CLI flags are used:
 ### Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `URL` | String (URL) | Fully qualified page URL | Valid HTTP/HTTPS URL | No |
 | `Title` | String | Page `<title>` content | Any text, max ~60 chars recommended | Yes |
 | `Description` | String | Meta description content | Any text, max ~160 chars recommended | Yes |
@@ -90,10 +612,10 @@ https://example.com/page,"Example Page Title","This is a meta description",1,5,2
 **Key Field**: `URL`
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Performance Analysis Fields
 
 | Field Name | Data Type | Unit | Description | Threshold (Good) | Nullable |
-|------------|-----------|------|-------------|------------------|----------|
+| ---------- | --------- | ---- | ----------- | ---------------- | -------- |
 | `URL` | String (URL) | - | Fully qualified page URL | - | No |
 | `Load Time (ms)` | Integer | Milliseconds | Total page load time | < 2000ms | No |
 | `First Paint (ms)` | Integer | Milliseconds | Time to first pixel painted | < 1000ms | Yes |
@@ -109,7 +631,7 @@ https://example.com/page,"Example Page Title","This is a meta description",1,5,2
 - **FID (First Input Delay)**: Good < 100ms, Needs Improvement 100-300ms, Poor > 300ms (not directly measured, TTI used as proxy)
 - **CLS (Cumulative Layout Shift)**: Good < 0.1, Needs Improvement 0.1-0.25, Poor > 0.25
 
-### Example Row
+### Performance Analysis Example Row
 
 ```csv
 URL,Load Time (ms),First Paint (ms),First Contentful Paint (ms),Largest Contentful Paint (ms),Time to Interactive (ms),Total Blocking Time (ms),Cumulative Layout Shift
@@ -124,10 +646,10 @@ https://example.com/page,1523,345,456,1234,2345,123,0.05
 **Key Field**: `URL`
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Accessibility Report Fields
 
 | Field Name | Data Type | Description | Calculation | Nullable |
-|------------|-----------|-------------|-------------|----------|
+| ---------- | --------- | ----------- | ----------- | -------- |
 | `URL` | String (URL) | Fully qualified page URL | - | No |
 | `Total Issues` | Integer | Sum of all accessibility issues | Critical + Serious + Moderate + Minor | No |
 | `Critical Issues` | Integer | Issues preventing access | Pa11y error level | No |
@@ -151,7 +673,7 @@ https://example.com/page,1523,345,456,1234,2345,123,0.05
 - **Moderate**: Noticeable problems, may require workarounds
 - **Minor**: Minor improvements, best practice violations
 
-### Example Row
+### Accessibility Report Example Row
 
 ```csv
 URL,Total Issues,Critical Issues,Serious Issues,Moderate Issues,Minor Issues,WCAG A Issues,WCAG AA Issues,WCAG AAA Issues,WCAG 2.1 Compliance Percentage,Missing ARIA Labels,Contrast Ratio Issues,Keyboard Navigation Issues,Required Manual Checks,Remediation Suggestions
@@ -196,7 +718,7 @@ https://example.com/page,12,2,3,5,2,3,4,5,85.5,3,2,1,4,"Add alt text to images,I
 ### Field Descriptions
 
 | Section | Content Type | Description |
-|---------|--------------|-------------|
+| ------- | ------------ | ----------- |
 | Summary Statistics | Aggregated metrics | Site-wide totals and averages |
 | Issue Title | String | Pa11y issue code and human-readable title |
 | Severity | Enum | `Critical`, `Serious`, `Moderate`, `Minor` |
@@ -215,10 +737,10 @@ https://example.com/page,12,2,3,5,2,3,4,5,85.5,3,2,1,4,"Add alt text to images,I
 **Key Field**: `URL`
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Content Quality Fields
 
 | Field Name | Data Type | Range | Description | Good Threshold | Nullable |
-|------------|-----------|-------|-------------|----------------|----------|
+| ---------- | --------- | ----- | ----------- | -------------- | -------- |
 | `URL` | String (URL) | - | Fully qualified page URL | - | No |
 | `Word Count` | Integer | 0 to N | Total words in main content | > 300 | No |
 | `Content Freshness Score` | Float | 0-100 | Recency of content updates | > 70 | No |
@@ -236,7 +758,7 @@ https://example.com/page,12,2,3,5,2,3,4,5,85.5,3,2,1,4,"Add alt text to images,I
 - **Media Richness Score**: (Images + Videos + Audio) presence and quality
 - **Overall Content Score**: Weighted average: (Word Count×0.2 + Freshness×0.2 + Uniqueness×0.25 + Grammar×0.15 + Media×0.2)
 
-### Example Row
+### Content Quality Example Row
 
 ```csv
 URL,Word Count,Content Freshness Score,Content Uniqueness Score,Grammar Score,Media Richness Score,Top Keywords,Overall Content Score
@@ -251,10 +773,10 @@ https://example.com/page,523,85.5,92.3,88.7,75.2,"keyword1,keyword2,keyword3,key
 **Key Field**: `URL`
 **Sort Order**: By score (descending)
 
-### Fields
+### SEO Scores Fields
 
 | Field Name | Data Type | Range | Weight | Description | Nullable |
-|------------|-----------|-------|--------|-------------|----------|
+| ---------- | --------- | ----- | ------ | ----------- | -------- |
 | `URL` | String (URL) | - | - | Fully qualified page URL | No |
 | `Overall Score` | Float | 0-100 | - | Weighted sum of all component scores | No |
 | `Title Score` | Float | 0-100 | 15% | Title tag quality (length, keywords) | No |
@@ -276,13 +798,13 @@ https://example.com/page,523,85.5,92.3,88.7,75.2,"keyword1,keyword2,keyword3,key
 
 ### Overall Score Calculation
 
-```
+```text
 Overall Score = (Title×0.15) + (MetaDesc×0.10) + (Headings×0.15) + (Content×0.20) +
                 (Images×0.10) + (InternalLinks×0.10) + (Mobile×0.05) +
                 (Performance×0.10) + (StructuredData×0.05)
 ```
 
-### Example Row
+### SEO Scores Example Row
 
 ```csv
 URL,Overall Score,Title Score,Meta Description Score,Heading Structure Score,Content Score,Image Optimization Score,Internal Linking Score,Mobile Friendliness Score,Performance Score,Structured Data Score
@@ -297,10 +819,10 @@ https://example.com/page,82.5,90,85,80,75,88,70,95,85,100
 **Key Field**: `URL`
 **Sort Order**: By Overall Score (descending)
 
-### Fields
+### LLM Readability Fields
 
 | Field Name | Data Type | Range | Weight | Description | Nullable |
-|------------|-----------|-------|--------|-------------|----------|
+| ---------- | --------- | ----- | ------ | ----------- | -------- |
 | `URL` | String (URL) | - | - | Fully qualified page URL | No |
 | `Overall LLM Readability Score` | Float | 0-100 | - | Weighted average of component scores | No |
 | `Structural Clarity Score` | Float | 0-100 | 30% | Semantic HTML usage quality | No |
@@ -323,16 +845,16 @@ https://example.com/page,82.5,90,85,80,75,88,70,95,85,100
 
 **Structural Clarity Score**:
 
-```
-Score = (Semantic Elements / Total Elements × 40) +
+```text
+Score =(Semantic Elements / Total Elements × 40) +
         (Heading Hierarchy Quality × 30) +
         (Has Main Content × 30)
 ```
 
 **Content Organization Score**:
 
-```
-Score = (Paragraph Count > 3 × 30) +
+```text
+Score =(Paragraph Count > 3 × 30) +
         (List Count > 0 × 20) +
         (Table Count appropriate × 20) +
         (Content Length appropriate × 30)
@@ -340,29 +862,29 @@ Score = (Paragraph Count > 3 × 30) +
 
 **Metadata Quality Score**:
 
-```
-Score = (Has Structured Data × 50) +
+```text
+Score =(Has Structured Data × 50) +
         (OpenGraph Tags Quality × 30) +
         (Meta Description Quality × 20)
 ```
 
 **Text Extractability Score**:
 
-```
-Score = (Text to Markup Ratio × 60) +
+```text
+Score =(Text to Markup Ratio × 60) +
         ((1 - Hidden Content Ratio) × 40)
 ```
 
 ### Score Interpretation
 
 | Range | Interpretation | Recommendation |
-|-------|---------------|----------------|
+| ----- | -------------- | -------------- |
 | 90-100 | Excellent | Optimal for LLM extraction |
 | 70-89 | Good | Minor improvements possible |
 | 50-69 | Moderate | Significant improvements recommended |
 | 0-49 | Poor | Major structural improvements needed |
 
-### Example Row
+### LLM Readability Example Row
 
 ```csv
 URL,Overall LLM Readability Score,Structural Clarity Score,Content Organization Score,Metadata Quality Score,Text Extractability Score,Semantic HTML Usage,Heading Hierarchy Quality,Has Main Content,Has Structured Data,Text to Markup Ratio,Hidden Content Ratio,Paragraph Count,List Count,Table Count,Code Block Count,Total Elements
@@ -377,10 +899,10 @@ https://example.com/page,85.5,90.0,82.5,88.0,81.0,75.5,85,true,true,0.45,5.2,25,
 **Key Field**: `URL`
 **Sort Order**: By Status Code (descending)
 
-### Fields
+### HTTP Status Report Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `URL` | String (URL) | Fully qualified page URL | Valid HTTP/HTTPS URL | No |
 | `Status Code` | Integer | HTTP response status code | 301, 302, 307, 308, 400, 401, 403, 404, 500, 502, 503, etc. | No |
 | `Status Text` | String | Human-readable status description | "Moved Permanently", "Not Found", etc. | No |
@@ -389,7 +911,7 @@ https://example.com/page,85.5,90.0,82.5,88.0,81.0,75.5,85,true,true,0.45,5.2,25,
 ### Common Status Codes
 
 | Code | Status Text | Category | Description |
-|------|-------------|----------|-------------|
+| ---- | ----------- | -------- | ----------- |
 | 301 | Moved Permanently | Redirect | Permanent redirect to new location |
 | 302 | Found (Temporary Redirect) | Redirect | Temporary redirect |
 | 307 | Temporary Redirect | Redirect | Temporary redirect preserving method |
@@ -416,16 +938,273 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 
 ---
 
-## 9. Image Optimization (`image_optimization.csv`)
+## 9. robots.txt Quality Report (`robots_txt_quality.csv`)
+
+**Purpose**: Analyze robots.txt file quality for AI agent compatibility
+**Key Field**: `URL`
+**Sort Order**: Unsorted (typically one file per site)
+**Reference**: Based on guidance from "The Invisible Users" book
+
+### robots.txt Quality Fields
+
+| Field Name | Data Type | Description | Possible Values | Nullable |
+| ---------- | --------- | ----------- | --------------- | -------- |
+| `URL` | String (URL) | URL to robots.txt file | `https://example.com/robots.txt` | No |
+| `File Exists` | Boolean | Whether file is accessible | `true`, `false` | No |
+| `Overall Quality` | String (Enum) | Quality assessment | `Excellent`, `Good`, `Fair`, `Poor`, `Missing` | No |
+| `Quality Score` | Integer | Numeric quality score | 0-100 | No |
+| `Max Score` | Integer | Maximum possible score | 100 | No |
+| `Has AI User Agents` | Boolean | Declares AI-specific user agents | `true`, `false` | No |
+| `AI User Agents Found` | String | Semicolon-separated list | `GPTBot; ClaudeBot; PerplexityBot` | Yes |
+| `Has Sitemap` | Boolean | Contains sitemap reference | `true`, `false` | No |
+| `Sitemap Count` | Integer | Number of sitemaps declared | 0 to N | No |
+| `Protects Sensitive Paths` | Boolean | Disallows sensitive directories | `true`, `false` | No |
+| `Protected Paths` | String | Semicolon-separated list | `/admin; /account; /cart` | Yes |
+| `References llms.txt` | Boolean | Comments mention llms.txt | `true`, `false` | No |
+| `Has Comments` | Boolean | Contains explanatory comments | `true`, `false` | No |
+| `Total Rules` | Integer | Number of allow/disallow rules | 0 to N | No |
+| `Structure Quality` | String (Enum) | Structure assessment | `Excellent`, `Good`, `Basic`, `Unknown` | No |
+| `Issues` | String | Semicolon-separated issues | `No AI-specific user agents found` | Yes |
+| `Recommendations` | String | Semicolon-separated recommendations | `Add GPTBot, ClaudeBot declarations` | Yes |
+
+### robots.txt Quality Scoring Breakdown
+
+Maximum possible: **100 points**
+
+- **AI User Agents (30 points)**
+  - 30 points: 3+ AI user agents declared
+  - 20 points: 1-2 AI user agents declared
+  - 5 points: Generic user agents only
+
+- **Sitemap References (20 points)**
+  - 20 points: At least one sitemap declared
+  - 0 points: No sitemaps
+
+- **Sensitive Path Protection (25 points)**
+  - 25 points: 3+ sensitive paths protected
+  - 15 points: 1-2 sensitive paths protected
+  - 0 points: No protection
+
+- **llms.txt Reference (15 points)**
+  - 15 points: Comments mention llms.txt
+  - 0 points: No reference
+
+- **Comments and Documentation (10 points)**
+  - 10 points: 3+ helpful comments
+  - 5 points: 1-2 comments
+  - 0 points: No comments
+
+- **Completeness Bonus (10 points)**
+  - 10 points: All elements present
+
+### robots.txt Quality Example Row
+
+```csv
+URL,File Exists,Overall Quality,Quality Score,Max Score,Has AI User Agents,AI User Agents Found,Has Sitemap,Sitemap Count,Protects Sensitive Paths,Protected Paths,References llms.txt,Has Comments,Total Rules,Structure Quality,Issues,Recommendations
+https://example.com/robots.txt,true,Good,75,100,true,GPTBot; ClaudeBot,true,1,true,/admin; /account; /cart,false,true,12,Good,,"Add llms.txt reference in comments"
+```
+
+---
+
+## 10. llms.txt Quality Report (`llms_txt_quality.csv`)
+
+**Purpose**: Evaluate llms.txt file quality for AI agent guidance
+**Key Field**: `URL`
+**Sort Order**: Unsorted (typically one file per site)
+**Reference**: Based on llmstxt.org specification and "The Invisible Users" book
+
+### llms.txt Quality Fields
+
+| Field Name | Data Type | Description | Possible Values | Nullable |
+| ---------- | --------- | ----------- | --------------- | -------- |
+| `URL` | String (URL) | URL to llms.txt file | `https://example.com/llms.txt` | No |
+| `File Exists` | Boolean | Whether file is accessible | `true`, `false` | No |
+| `Overall Quality` | String (Enum) | Quality assessment | `Excellent`, `Good`, `Fair`, `Poor`, `Very Poor`, `Missing` | No |
+| `Quality Score` | Integer | Numeric quality score | 0-100 | No |
+| `Max Score` | Integer | Maximum possible score | 100 | No |
+| `Has Title` | Boolean | Contains H1 title | `true`, `false` | No |
+| `Title` | String | Extracted H1 title | Any text | Yes |
+| `Has Description` | Boolean | Contains site description | `true`, `false` | No |
+| `Has Contact` | Boolean | Contains contact information | `true`, `false` | No |
+| `Contact` | String | Contact email or URL | Any text | Yes |
+| `Has Last Updated` | Boolean | Contains last updated date | `true`, `false` | No |
+| `Last Updated` | String | Last updated timestamp | Date string | Yes |
+| `Has Site Type` | Boolean | Declares site type | `true`, `false` | No |
+| `Site Type` | String | Site category | `E-Commerce`, `Content-Driven`, `API-Driven`, etc. | Yes |
+| `Core Elements Present` | Integer | Number of core elements | 0-4 | No |
+| `Core Elements Total` | Integer | Total core elements expected | 4 | No |
+| `Sections Present` | Integer | Number of important sections | 0-6 | No |
+| `Sections Total` | Integer | Total sections recommended | 6 | No |
+| `Word Count` | Integer | Total words in file | 0 to N | No |
+| `Line Count` | Integer | Total lines in file | 0 to N | No |
+| `Link Count` | Integer | Number of documentation links | 0 to N | No |
+| `Heading Count` | Integer | Number of markdown headings | 0 to N | No |
+| `Content Length Assessment` | String (Enum) | Content adequacy | `Comprehensive`, `Adequate`, `Minimal`, `Insufficient`, `Unknown` | No |
+| `Specificity Level` | String (Enum) | Detail level | `High`, `Medium`, `Low`, `Unknown` | No |
+| `Has Structured Content` | Boolean | Well-organized sections | `true`, `false` | No |
+| `Issues` | String | Semicolon-separated issues | `Missing contact information` | Yes |
+| `Recommendations` | String | Semicolon-separated recommendations | `Add API documentation section` | Yes |
+
+### Core Elements
+
+Required elements for a quality llms.txt file:
+
+1. **Title (H1)** - Site identification
+2. **Description** - Purpose and content type
+3. **Contact** - Email for AI policy questions
+4. **Last Updated** - Version timestamp
+
+### Important Sections
+
+Recommended sections for comprehensive guidance:
+
+1. **Access Guidelines** - Rate limits, usage policies
+2. **Content Restrictions** - Off-limits paths and data
+3. **API Access** - Endpoints, authentication
+4. **Training Guidelines** - Permitted/prohibited uses
+5. **Attribution** - How to credit content
+6. **Error Handling** - Retry logic, fallbacks
+
+### llms.txt Quality Scoring Breakdown
+
+Maximum possible: **105 points (bonus possible)**
+
+- **Core Elements (40 points)** - 10 points each
+  - Title, Description, Contact, Last Updated
+
+- **Important Sections (30 points)** - 5 points each
+  - Access Guidelines, Content Restrictions, API Access, Training Guidelines, Attribution, Error Handling
+
+- **Content Structure and Length (15 points)**
+  - 15 points: 200+ words (Comprehensive)
+  - 10 points: 100-199 words (Adequate)
+  - 5 points: 50-99 words (Minimal)
+  - 0 points: <50 words (Insufficient)
+
+- **Links and Documentation (10 points)**
+  - 10 points: 5+ links
+  - 7 points: 3-4 links
+  - 4 points: 1-2 links
+  - 0 points: No links
+
+- **Specificity and Detail (5 points)**
+  - Checks for rate limits, API endpoints, specific paths
+
+- **Bonus Points (up to 5 points)**
+  - Site type declared (+3)
+  - 5+ headings (+2)
+
+### llms.txt Quality Example Row
+
+```csv
+URL,File Exists,Overall Quality,Quality Score,Max Score,Has Title,Title,Has Description,Has Contact,Contact,Has Last Updated,Last Updated,Has Site Type,Site Type,Core Elements Present,Core Elements Total,Sections Present,Sections Total,Word Count,Line Count,Link Count,Heading Count,Content Length Assessment,Specificity Level,Has Structured Content,Issues,Recommendations
+https://example.com/llms.txt,true,Good,78,100,true,Example Site,true,true,ai@example.com,true,2026-01-03,true,Content-Driven,4,4,4,6,245,58,6,8,Comprehensive,High,true,,"Add training guidelines section; Include specific rate limits"
+```
+
+---
+
+## 11. AI Files Summary Report (`ai_files_summary.md`)
+
+**Purpose**: Human-readable summary of robots.txt and llms.txt quality
+**Format**: Markdown
+**Aggregation Level**: Site-wide
+
+### AI Files Summary Structure
+
+```markdown
+# AI Files Quality Summary
+
+**Generated**: [ISO timestamp]
+
+## Overview
+
+Summary of robots.txt and llms.txt quality for AI agent compatibility.
+
+---
+
+## robots.txt Analysis
+
+**URL**: [robots.txt URL]
+**Exists**: Yes/No
+**Quality Score**: X/100 - Quality Level
+
+### Quality Breakdown
+- AI User Agents Declared: Yes/No (List)
+- Sitemap Reference: Yes/No (Count)
+- Sensitive Path Protection: Yes/No (Paths)
+- References llms.txt: Yes/No
+- Has Comments: Yes/No
+- Total Rules: N
+- Structure Quality: Level
+
+### Issues
+- [List of issues]
+
+### Recommendations
+- [List of recommendations]
+
+---
+
+## llms.txt Analysis
+
+**URL**: [llms.txt URL]
+**Exists**: Yes/No
+**Quality Score**: X/100 - Quality Level
+
+### File Contents
+- Title: [Title]
+- Description: [Description]
+- Contact: [Contact]
+- Last Updated: [Date]
+- Site Type: [Type]
+
+### Quality Metrics
+- Core Elements: X/4 present
+- Sections: X/6 present
+- Content Length: Assessment (N words)
+- Specificity: Level
+- Links: N documentation links
+- Headings: N sections
+
+### Issues
+- [List of issues]
+
+### Recommendations
+- [List of recommendations]
+
+---
+
+## Additional Resources
+
+- llms.txt Specification: https://llmstxt.org/
+- The Invisible Users Book: https://github.com/tomcranstoun/invisible-users
+- robots.txt Standard: https://www.robotstxt.org/
+```
+
+### Key Sections
+
+| Section | Content Type | Description |
+| ------- | ------------ | ----------- |
+| Overview | Site-wide summary | Introduction and context |
+| robots.txt Analysis | File quality | Detailed robots.txt assessment |
+| llms.txt Analysis | File quality | Detailed llms.txt assessment |
+| Quality Breakdown | Metrics | Specific quality indicators |
+| Issues | Problems | Items requiring attention |
+| Recommendations | Actions | Prioritized improvements |
+| Additional Resources | Links | Reference documentation |
+
+---
+
+## 12. Image Optimization (`image_optimization.csv`)
 
 **Purpose**: Per-image analysis and optimization recommendations
 **Key Fields**: `Page URL` + `Image URL` (composite key)
 **Sort Order**: By Optimization Score (ascending, worst first)
 
-### Fields
+### Image Optimization Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `Page URL` | String (URL) | URL of page containing the image | Valid HTTP/HTTPS URL | No |
 | `Image URL` | String (URL) | Direct URL to image resource | Valid HTTP/HTTPS URL | No |
 | `File Size (KB)` | Float | Image file size in kilobytes | Positive float | Yes |
@@ -442,7 +1221,7 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 ### Alt Text Quality Scoring
 
 | Score Range | Quality | Criteria |
-|-------------|---------|----------|
+| ----------- | ------- | -------- |
 | 90-100 | Excellent | 10-125 chars, descriptive, no "image of" prefix |
 | 70-89 | Good | 5-150 chars, somewhat descriptive |
 | 50-69 | Fair | 1-200 chars, generic or too long |
@@ -450,15 +1229,15 @@ https://example.com/error,500,Internal Server Error,2025-12-07T10:32:03.789Z
 
 ### Optimization Score Calculation
 
-```
-Score = (Alt Text Quality × 0.25) +
+```text
+Score =(Alt Text Quality × 0.25) +
         (File Size Appropriate × 0.25) +
         (Format Modern × 0.20) +
         (Is Responsive × 0.15) +
         (Lazy Loaded × 0.15)
 ```
 
-### Example Row
+### Image Optimization Example Row
 
 ```csv
 Page URL,Image URL,File Size (KB),Dimensions,Format,Alt Text,Alt Text Quality Score,Is Responsive,Lazy Loaded,Compression Level,Optimization Score,Recommendations
@@ -473,10 +1252,10 @@ https://example.com/page,https://example.com/img/photo.jpg,245.6,1920x1080,jpg,"
 **Key Fields**: `Source URL` + `Target URL` (composite key)
 **Sort Order**: Unsorted (insertion order)
 
-### Fields
+### Link Analysis Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `Source URL` | String (URL) | Page containing the link | Valid HTTP/HTTPS URL | No |
 | `Target URL` | String (URL) | Link destination | Valid HTTP/HTTPS URL | No |
 | `Link Text` | String | Anchor text content | Any text | Yes |
@@ -496,15 +1275,15 @@ https://example.com/page,https://example.com/img/photo.jpg,245.6,1920x1080,jpg,"
 
 ### Link Quality Score Calculation
 
-```
-Score = (Has Link Text × 20) +
+```text
+Score =(Has Link Text × 20) +
         (HTTP Status 200 × 30) +
         (No Redirect Chain × 20) +
         (Link Text Quality × 20) +
         (Link Depth Reasonable × 10)
 ```
 
-### Example Row
+### Link Analysis Example Row
 
 ```csv
 Source URL,Target URL,Link Text,Link Type,Follow Type,HTTP Status,Redirect Chain,Content Type,In Navigation,Link Depth,Link Quality Score
@@ -519,10 +1298,10 @@ https://example.com/page,https://example.com/about,About Us,internal,follow,200,
 **Key Field**: `Resource URL`
 **Sort Order**: By Total Count (descending, most-used first)
 
-### Fields
+### All Resources Fields
 
 | Field Name | Data Type | Description | Possible Values | Nullable |
-|------------|-----------|-------------|-----------------|----------|
+| ---------- | --------- | ----------- | --------------- | -------- |
 | `Resource URL` | String (URL) | Direct URL to resource | Valid HTTP/HTTPS URL | No |
 | `Resource Type` | String (Enum) | Category of resource | See Resource Types below | No |
 | `Total Count` | Integer | Number of pages using this resource | 1 to N | No |
@@ -530,7 +1309,7 @@ https://example.com/page,https://example.com/about,About Us,internal,follow,200,
 ### Resource Types
 
 | Type | Description | Examples |
-|------|-------------|----------|
+| ---- | ----------- | -------- |
 | `javascript` | JavaScript files | `.js`, `<script src="">` |
 | `css` | Stylesheets | `.css`, `<link rel="stylesheet">` |
 | `image` | Image files | `.jpg`, `.png`, `.gif`, `.svg`, `.webp`, `<img src="">` |
@@ -556,7 +1335,7 @@ Resources from ANY domain are included:
 - Track external dependencies and CDN usage
 - Analyze resource loading patterns
 
-### Example Rows
+### All Resources Example Rows
 
 ```csv
 Resource URL,Resource Type,Total Count
@@ -575,10 +1354,10 @@ https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900
 **Key Field**: `Discovered URL`
 **Sort Order**: By Reference Count (descending, most-referenced first)
 
-### Fields
+### Missing Sitemap URLs Fields
 
 | Field Name | Data Type | Description | Calculation | Nullable |
-|------------|-----------|-------------|-------------|----------|
+| ---------- | --------- | ----------- | ----------- | -------- |
 | `Discovered URL` | String (URL) | URL found during crawling | Same-domain URLs not in sitemap | No |
 | `Reference Count` | Integer | Number of pages linking to this URL | Count of inbound links | No |
 | `First Discovered On` | String (URL) | Source page that first linked to this URL | First encountered source | No |
@@ -593,14 +1372,14 @@ https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900
    - NOT in original sitemap
    - Successfully crawled (not 404)
 
-### Use Cases
+### Missing Sitemap URLs Use Cases
 
 - **SEO Improvement**: Add missing URLs to sitemap for better search engine coverage
 - **Site Architecture**: Identify orphaned or unlisted pages
 - **Content Audit**: Find pages that should be indexed but aren't in sitemap
 - **Quality Control**: Detect pages accidentally excluded from sitemap
 
-### Example Rows
+### Missing Sitemap URLs Example Rows
 
 ```csv
 Discovered URL,Reference Count,First Discovered On
@@ -617,7 +1396,7 @@ https://example.com/about/team/member-5,5,https://example.com/about/team
 **Format**: XML (Sitemap Protocol)
 **Sort Order**: Original URLs first, then discovered URLs
 
-### Structure
+### Sitemap Structure
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -646,7 +1425,7 @@ https://example.com/about/team/member-5,5,https://example.com/about/team
 ### Elements
 
 | Element | Required | Description | Example |
-|---------|----------|-------------|---------|
+| ------- | -------- | ----------- | ------- |
 | `<loc>` | Yes | Fully qualified URL | `https://example.com/page` |
 | `<lastmod>` | No | Last modification date | `2025-12-07T10:30:00+00:00` |
 | `<changefreq>` | No | Expected update frequency | `daily`, `weekly`, `monthly`, `yearly` |
@@ -693,7 +1472,7 @@ WHERE perf."Load Time (ms)" > 3000;
 
 ### Report Dependencies
 
-```
+```text
 Original Sitemap URLs (input)
     ↓
 URL Processing & Crawling
@@ -725,7 +1504,7 @@ Output Reports:
 ### Common Data Types
 
 | Type | Format | Example | Validation |
-|------|--------|---------|------------|
+| ---- | ------ | ------- | ---------- |
 | String (URL) | RFC 3986 | `https://example.com/page` | Must be valid HTTP/HTTPS |
 | Integer | Whole number | `42` | No decimals |
 | Float | Decimal number | `85.5` | 1-2 decimal places typical |
@@ -783,31 +1562,31 @@ with open('seo_report.csv', 'r', encoding='utf-8') as f:
 
 **Find slow pages with poor SEO:**
 
-```
-Filter: Load Time > 3000ms AND Overall SEO Score < 70
+```text
+Filter:Load Time > 3000ms AND Overall SEO Score < 70
 Reports: performance_analysis.csv + seo_scores.csv
 ```
 
 **Find images missing alt text on high-traffic pages:**
 
-```
-Filter: Alt Text = "" AND Optimization Score < 50
+```text
+Filter:Alt Text = "" AND Optimization Score < 50
 Reports: image_optimization.csv
 Join: With seo_report.csv to get page context
 ```
 
 **Identify accessibility issues by severity:**
 
-```
-Filter: Critical Issues > 0
+```text
+Filter:Critical Issues > 0
 Reports: accessibility_report.csv
 Sort: By Critical Issues DESC
 ```
 
 **Find most-used external resources:**
 
-```
-Filter: Resource Type = "javascript" AND Domain ≠ Site Domain
+```text
+Filter:Resource Type = "javascript" AND Domain ≠ Site Domain
 Reports: all_resources_report.csv
 Sort: By Total Count DESC
 ```
@@ -817,7 +1596,7 @@ Sort: By Total Count DESC
 ## Schema Version History
 
 | Version | Date | Changes |
-|---------|------|---------|
+| ------- | ---- | ------- |
 | 1.0.0 | Initial | All original reports |
 | 1.1.0 | 2025-11 | Added `llm_readability_report.csv` |
 | 1.2.0 | 2025-12 | Added `http_status_report.csv`, moved logs to results folder |
@@ -844,7 +1623,7 @@ When schema changes:
 The tool also generates cache files for debugging:
 
 | Location | Content | Format |
-|----------|---------|--------|
+| -------- | ------- | ------ |
 | `.cache/rendered/{hash}.html` | Puppeteer-rendered HTML | HTML |
 | `.cache/rendered/{hash}.log` | Browser console output | Plain text |
 | `.cache/served/{hash}.html` | Original served HTML | HTML |
@@ -855,7 +1634,7 @@ The tool also generates cache files for debugging:
 ### Log Files
 
 | File | Location | Content |
-|------|----------|---------|
+| ---- | -------- | ------- |
 | `error.log` | Output directory | Error-level messages only |
 | `combined.log` | Output directory | All log levels (debug, info, warn, error) |
 
@@ -867,7 +1646,7 @@ The tool also generates cache files for debugging:
 **Generated**: When `--generate-executive-summary` flag is used
 **Format**: Markdown (human-readable)
 
-### Structure
+### Executive Summary Structure
 
 ```markdown
 # Executive Summary
@@ -875,6 +1654,10 @@ The tool also generates cache files for debugging:
 **Site:** [domain]
 **Generated:** [timestamp]
 **Pages Analyzed:** [count]
+**robots.txt Compliance:** [✅/⚠️] [Enabled/Disabled]
+**Cache Staleness:** [✅/⚠️/ℹ️] [capability message]
+
+## Overall Score: [score]/100 ([status])
 
 ## Overall Status
 [Table with Performance, Accessibility, SEO, LLM status and scores]
@@ -899,6 +1682,19 @@ The tool also generates cache files for debugging:
 - Status, Served Score, Rendered Score, llms.txt count
 - Trend information (if history enabled)
 
+## Technology Stack
+- CMS detection (Adobe EDS, WordPress, Drupal, etc.)
+- JavaScript frameworks (React, Vue.js, Angular, etc.)
+- Libraries (jQuery, Lodash, D3.js, etc.)
+- Analytics tools (Google Analytics, Adobe Analytics, etc.)
+- CDNs (Cloudflare, Akamai, Fastly, etc.)
+- Confidence levels (high/medium)
+- Resource count and base domain reference
+
+## AI File Compatibility
+- robots.txt quality score and status
+- llms.txt quality score and status
+
 ## Key Findings
 [Numbered list of critical findings with severity icons]
 
@@ -911,11 +1707,17 @@ The tool also generates cache files for debugging:
 
 ### Key Fields
 
+- **Overall Score**: Headline score averaging Performance, Accessibility, SEO, and LLM Suitability scores (0-100)
 - **Overall Status**: Pass/Warn/Fail for each category
 - **Scores**: Numerical scores (0-100 where applicable)
 - **Trends**: Percentage changes from previous run
 - **Findings**: Critical issues requiring attention
 - **Recommendations**: Prioritized action items
+- **robots.txt Compliance**: Shows whether compliance mode was enabled during analysis
+- **Cache Staleness**: Indicates whether the site provides HTTP Last-Modified headers for cache staleness detection
+  - ✅ Site provides headers - cache staleness checking will work
+  - ⚠️ Site does not provide headers - cache staleness checking will not work
+  - ℹ️ Unable to determine (cache not available)
 
 ---
 
@@ -934,7 +1736,10 @@ The tool also generates cache files for debugging:
   "overview": {
     "totalPages": 100,
     "analysisDate": "YYYY-MM-DD",
-    "schemaVersion": "2.0.0"
+    "schemaVersion": "2.0.0",
+    "robotsComplianceEnabled": true,
+    "cacheStalenessNote": "string",
+    "cacheStalenessCapable": true|false|null
   },
   "performance": {
     "status": "Excellent|Good|Fair|Poor",
@@ -975,6 +1780,32 @@ The tool also generates cache files for debugging:
     "pagesWithLLMsTxt": "count",
     "trend": { "servedScore": "%", "renderedScore": "%" }
   },
+  "technologies": {
+    "detected": true|false,
+    "baseDomain": "URL",
+    "totalResources": "count",
+    "technologies": [
+      {
+        "name": "Technology Name",
+        "category": "CMS|Framework|Library|Analytics|CDN",
+        "confidence": "high|medium"
+      }
+    ],
+    "byCategory": {
+      "CMS": [],
+      "Framework": [],
+      "Library": [],
+      "Analytics": [],
+      "CDN": []
+    },
+    "summary": {
+      "cms": ["Adobe EDS", "WordPress"],
+      "frameworks": ["React", "Vue.js"],
+      "libraries": ["jQuery", "D3.js"],
+      "analytics": ["Google Analytics"],
+      "cdns": ["Cloudflare"]
+    }
+  },
   "keyFindings": [
     {
       "category": "Performance|Accessibility|SEO|Content|LLM",
@@ -996,6 +1827,110 @@ The tool also generates cache files for debugging:
   }
 }
 ```
+
+### Executive Summary JSON Field Descriptions
+
+**Overview Section:**
+
+- `totalPages`: Number of pages analyzed in this run
+- `analysisDate`: Date when analysis was performed (YYYY-MM-DD format)
+- `schemaVersion`: Data structure version for compatibility checking
+- `robotsComplianceEnabled`: Boolean indicating if robots.txt compliance was enforced
+  - `true`: Tool respected robots.txt directives (default, ethical mode)
+  - `false`: Tool used force-scrape mode (bypassed robots.txt restrictions)
+  - This field indicates whether the `--force-scrape` flag was used or `FORCE_SCRAPE=true` was set in .env
+- `cacheStalenessNote`: Human-readable message about cache staleness capability
+  - `"✅ Site provides HTTP Last-Modified header - cache staleness checking will work"`
+  - `"⚠️ No Last-Modified header found in HTTP response - cache staleness checking will not work"`
+  - `"ℹ️ Unable to determine (cache not available)"`
+- `cacheStalenessCapable`: Boolean or null indicating if site supports cache staleness detection
+  - `true`: Site provides HTTP Last-Modified headers, cache staleness checking will work
+  - `false`: Site does not provide Last-Modified headers, cache staleness checking will not work
+  - `null`: Unable to determine (cache files not available during report generation)
+
+**robots.txt Compliance Context:**
+
+When `robotsComplianceEnabled` is `true`, the tool:
+
+- Fetched and parsed robots.txt before crawling
+- Checked each URL against robots.txt rules
+- Prompted user when URLs were blocked
+- May have skipped some URLs due to robots.txt restrictions
+
+When `robotsComplianceEnabled` is `false`, the tool:
+
+- Bypassed all robots.txt restrictions
+- Crawled all URLs regardless of robots.txt rules
+- Used force-scrape mode (should only be used with explicit permission)
+
+**Cache Staleness Capability Context:**
+
+The `cacheStalenessNote` and `cacheStalenessCapable` fields indicate whether the analyzed site provides HTTP `Last-Modified` headers, which are required for automatic cache staleness detection.
+
+Cache staleness checking works by:
+
+1. Making HTTP HEAD requests to source URLs
+2. Comparing the `Last-Modified` header from the source with the cache's `lastCrawled` timestamp
+3. Automatically invalidating and deleting stale cache files when source content has changed
+
+When `cacheStalenessCapable` is `true`:
+
+- Site provides HTTP `Last-Modified` headers in responses
+- Cache staleness checking will work automatically
+- Stale cache files will be detected and refreshed on subsequent runs
+- Users can rely on automatic cache invalidation
+
+When `cacheStalenessCapable` is `false`:
+
+- Site does not provide `Last-Modified` headers
+- Cache staleness checking cannot determine freshness
+- Cache is conservatively assumed to be fresh (to avoid unnecessary re-fetches)
+- Users may need to manually clear cache with `--force-delete-cache` to ensure fresh data
+
+When `cacheStalenessCapable` is `null`:
+
+- Unable to determine capability (cache files not available during report generation)
+- This typically occurs when running `--generate-executive-summary` without cache
+
+**Implementation Details:**
+
+The executive summary checks the first URL's cache file for the presence of a `Last-Modified` header in the cached `headers` object. This provides a representative sample of whether the site supports cache staleness detection. The check uses the same MD5 hash function as the caching system to locate cache files.
+
+**Technologies Section:**
+
+The `technologies` object contains automatic detection results for web technologies used on the homepage:
+
+- `detected`: Boolean indicating if any technologies were detected
+- `baseDomain`: Homepage URL analyzed for technology detection
+- `totalResources`: Number of JavaScript resources analyzed
+- `technologies`: Array of all detected technologies with:
+  - `name`: Technology name (e.g., "Adobe Experience Manager Edge Delivery Services")
+  - `category`: Category type (CMS, Framework, Library, Analytics, CDN)
+  - `confidence`: Detection confidence level ("high" or "medium")
+  - `patterns` (Adobe EDS only): Object showing which detection patterns matched
+- `byCategory`: Technologies organized by category for easy filtering
+- `summary`: Simple arrays of technology names by category for quick reference
+
+**Technology Detection Patterns:**
+
+- **CMS**: Adobe EDS (aem.js, .hlx.page/.hlx.live, /clientlibs/), WordPress, Drupal, Shopify, Wix, Webflow, Squarespace, Joomla
+- **Frameworks**: React, Vue.js, Angular, Svelte, Next.js, Nuxt.js
+- **Libraries**: jQuery, Lodash, Moment.js, D3.js, Chart.js, GSAP, Alpine.js, HTMX, Three.js
+- **Analytics**: Google Analytics, Adobe Analytics, Matomo, Hotjar, Mixpanel, Segment
+- **CDNs**: Cloudflare, Akamai, Fastly, Amazon CloudFront
+
+**Adobe EDS Detection:**
+
+Adobe Edge Delivery Services (EDS) is detected via multiple patterns:
+
+- `hasAemJs`: Presence of aem.js file
+- `hasHlxDomain`: .hlx.page or .hlx.live domains
+- `hasFranklin`: Franklin references
+- `hasClientLibs`: /clientlibs/ directory
+- `hasGraniteLibs`: /libs/granite/ directory
+- `hasCqLibs`: /libs/cq/ directory
+
+Confidence is "high" if aem.js or .hlx domains are found, otherwise "medium".
 
 ---
 
@@ -1050,7 +1985,7 @@ All charts are generated from `results.json` and rendered as PNG images using Ch
 }
 ```
 
-### Usage
+### Historical Results Usage
 
 - **Comparative Analysis**: Compare metrics between runs
 - **Trend Analysis**: Track changes over time
@@ -1082,7 +2017,7 @@ const comparison = compareResults(previousResult.results, currentResults);
 **Format**: JSON
 **Location**: User-specified via `--thresholds` flag
 
-### Structure
+### Threshold Configuration Structure
 
 ```json
 {

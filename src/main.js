@@ -3,10 +3,11 @@ import path from 'path';
 import { getUrlsFromSitemap, processSitemapUrls } from './utils/sitemap.js';
 import { generateReports } from './utils/reports.js';
 import { setupShutdownHandler, updateCurrentResults } from './utils/shutdownHandler.js';
-import { executeNetworkOperation } from './utils/networkUtils.js';
+import { executeNetworkOperation, initializeBrowserPool, shutdownBrowserPool } from './utils/networkUtils.js';
 import { getDiscoveredUrls } from './utils/sitemapUtils.js';
 import { RESULTS_SCHEMA_VERSION, areVersionsCompatible } from './utils/schemaVersion.js';
-import { storeHistoricalResult } from './utils/historicalComparison.js';
+import { storeHistoricalResult, establishBaseline } from './utils/historicalComparison.js';
+import { fetchRobotsTxt, extractBaseUrl } from './utils/robotsFetcher.js';
 
 /**
  * Main function to run accessibility and SEO tests on a sitemap or webpage
@@ -47,6 +48,39 @@ export async function runTestsOnSitemap() {
   global.auditcore.logger.info(`Starting process for sitemap or page: ${sitemapUrl}`);
   global.auditcore.logger.info(`Results will be saved to: ${outputDir}`);
 
+  // Initialize browser pool for performance optimization
+  try {
+    await initializeBrowserPool({
+      poolSize: global.auditcore.options.browserPoolSize || 3,
+    });
+  } catch (error) {
+    global.auditcore.logger.warn('Failed to initialize browser pool, will use fallback mode:', error.message);
+  }
+
+  // Fetch robots.txt FIRST before any URL processing (Phase 0: robots.txt compliance check)
+  global.auditcore.logger.info('Phase 0: Fetching robots.txt for compliance checking...');
+  try {
+    const baseUrl = extractBaseUrl(sitemapUrl);
+    const robotsTxtData = await fetchRobotsTxt(baseUrl);
+
+    // Store in global state for access throughout the session
+    global.auditcore.robotsTxtData = robotsTxtData;
+    global.auditcore.forceScrape = global.auditcore.options.forceScrape || false;
+    global.auditcore.isFirstBlockedUrl = true; // Track if this is the first time we encounter a blocked URL
+
+    if (robotsTxtData) {
+      global.auditcore.logger.info('✓ robots.txt fetched and parsed successfully');
+    } else {
+      global.auditcore.logger.info('✓ No robots.txt found - allowing all URLs by default');
+    }
+  } catch (error) {
+    global.auditcore.logger.warn(`Error fetching robots.txt: ${error.message}`);
+    global.auditcore.logger.info('Proceeding without robots.txt (allowing all URLs by default)');
+    global.auditcore.robotsTxtData = null;
+    global.auditcore.forceScrape = global.auditcore.options.forceScrape || false;
+    global.auditcore.isFirstBlockedUrl = true;
+  }
+
   // Check for existing results to support resume functionality
   const resultsPath = path.join(outputDir, 'results.json');
   let results;
@@ -55,21 +89,50 @@ export async function runTestsOnSitemap() {
   const { cache = true, noCache: explicitNoCache = false, forceDeleteCache = false } = global.auditcore.options;
   const noCache = explicitNoCache || !cache;
 
-  // Delete entire results directory if force delete cache is enabled
+  // Set cache directory relative to output directory for consolidated structure
+  // Cache will be stored in {outputDir}/.cache instead of project root .cache
+  const cacheDir = path.join(outputDir, global.auditcore.options.cacheDir || '.cache');
+  global.auditcore.options.cacheDir = cacheDir;
+
+  // Delete cache and old reports, but preserve history and baseline
   if (forceDeleteCache) {
     try {
-      await fs.rm(outputDir, { recursive: true, force: true });
-      global.auditcore.logger.info('Force delete cache: Deleted results directory');
-      // Recreate the output directory
-      await fs.mkdir(outputDir, { recursive: true });
+      // Delete cache directory
+      try {
+        await fs.rm(cacheDir, { recursive: true, force: true });
+        global.auditcore.logger.info('Force delete cache: Deleted cache directory');
+      } catch (error) {
+        global.auditcore.logger.debug('Cache directory does not exist or already deleted');
+      }
 
-      const cacheDir = global.auditcore.options.cacheDir || '.cache';
-      await fs.rm(cacheDir, { recursive: true, force: true });
-      global.auditcore.logger.info(`Force delete cache: Deleted cache directory (${cacheDir})`);
+      // Delete old reports but keep history/ and baseline.json
+      try {
+        const files = await fs.readdir(outputDir);
+        for (const file of files) {
+          const filePath = path.join(outputDir, file);
+          // Skip history directory, baseline.json, and cache directory
+          if (file === 'history' || file === 'baseline.json' || file === '.cache') {
+            continue;
+          }
+          await fs.rm(filePath, { recursive: true, force: true });
+        }
+        global.auditcore.logger.info('Force delete cache: Deleted old reports (preserved history and baseline)');
+      } catch (error) {
+        global.auditcore.logger.debug('Error deleting old reports:', error.message);
+      }
+
+      // Recreate cache directory
       await fs.mkdir(cacheDir, { recursive: true });
-      global.auditcore.logger.info(`Recreated output directory: ${outputDir}`);
+      global.auditcore.logger.info('Recreated cache directory');
     } catch (error) {
-      global.auditcore.logger.debug('Error clearing results directory:', error.message);
+      global.auditcore.logger.debug('Error clearing cache:', error.message);
+    }
+  } else {
+    // Ensure cache directory exists within output directory
+    try {
+      await fs.mkdir(cacheDir, { recursive: true });
+    } catch (error) {
+      global.auditcore.logger.debug('Cache directory already exists or creation failed:', error.message);
     }
   }
 
@@ -132,7 +195,7 @@ export async function runTestsOnSitemap() {
       // Add schema version to results
       results.schemaVersion = RESULTS_SCHEMA_VERSION;
 
-      // Save results for future use and resume capability
+      // Save results for future use and resume capability (minified for performance)
       await fs.writeFile(resultsPath, JSON.stringify(results));
     }
 
@@ -156,10 +219,20 @@ export async function runTestsOnSitemap() {
       'report generation',
     );
 
-    if (results.specificUrlMetrics && results.specificUrlMetrics.length > 0) {
-      global.auditcore.logger.info(`\n=== Specific URL Search Results ===\nFound ${results.specificUrlMetrics.length} occurrences of the target URL.\nSee specific_url_report.csv for details.\n=====================================\n`);
-    } else {
-      global.auditcore.logger.info('\n=== Specific URL Search Results ===\nNo occurrences of the target URL were found.\n=====================================\n');
+    // Establish baseline if requested
+    if (global.auditcore.options.establishBaseline) {
+      if (!global.auditcore.options.enableHistory) {
+        global.auditcore.logger.warn('⚠️ --establish-baseline requires --enable-history flag');
+      } else {
+        try {
+          const timestamp = global.auditcore.options.baselineTimestamp || null;
+          await establishBaseline(outputDir, timestamp);
+          global.auditcore.logger.info('✅ Baseline established successfully');
+          global.auditcore.logger.info('Future audits will compare against this baseline to detect regressions');
+        } catch (error) {
+          global.auditcore.logger.error('Failed to establish baseline:', error.message);
+        }
+      }
     }
 
     if (results.externalResourcesAggregation && Object.keys(results.externalResourcesAggregation).length > 0) {
@@ -177,8 +250,6 @@ export async function runTestsOnSitemap() {
         .join(', ');
 
       global.auditcore.logger.info(`\n=== All Resources Summary ===\nFound ${totalResources} unique resources (${totalReferences} total references)\nBreakdown: ${typeBreakdownStr}\nSee all_resources_report.csv for details.\n=====================================\n`);
-    } else {
-      global.auditcore.logger.info('\n=== All Resources Summary ===\nNo resources found.\n=====================================\n');
     }
 
     // Missing sitemap URLs summary
@@ -194,5 +265,8 @@ export async function runTestsOnSitemap() {
   } catch (error) {
     global.auditcore.logger.error('Error in runTestsOnSitemap:', error);
     throw error;
+  } finally {
+    // Cleanup browser pool
+    await shutdownBrowserPool();
   }
 }
